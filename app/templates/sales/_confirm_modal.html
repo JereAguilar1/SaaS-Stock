@@ -1,0 +1,131 @@
+<!-- Sale Confirmation Modal (MEJORA 15) -->
+<div class="modal fade" id="confirmSaleModal" tabindex="-1" aria-labelledby="confirmSaleModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <!-- Header -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="confirmSaleModalLabel">
+                    <i class="bi bi-check-circle"></i> Confirmar Venta
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            
+            <!-- Body -->
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i> 
+                    Por favor revise los detalles de la venta antes de confirmar.
+                </div>
+                
+                <!-- Products Table -->
+                <h6 class="mb-3"><i class="bi bi-cart-check"></i> Productos</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Precio Unit.</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in cart_items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.product.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        SKU: {{ item.product.sku or '-' }} | 
+                                        {{ item.product.uom.symbol }}
+                                    </small>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">{{ item.qty|num_ar }}</span>
+                                </td>
+                                <td class="text-end">
+                                    ${{ item.unit_price|money_ar }}
+                                </td>
+                                <td class="text-end">
+                                    <strong>${{ item.subtotal|money_ar }}</strong>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
+                                <td class="text-end">
+                                    <h5 class="mb-0 text-primary">
+                                        <strong>${{ cart_total|money_ar }}</strong>
+                                    </h5>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <!-- Payment Method -->
+                <div class="card border-info mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-credit-card"></i> Método de Pago
+                        </h6>
+                        <p class="card-text mb-0">
+                            {% if payment_method == 'CASH' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-cash"></i> Efectivo
+                                </span>
+                            {% elif payment_method == 'TRANSFER' %}
+                                <span class="badge bg-info">
+                                    <i class="bi bi-bank"></i> Transferencia
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">No especificado</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Summary -->
+                <div class="alert alert-success">
+                    <strong><i class="bi bi-check2-square"></i> Resumen:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Total de productos: <strong>{{ cart_items|length }}</strong></li>
+                        <li>Monto total: <strong>${{ cart_total|money_ar }}</strong></li>
+                        <li>Se descontará stock automáticamente</li>
+                        <li>Se registrará el ingreso en el libro contable</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                
+                <!-- Final Confirmation Form -->
+                <form method="POST" action="{{ url_for('sales.confirm') }}" id="finalConfirmForm">
+                    <input type="hidden" name="payment_method" value="{{ payment_method }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Confirmar Venta
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-open modal script -->
+<script>
+    (function() {
+        const modal = new bootstrap.Modal(document.getElementById('confirmSaleModal'));
+        modal.show();
+        
+        // Clean up modal from DOM when hidden
+        document.getElementById('confirmSaleModal').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('modal-container').innerHTML = '';
+        });
+    })();
+</script>

@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Presupuesto {{ quote.quote_number }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-file-earmark-text"></i> Presupuesto {{ quote.quote_number }}</h1>
+    <a href="{{ url_for('quotes.list_quotes') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver al Listado
+    </a>
+</div>
+
+<!-- Quote Header -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Información del Presupuesto</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Número:</dt>
+                    <dd class="col-sm-8"><strong>{{ quote.quote_number }}</strong></dd>
+                    
+                    <dt class="col-sm-4">Estado:</dt>
+                    <dd class="col-sm-8">
+                        {% if quote.status == 'DRAFT' %}
+                        <span class="badge bg-secondary">Borrador</span>
+                        {% elif quote.status == 'SENT' %}
+                        <span class="badge bg-info">Enviado</span>
+                        {% elif quote.status == 'ACCEPTED' %}
+                        <span class="badge bg-success">Aceptado</span>
+                        {% elif quote.status == 'CANCELED' %}
+                        <span class="badge bg-danger">Cancelado</span>
+                        {% endif %}
+                        
+                        {% if quote.is_expired %}
+                        <span class="badge bg-warning text-dark ms-1">
+                            <i class="bi bi-exclamation-triangle"></i> Vencido
+                        </span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Fecha Emisión:</dt>
+                    <dd class="col-sm-8">{{ quote.issued_at|datetime_ar }}</dd>
+                    
+                    <dt class="col-sm-4">Válido Hasta:</dt>
+                    <dd class="col-sm-8">
+                        {% if quote.valid_until %}
+                        {{ quote.valid_until|date_ar }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Cliente:</dt>
+                    <dd class="col-sm-8">
+                        <strong>{{ quote.customer_name }}</strong>
+                        {% if quote.customer_phone %}
+                        <br><small class="text-muted">
+                            <i class="bi bi-telephone"></i> {{ quote.customer_phone }}
+                        </small>
+                        {% endif %}
+                    </dd>
+                    
+                    {% if quote.payment_method %}
+                    <dt class="col-sm-4">Método de Pago:</dt>
+                    <dd class="col-sm-8">
+                        {% if quote.payment_method == 'CASH' %}
+                        <i class="bi bi-cash"></i> Efectivo
+                        {% else %}
+                        <i class="bi bi-bank"></i> Transferencia
+                        {% endif %}
+                    </dd>
+                    {% endif %}
+                    
+                    {% if quote.sale_id %}
+                    <dt class="col-sm-4">Venta Asociada:</dt>
+                    <dd class="col-sm-8">
+                        <strong>Venta #{{ quote.sale_id }}</strong>
+                    </dd>
+                    {% endif %}
+                </dl>
+                
+                {% if quote.notes %}
+                <hr>
+                <p class="mb-0">
+                    <strong>Notas:</strong><br>
+                    {{ quote.notes }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">Total</h5>
+            </div>
+            <div class="card-body text-center">
+                <h1 class="display-4 text-success mb-0">${{ quote.total_amount|money_ar }}</h1>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Acciones</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <!-- Download PDF -->
+                    <a href="{{ url_for('quotes.download_pdf', quote_id=quote.id) }}" 
+                       class="btn btn-outline-secondary"
+                       target="_blank">
+                        <i class="bi bi-file-earmark-pdf"></i> Descargar PDF
+                    </a>
+                    
+                    <!-- Edit Quote (MEJORA 22) -->
+                    {% if quote.status in ['DRAFT', 'SENT'] and not quote.is_expired %}
+                    <a href="{{ url_for('quotes.edit_quote', quote_id=quote.id) }}" 
+                       class="btn btn-outline-primary w-100">
+                        <i class="bi bi-pencil"></i> Editar Presupuesto
+                    </a>
+                    {% endif %}
+                    
+                    <!-- Convert to Sale -->
+                    {% if quote.is_convertible %}
+                    <button type="button" 
+                            class="btn btn-success w-100"
+                            hx-get="{{ url_for('quotes.convert_to_sale_preview', quote_id=quote.id) }}"
+                            hx-target="#modal-container"
+                            hx-swap="innerHTML">
+                        <i class="bi bi-check-circle"></i> Convertir a Venta
+                    </button>
+                    {% endif %}
+                    
+                    <!-- Mark as Sent -->
+                    {% if quote.status == 'DRAFT' %}
+                    <form method="POST" 
+                          action="{{ url_for('quotes.mark_as_sent', quote_id=quote.id) }}">
+                        <button type="submit" class="btn btn-outline-info w-100">
+                            <i class="bi bi-send"></i> Marcar como Enviado
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <!-- Cancel -->
+                    {% if quote.status in ['DRAFT', 'SENT'] %}
+                    <form method="POST" 
+                          action="{{ url_for('quotes.cancel_quote', quote_id=quote.id) }}"
+                          onsubmit="return confirm('¿Cancelar este presupuesto?\n\nNo se podrá revertir esta acción.');">
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="bi bi-x-circle"></i> Cancelar Presupuesto
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quote Lines -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list-ul"></i> Detalle de Productos
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">UOM</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-end">Precio Unitario</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in quote.lines %}
+                    <tr>
+                        <td>
+                            <strong>{{ line.product_name_snapshot }}</strong>
+                            <br><small class="text-muted">Producto ID: {{ line.product_id }}</small>
+                        </td>
+                        <td class="text-center">
+                            {% if line.uom_snapshot %}
+                            <span class="badge bg-info">{{ line.uom_snapshot }}</span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if line.qty % 1 == 0 %}
+                            {{ line.qty|int }}
+                            {% else %}
+                            {{ "%.2f"|format(line.qty) }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">${{ "%.2f"|format(line.unit_price) }}</td>
+                        <td class="text-end"><strong>${{ "%.2f"|format(line.line_total) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="4" class="text-end"><strong>TOTAL:</strong></td>
+                        <td class="text-end">
+                            <h5 class="mb-0 text-success">${{ "%.2f"|format(quote.total_amount) }}</h5>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Info messages -->
+{% if quote.is_expired %}
+<div class="alert alert-warning mt-3">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Presupuesto Vencido:</strong> 
+    Este presupuesto expiró el {{ quote.valid_until|date_ar }}. No se puede convertir a venta.
+</div>
+{% endif %}
+
+{% if quote.status == 'ACCEPTED' and quote.sale_id %}
+<div class="alert alert-success mt-3">
+    <i class="bi bi-check-circle-fill"></i>
+    <strong>Presupuesto Aceptado:</strong> 
+    Este presupuesto fue convertido a la <strong>Venta #{{ quote.sale_id }}</strong>.
+</div>
+{% endif %}
+
+{% if quote.status == 'CANCELED' %}
+<div class="alert alert-danger mt-3">
+    <i class="bi bi-x-circle-fill"></i>
+    <strong>Presupuesto Cancelado:</strong> 
+    Este presupuesto ha sido cancelado y no puede ser convertido a venta.
+</div>
+{% endif %}
+
+<!-- Modal Container for HTMX -->
+<div id="modal-container"></div>
+{% endblock %}

@@ -1,0 +1,262 @@
+<!-- Edit Sale Confirmation Modal (MEJORA 17) -->
+<div class="modal fade" id="confirmEditSaleModal" tabindex="-1" aria-labelledby="confirmEditSaleModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <!-- Header -->
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="confirmEditSaleModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Corrección de Venta #{{ sale_id }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            
+            <!-- Body -->
+            <div class="modal-body">
+                <!-- Warning Alert -->
+                <div class="alert alert-warning">
+                    <strong><i class="bi bi-info-circle"></i> Importante:</strong>
+                    Esta corrección generará:
+                    <ul class="mb-0 mt-2">
+                        <li>Movimiento de stock tipo <strong>ADJUST</strong></li>
+                        <li>Asiento contable compensatorio en el libro mayor</li>
+                    </ul>
+                </div>
+                
+                <!-- Stock Issues (if any) -->
+                {% if changes.stock_issues %}
+                <div class="alert alert-danger">
+                    <strong><i class="bi bi-x-circle"></i> Stock Insuficiente:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for issue in changes.stock_issues %}
+                        <li>
+                            <strong>{{ issue.product_name }}</strong>: 
+                            Necesita {{ issue.needed }}, disponible: {{ issue.available }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <p class="mb-0 mt-2"><strong>No se puede aplicar esta corrección.</strong></p>
+                </div>
+                {% endif %}
+                
+                <!-- Changes Summary -->
+                <div class="card mb-3">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">
+                            <i class="bi bi-pencil-square"></i> Resumen de Cambios
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if changes.added %}
+                        <h6 class="text-success">
+                            <i class="bi bi-plus-circle"></i> Productos Agregados ({{ changes.added|length }})
+                        </h6>
+                        <ul class="mb-3">
+                            {% for item in changes.added %}
+                            <li>
+                                <strong>{{ item.product_name }}</strong>: 
+                                {{ item.qty }} × ${{ "%.2f"|format(item.unit_price) }} = 
+                                <strong>${{ "%.2f"|format(item.subtotal) }}</strong>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        
+                        {% if changes.removed %}
+                        <h6 class="text-danger">
+                            <i class="bi bi-dash-circle"></i> Productos Eliminados ({{ changes.removed|length }})
+                        </h6>
+                        <ul class="mb-3">
+                            {% for item in changes.removed %}
+                            <li>
+                                <strong>{{ item.product_name }}</strong>: 
+                                {{ item.qty }} × ${{ "%.2f"|format(item.unit_price) }} = 
+                                <strong>${{ "%.2f"|format(item.subtotal) }}</strong>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        
+                        {% if changes.modified %}
+                        <h6 class="text-primary">
+                            <i class="bi bi-arrow-left-right"></i> Cantidades Modificadas ({{ changes.modified|length }})
+                        </h6>
+                        <ul class="mb-0">
+                            {% for item in changes.modified %}
+                            <li>
+                                <strong>{{ item.product_name }}</strong>: 
+                                {{ item.old_qty }} → {{ item.new_qty }}
+                                {% if item.delta_qty > 0 %}
+                                    <span class="badge bg-success">+{{ item.delta_qty }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ item.delta_qty }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Before/After Tables -->
+                <div class="row">
+                    <!-- Before -->
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-clock-history"></i> Antes
+                                </h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th class="text-center">Qty</th>
+                                            <th class="text-end">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for line in old_lines %}
+                                        <tr>
+                                            <td>
+                                                <small>{{ line.product_name }}</small>
+                                            </td>
+                                            <td class="text-center">{{ line.qty }}</td>
+                                            <td class="text-end">${{ "%.2f"|format(line.subtotal) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="2"><strong>Total:</strong></td>
+                                            <td class="text-end"><strong>${{ "%.2f"|format(old_total) }}</strong></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- After -->
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">
+                                    <i class="bi bi-arrow-right-circle"></i> Después
+                                </h6>
+                            </div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th class="text-center">Qty</th>
+                                            <th class="text-end">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for line in new_lines %}
+                                        <tr>
+                                            <td>
+                                                <small>{{ line.product_name }}</small>
+                                            </td>
+                                            <td class="text-center">{{ line.qty }}</td>
+                                            <td class="text-end">${{ "%.2f"|format(line.subtotal) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="2"><strong>Total:</strong></td>
+                                            <td class="text-end"><strong>${{ "%.2f"|format(new_total) }}</strong></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Financial Impact -->
+                <div class="card">
+                    <div class="card-header 
+                        {% if diff > 0 %}bg-success{% elif diff < 0 %}bg-danger{% else %}bg-secondary{% endif %} 
+                        text-white">
+                        <h6 class="mb-0">
+                            <i class="bi bi-cash-coin"></i> Impacto Financiero
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Total Anterior:</dt>
+                            <dd class="col-sm-8">${{ "%.2f"|format(old_total) }}</dd>
+                            
+                            <dt class="col-sm-4">Total Nuevo:</dt>
+                            <dd class="col-sm-8"><strong>${{ "%.2f"|format(new_total) }}</strong></dd>
+                            
+                            <dt class="col-sm-4">Diferencia:</dt>
+                            <dd class="col-sm-8">
+                                {% if diff > 0 %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-arrow-up"></i> Aumenta ingreso +${{ "%.2f"|format(diff) }}
+                                    </span>
+                                    <br><small class="text-muted">Se creará asiento INCOME por ${{ "%.2f"|format(diff) }}</small>
+                                {% elif diff < 0 %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-arrow-down"></i> Disminuye ingreso -${{ "%.2f"|format(diff|abs) }}
+                                    </span>
+                                    <br><small class="text-muted">Se creará asiento EXPENSE por ${{ "%.2f"|format(diff|abs) }}</small>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin cambio en total</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                
+                <!-- Confirm Form - includes all lines to submit -->
+                <form method="POST" action="{{ url_for('sales.edit_sale_save', sale_id=sale_id) }}" id="finalEditConfirmForm">
+                    {% for line in new_lines %}
+                    <input type="hidden" name="lines[{{ loop.index0 }}][product_id]" value="{{ line.product_id }}">
+                    <input type="hidden" name="lines[{{ loop.index0 }}][qty]" value="{{ line.qty }}">
+                    {% endfor %}
+                    
+                    <button type="submit" 
+                            class="btn btn-warning"
+                            {% if changes.stock_issues %}disabled{% endif %}
+                            id="confirmEditBtn">
+                        <i class="bi bi-check-circle"></i> Confirmar Corrección
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-open modal script -->
+<script>
+(function() {
+    const modal = new bootstrap.Modal(document.getElementById('confirmEditSaleModal'));
+    modal.show();
+    
+    // Clean up modal from DOM when hidden
+    document.getElementById('confirmEditSaleModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('edit-modal-container').innerHTML = '';
+    });
+    
+    // Disable button on submit to prevent double-click
+    document.getElementById('finalEditConfirmForm').addEventListener('submit', function() {
+        const btn = document.getElementById('confirmEditBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+    });
+})();
+</script>

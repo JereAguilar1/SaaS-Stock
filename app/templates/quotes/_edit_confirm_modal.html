@@ -1,0 +1,236 @@
+<div class="modal fade" id="confirmEditQuoteModal" tabindex="-1" aria-labelledby="confirmEditQuoteModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="confirmEditQuoteModalLabel">
+                    <i class="bi bi-pencil-square"></i> Confirmar Cambios en Presupuesto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small" role="alert">
+                    <i class="bi bi-info-circle"></i> Revise los cambios antes de confirmar. Esta acción actualizará el presupuesto <strong>{{ quote.quote_number }}</strong>.
+                </div>
+
+                <!-- Quote Info -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Información del Presupuesto</h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Número:</dt>
+                            <dd class="col-sm-8"><strong>{{ quote.quote_number }}</strong></dd>
+                            
+                            <dt class="col-sm-4">Cliente:</dt>
+                            <dd class="col-sm-8">
+                                <strong>{{ quote.customer_name }}</strong>
+                                {% if quote.customer_phone %}
+                                <br><small class="text-muted">
+                                    <i class="bi bi-telephone"></i> {{ quote.customer_phone }}
+                                </small>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Changes Summary -->
+                {% if changes.added or changes.removed or changes.modified %}
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-arrow-left-right"></i> Resumen de Cambios</h6>
+                    </div>
+                    <div class="card-body">
+                        {% if changes.added %}
+                        <div class="mb-3">
+                            <h6 class="text-success">
+                                <i class="bi bi-plus-circle"></i> Productos Agregados ({{ changes.added|length }})
+                            </h6>
+                            <ul class="list-unstyled ms-3">
+                                {% for item in changes.added %}
+                                <li>
+                                    <strong>{{ item.product }}</strong> - 
+                                    Cantidad: {{ item.qty|num_ar }} - 
+                                    Precio: ${{ item.unit_price|money_ar }} - 
+                                    Subtotal: ${{ item.line_total|money_ar }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if changes.removed %}
+                        <div class="mb-3">
+                            <h6 class="text-danger">
+                                <i class="bi bi-dash-circle"></i> Productos Eliminados ({{ changes.removed|length }})
+                            </h6>
+                            <ul class="list-unstyled ms-3">
+                                {% for item in changes.removed %}
+                                <li>
+                                    <strong>{{ item.product }}</strong> - 
+                                    Cantidad: {{ item.qty|num_ar }} - 
+                                    Subtotal: ${{ item.line_total|money_ar }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if changes.modified %}
+                        <div class="mb-3">
+                            <h6 class="text-warning">
+                                <i class="bi bi-pencil"></i> Productos Modificados ({{ changes.modified|length }})
+                            </h6>
+                            <ul class="list-unstyled ms-3">
+                                {% for item in changes.modified %}
+                                <li>
+                                    <strong>{{ item.product }}</strong>
+                                    <br>
+                                    <small>
+                                        Cantidad: {{ item.old_qty|num_ar }} → {{ item.new_qty|num_ar }} | 
+                                        Subtotal: ${{ item.old_line_total|money_ar }} → ${{ item.new_line_total|money_ar }}
+                                    </small>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Metadata Changes -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-gear"></i> Cambios en Datos Generales</h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            {% if payment_method != quote.payment_method %}
+                            <dt class="col-sm-4">Método de Pago:</dt>
+                            <dd class="col-sm-8">
+                                {% if quote.payment_method %}
+                                <span class="text-muted">{{ quote.payment_method }}</span> →
+                                {% endif %}
+                                {% if payment_method %}
+                                <strong>{{ payment_method }}</strong>
+                                {% else %}
+                                <span class="text-muted">No especificado</span>
+                                {% endif %}
+                            </dd>
+                            {% endif %}
+
+                            {% if valid_until != quote.valid_until %}
+                            <dt class="col-sm-4">Válido Hasta:</dt>
+                            <dd class="col-sm-8">
+                                {% if quote.valid_until %}
+                                <span class="text-muted">{{ quote.valid_until|date_ar }}</span> →
+                                {% endif %}
+                                {% if valid_until %}
+                                <strong>{{ valid_until|date_ar }}</strong>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </dd>
+                            {% endif %}
+
+                            {% if notes != quote.notes %}
+                            <dt class="col-sm-4">Notas:</dt>
+                            <dd class="col-sm-8">
+                                {% if quote.notes %}
+                                <span class="text-muted">{{ quote.notes[:50] }}{% if quote.notes|length > 50 %}...{% endif %}</span> →
+                                {% endif %}
+                                {% if notes %}
+                                <strong>{{ notes[:50] }}{% if notes|length > 50 %}...{% endif %}</strong>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Total Comparison -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-calculator"></i> Total</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Total Anterior:</strong></p>
+                                <h4 class="text-muted">${{ old_total|money_ar }}</h4>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Total Nuevo:</strong></p>
+                                <h4 class="text-primary">${{ new_total|money_ar }}</h4>
+                            </div>
+                        </div>
+                        {% if old_total != new_total %}
+                        <div class="mt-2">
+                            <p class="mb-0">
+                                <strong>Diferencia:</strong> 
+                                <span class="{% if new_total > old_total %}text-success{% else %}text-danger{% endif %}">
+                                    {% if new_total > old_total %}+{% endif %}${{ (new_total - old_total)|money_ar }}
+                                </span>
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Warning -->
+                <div class="alert alert-warning mt-3 mb-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Importante:</strong> Al confirmar, se actualizará el presupuesto. 
+                    Los precios de las líneas existentes se mantendrán congelados. 
+                    Los productos nuevos usarán el precio actual del catálogo.
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                
+                <button type="button" 
+                        class="btn btn-primary"
+                        id="confirmEditBtn"
+                        onclick="document.getElementById('quote-edit-form').submit();">
+                    <i class="bi bi-check-circle"></i> Confirmar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-open the modal when it's inserted into the DOM
+(function() {
+    const modalElement = document.getElementById('confirmEditQuoteModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Disable button on click to prevent double-click
+        const btn = document.getElementById('confirmEditBtn');
+        const editForm = document.getElementById('quote-edit-form');
+        
+        if (btn && editForm) {
+            btn.addEventListener('click', function() {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
+                // Submit the edit form
+                editForm.submit();
+            });
+        }
+        
+        // Optional: Remove modal from DOM after it's hidden
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            modalElement.remove();
+        });
+    }
+})();
+</script>

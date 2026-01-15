@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Boleta #{{ invoice.id }} - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-file-earmark-text"></i> Boleta #{{ invoice.id }}
+        </h1>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Listado
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Información General</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Proveedor:</dt>
+                    <dd class="col-sm-8"><strong>{{ invoice.supplier.name }}</strong></dd>
+
+                    <dt class="col-sm-4">Nº Boleta:</dt>
+                    <dd class="col-sm-8">{{ invoice.invoice_number }}</dd>
+
+                    <dt class="col-sm-4">Fecha:</dt>
+                    <dd class="col-sm-8">{{ invoice.invoice_date|date_ar }}</dd>
+
+                    <dt class="col-sm-4">Vencimiento:</dt>
+                    <dd class="col-sm-8">
+                        {% if invoice.due_date %}
+                        {{ invoice.due_date|date_ar }}
+                        {% if invoice.is_overdue %}
+                        <span class="badge bg-danger ms-2" title="Esta boleta está vencida">
+                            <i class="bi bi-exclamation-triangle"></i> Vencida
+                        </span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">Estado:</dt>
+                    <dd class="col-sm-8">
+                        {% if invoice.is_overdue %}
+                        <span class="badge bg-danger">Caducada</span>
+                        {% elif invoice.status.value == 'PENDING' %}
+                        <span class="badge bg-warning text-dark">Pendiente</span>
+                        {% else %}
+                        <span class="badge bg-success">Pagada</span>
+                        {% endif %}
+                    </dd>
+
+                    {% if invoice.paid_at %}
+                    <dt class="col-sm-4">Fecha de Pago:</dt>
+                    <dd class="col-sm-8">{{ invoice.paid_at|date_ar }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">Total</h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="mb-0">${{ "%.2f"|format(invoice.total_amount) }}</h2>
+                <small class="text-muted">{{ invoice.lines|length }} ítem(s)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Section -->
+<div class="row">
+    <div class="col-12">
+        {% if invoice.status.value == 'PENDING' %}
+        <!-- Payment Button for PENDING invoices (MEJORA 19: Opens modal) -->
+        <div class="card border-warning mb-3">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-credit-card"></i> Registrar Pago
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <p class="mb-3">
+                    <i class="bi bi-info-circle text-muted"></i>
+                    Total a pagar: <strong class="text-danger fs-4">${{ '%.2f'|format(invoice.total_amount) }}</strong>
+                </p>
+                <button type="button" 
+                        class="btn btn-success btn-lg"
+                        hx-get="{{ url_for('invoices.pay_invoice_preview', invoice_id=invoice.id) }}"
+                        hx-target="#invoice-modal-container"
+                        hx-swap="innerHTML"
+                        hx-indicator="#pay-loading">
+                    <i class="bi bi-check-circle"></i> Pagar Boleta
+                </button>
+                <div id="pay-loading" class="htmx-indicator mt-2">
+                    <div class="spinner-border text-success" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+                <small class="d-block mt-3 text-muted">
+                    <i class="bi bi-info-circle"></i>
+                    Se abrirá una ventana de confirmación con el detalle completo
+                </small>
+            </div>
+        </div>
+        {% else %}
+        <!-- Payment Info for PAID invoices -->
+        <div class="alert alert-success" role="alert">
+            <h5 class="alert-heading">
+                <i class="bi bi-check-circle-fill"></i> Boleta Pagada
+            </h5>
+            <hr>
+            <p class="mb-0">
+                <strong>Fecha de pago:</strong> {{ invoice.paid_at|date_ar if invoice.paid_at else 'No disponible' }}
+                <br>
+                <strong>Monto:</strong> ${{ "%.2f"|format(invoice.total_amount) }}
+                <br>
+                <small class="text-muted">
+                    <i class="bi bi-journal-text"></i>
+                    El egreso fue registrado en el libro mayor financiero.
+                </small>
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="card-title mb-0">Detalle de Ítems</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>SKU</th>
+                                <th>UOM</th>
+                                <th class="text-end">Cantidad</th>
+                                <th class="text-end">Costo Unitario</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in invoice.lines %}
+                            <tr>
+                                <td><strong>{{ line.product.name }}</strong></td>
+                                <td>{{ line.product.sku or '-' }}</td>
+                                <td><span class="badge bg-info">{{ line.product.uom.symbol }}</span></td>
+                                <td class="text-end">{{ "%.3f"|format(line.qty) }}</td>
+                                <td class="text-end">${{ "%.4f"|format(line.unit_cost) }}</td>
+                                <td class="text-end"><strong>${{ "%.2f"|format(line.line_total) }}</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active">
+                                <td colspan="5" class="text-end"><strong>TOTAL:</strong></td>
+                                <td class="text-end">
+                                    <h5 class="mb-0">${{ "%.2f"|format(invoice.total_amount) }}</h5>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MEJORA 19: Modal Container -->
+<div id="invoice-modal-container"></div>
+
+{% endblock %}
+
+

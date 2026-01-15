@@ -1,0 +1,19 @@
+# Flask core
+Flask==3.0.0
+Werkzeug==3.0.1
+
+# Database
+SQLAlchemy==2.0.36
+psycopg2-binary==2.9.10
+python-dotenv==1.0.0
+
+# Production server
+gunicorn==21.2.0
+
+# HTMX support (no package needed, just CDN in templates)
+
+# Optional: Alembic for migrations
+alembic==1.13.1
+
+# PDF generation for quotes
+reportlab==4.0.7

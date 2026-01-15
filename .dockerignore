@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment and secrets
+.env
+*.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Documentation (optional, include if needed)
+*.md
+docs/
+
+# Database files (local development)
+*.db
+*.sqlite
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
+
+# Other
+.gitattributes
+LICENSE
+

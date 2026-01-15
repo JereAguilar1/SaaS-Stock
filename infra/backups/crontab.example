@@ -1,0 +1,17 @@
+# ============================================
+# Crontab Example for Ferretería SaaS Backups
+# ============================================
+# Add these lines to your crontab with: sudo crontab -e
+
+# PostgreSQL Daily Backup at 3:00 AM (server time)
+# Logs are written to /var/log/ferreteria_backup.log
+0 3 * * * cd /root/ferreteria && ./infra/backups/backup_db.sh >> /var/log/ferreteria_backup.log 2>&1
+
+# Optional: Weekly cleanup of old logs (keep last 90 days)
+0 4 * * 0 find /var/log -name "ferreteria_backup.log*" -mtime +90 -delete
+
+# Optional: Check disk space weekly (alert if < 10% free)
+0 5 * * 0 df -h / | awk 'NR==2 {if(substr($5,1,length($5)-1) > 90) print "WARNING: Disk space low: " $5 " used"}' | mail -s "Disk Space Alert" admin@example.com
+
+# Optional: Monthly backup verification (test restore to temp DB)
+# 0 6 1 * * cd /root/ferreteria && ./infra/backups/verify_backup.sh

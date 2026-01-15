@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if action == 'new' %}Nuevo Proveedor{% else %}Editar Proveedor{% endif %} - Sistema Ferretería
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-truck"></i> 
+            {% if action == 'new' %}Nuevo Proveedor{% else %}Editar Proveedor{% endif %}
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" 
+                      action="{% if action == 'new' %}{{ url_for('suppliers.create_supplier') }}{% else %}{{ url_for('suppliers.update_supplier', supplier_id=supplier.id) }}{% endif %}">
+                    
+                    <!-- Name -->
+                    <div class="mb-3">
+                        <label for="name" class="form-label">
+                            Nombre <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="name" 
+                               name="name" 
+                               value="{{ supplier.name if supplier else '' }}"
+                               required
+                               maxlength="255">
+                        <div class="form-text">Nombre o razón social del proveedor</div>
+                    </div>
+
+                    <!-- Tax ID and Phone -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tax_id" class="form-label">RFC/RUT/CUIT</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="tax_id" 
+                                       name="tax_id" 
+                                       value="{{ supplier.tax_id if supplier else '' }}"
+                                       maxlength="50">
+                                <div class="form-text">Identificación fiscal (opcional)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Teléfono</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="phone" 
+                                       name="phone" 
+                                       value="{{ supplier.phone if supplier else '' }}"
+                                       maxlength="50">
+                                <div class="form-text">Teléfono de contacto (opcional)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" 
+                               class="form-control" 
+                               id="email" 
+                               name="email" 
+                               value="{{ supplier.email if supplier else '' }}"
+                               maxlength="255">
+                        <div class="form-text">Email de contacto (opcional)</div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas</label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="3">{{ supplier.notes if supplier else '' }}</textarea>
+                        <div class="form-text">Información adicional del proveedor (opcional)</div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('suppliers.list_suppliers') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Volver
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> 
+                            {% if action == 'new' %}Crear Proveedor{% else %}Guardar Cambios{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-question-circle"></i> Ayuda
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>Campo requerido:</h6>
+                <ul class="small">
+                    <li><strong>Nombre:</strong> Nombre o razón social del proveedor</li>
+                </ul>
+                
+                <h6 class="mt-3">Campos opcionales:</h6>
+                <ul class="small">
+                    <li><strong>RFC/RUT/CUIT:</strong> Identificación fiscal</li>
+                    <li><strong>Teléfono:</strong> Contacto telefónico</li>
+                    <li><strong>Email:</strong> Correo electrónico</li>
+                    <li><strong>Notas:</strong> Información adicional</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

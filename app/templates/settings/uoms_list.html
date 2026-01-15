@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Unidades de Medida - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-rulers"></i> Unidades de Medida
+        </h1>
+        <p class="text-muted">Administrar unidades de medida para productos</p>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('settings.new_uom') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nueva Unidad
+        </a>
+    </div>
+</div>
+
+{% if uoms_with_count %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Símbolo</th>
+                        <th class="text-center">Productos</th>
+                        <th class="text-center">Fecha Creación</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for uom, product_count in uoms_with_count %}
+                    <tr>
+                        <td>{{ uom.id }}</td>
+                        <td><strong>{{ uom.name }}</strong></td>
+                        <td>
+                            <span class="badge bg-primary">{{ uom.symbol }}</span>
+                        </td>
+                        <td class="text-center">
+                            {% if product_count > 0 %}
+                            <span class="badge bg-info">{{ product_count }}</span>
+                            {% else %}
+                            <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center text-muted">
+                            {{ uom.created_at|date_ar }}
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ url_for('settings.edit_uom', uom_id=uom.id) }}" 
+                               class="btn btn-sm btn-outline-primary"
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            
+                            {% if product_count == 0 %}
+                            <form method="POST" 
+                                  action="{{ url_for('settings.delete_uom', uom_id=uom.id) }}" 
+                                  class="d-inline"
+                                  onsubmit="return confirm('¿Está seguro de eliminar la unidad \"{{ uom.name }}\"?');">
+                                <button type="submit" 
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-secondary" 
+                                    disabled
+                                    title="No se puede eliminar ({{ product_count }} productos asociados)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <i class="bi bi-info-circle"></i>
+    <strong>Nota:</strong> Las unidades de medida que estén asociadas a productos no pueden ser eliminadas.
+    Primero debe eliminar o reasignar los productos.
+</div>
+
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>No hay unidades de medida registradas.</strong>
+    <br>
+    Para poder crear productos, primero debe crear al menos una unidad de medida.
+    <br>
+    <a href="{{ url_for('settings.new_uom') }}" class="alert-link">Crear primera unidad de medida →</a>
+</div>
+{% endif %}
+{% endblock %}

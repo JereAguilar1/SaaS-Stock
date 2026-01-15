@@ -1,0 +1,165 @@
+<div class="modal fade" id="confirmPayInvoiceModal" tabindex="-1" aria-labelledby="confirmPayInvoiceModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="confirmPayInvoiceModalLabel">
+                    <i class="bi bi-cash-coin"></i> Confirmar Pago de Boleta #{{ invoice.id }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small" role="alert">
+                    <i class="bi bi-info-circle"></i> Revise los detalles antes de confirmar. Esto registrará un <strong>EGRESO</strong> de <strong>${{ invoice.total_amount|money_ar }}</strong> en el libro mayor financiero.
+                </div>
+
+                <!-- Invoice Summary -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Información de la Boleta</h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Proveedor:</dt>
+                            <dd class="col-sm-8"><strong>{{ invoice.supplier.name }}</strong></dd>
+                            
+                            <dt class="col-sm-4">Nº Boleta:</dt>
+                            <dd class="col-sm-8">{{ invoice.invoice_number }}</dd>
+                            
+                            <dt class="col-sm-4">Fecha Boleta:</dt>
+                            <dd class="col-sm-8">{{ invoice.invoice_date|date_ar }}</dd>
+                            
+                            <dt class="col-sm-4">Total a Pagar:</dt>
+                            <dd class="col-sm-8">
+                                <h5 class="mb-0 text-danger">${{ invoice.total_amount|money_ar }}</h5>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Items Detail -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-list-ul"></i> Detalle de Ítems ({{ invoice.lines|length }})</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-end">Costo Unit.</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in invoice.lines %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ line.product.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">SKU: {{ line.product.sku or '-' }}</small>
+                                        </td>
+                                        <td class="text-center">{{ line.qty|num_ar }}</td>
+                                        <td class="text-end">${{ line.unit_cost|money_ar }}</td>
+                                        <td class="text-end"><strong>${{ line.line_total|money_ar }}</strong></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
+                                        <td class="text-end">
+                                            <h5 class="mb-0 text-danger">${{ invoice.total_amount|money_ar }}</h5>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Form -->
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0"><i class="bi bi-calendar-check"></i> Datos del Pago</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('invoices.pay_invoice_route', invoice_id=invoice.id) }}" id="confirmPayForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="paid_at_modal" class="form-label">
+                                        Fecha de Pago <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           id="paid_at_modal" 
+                                           name="paid_at" 
+                                           value="{{ today }}"
+                                           max="{{ today }}"
+                                           required>
+                                    <div class="form-text">Fecha en que se realizó el pago</div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_method_modal" class="form-label">
+                                        Método de Pago <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="payment_method_modal" name="payment_method" required>
+                                        <option value="CASH" selected>💵 Efectivo</option>
+                                        <option value="TRANSFER">🏦 Transferencia</option>
+                                    </select>
+                                    <div class="form-text">Forma en que se pagó la boleta</div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Warning -->
+                <div class="alert alert-warning mt-3 mb-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Importante:</strong> Al confirmar, se registrará automáticamente un <strong>EGRESO</strong> de <strong>${{ invoice.total_amount|money_ar }}</strong> en el libro mayor financiero.
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                <button type="submit" 
+                        form="confirmPayForm" 
+                        class="btn btn-success"
+                        id="confirmPayBtn">
+                    <i class="bi bi-check-circle"></i> Confirmar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-open the modal when it's inserted into the DOM
+(function() {
+    const modalElement = document.getElementById('confirmPayInvoiceModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Disable button on submit to prevent double-click
+        const form = document.getElementById('confirmPayForm');
+        const btn = document.getElementById('confirmPayBtn');
+        if (form && btn) {
+            form.addEventListener('submit', function() {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
+            });
+        }
+        
+        // Optional: Remove modal from DOM after it's hidden
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            modalElement.remove();
+        });
+    }
+})();
+</script>

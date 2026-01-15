@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleccionar Negocio - Sistema Ferretería SaaS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+        .tenant-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 2.5rem;
+            max-width: 500px;
+            width: 100%;
+            margin: 1rem;
+        }
+        .tenant-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .tenant-icon {
+            font-size: 3.5rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .tenant-item {
+            padding: 1.25rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .tenant-item:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        .tenant-item input[type="radio"] {
+            display: none;
+        }
+        .tenant-item input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tenant-label {
+            display: flex;
+            align-items: center;
+            margin: 0;
+            cursor: pointer;
+        }
+        .tenant-label i {
+            font-size: 1.5rem;
+            margin-right: 1rem;
+        }
+        .btn-select {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+        }
+        .btn-select:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+            color: white;
+        }
+        .logout-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="tenant-card">
+        <div class="tenant-header">
+            <i class="bi bi-building tenant-icon"></i>
+            <h2 class="mb-0">Selecciona un Negocio</h2>
+            <p class="text-muted mt-2">Elige el negocio en el que deseas trabajar</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {% if category == 'danger' %}
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% elif category == 'success' %}
+                        <i class="bi bi-check-circle-fill"></i>
+                    {% elif category == 'info' %}
+                        <i class="bi bi-info-circle-fill"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Tenant Selection Form -->
+        <form method="POST" action="{{ url_for('auth.select_tenant') }}" id="tenant-form">
+            {% for user_tenant in user_tenants %}
+            <div class="tenant-item" onclick="this.querySelector('input').checked = true; this.style.borderColor='#667eea';">
+                <input 
+                    type="radio" 
+                    name="tenant_id" 
+                    value="{{ user_tenant.Tenant.id }}" 
+                    id="tenant-{{ user_tenant.Tenant.id }}"
+                    required
+                >
+                <label class="tenant-label w-100" for="tenant-{{ user_tenant.Tenant.id }}">
+                    <i class="bi bi-shop-window"></i>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1">{{ user_tenant.Tenant.name }}</h5>
+                        <small class="text-muted">
+                            <i class="bi bi-person-badge"></i> Rol: {{ user_tenant.UserTenant.role }}
+                        </small>
+                    </div>
+                </label>
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-select btn-lg w-100 mt-3">
+                <i class="bi bi-check-circle"></i> Seleccionar y Continuar
+            </button>
+        </form>
+
+        <div class="logout-link">
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger w-100">
+                <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

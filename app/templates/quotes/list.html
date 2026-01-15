@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Presupuestos{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-file-earmark-text"></i> Presupuestos</h1>
+    <a href="{{ url_for('sales.new_sale') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Crear Nuevo
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('quotes.list_quotes') }}" class="row g-3">
+            <div class="col-md-3">
+                <label for="status" class="form-label">Estado</label>
+                <select class="form-select" 
+                        id="status" 
+                        name="status"
+                        hx-get="{{ url_for('quotes.list_quotes') }}"
+                        hx-trigger="change"
+                        hx-target="#quotes-list-container"
+                        hx-swap="innerHTML"
+                        hx-include="[name='q']"
+                        hx-push-url="true">
+                    <option value="">Todos</option>
+                    <option value="DRAFT" {% if status_filter == 'DRAFT' %}selected{% endif %}>Borrador</option>
+                    <option value="SENT" {% if status_filter == 'SENT' %}selected{% endif %}>Enviado</option>
+                    <option value="ACCEPTED" {% if status_filter == 'ACCEPTED' %}selected{% endif %}>Aceptado</option>
+                    <option value="CANCELED" {% if status_filter == 'CANCELED' %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
+            
+            <div class="col-md-6">
+                <label for="q" class="form-label">Buscar</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="q" 
+                       name="q" 
+                       value="{{ search }}"
+                       placeholder="Por número, nombre o teléfono"
+                       hx-get="{{ url_for('quotes.list_quotes') }}"
+                       hx-trigger="input changed delay:350ms, search"
+                       hx-target="#quotes-list-container"
+                       hx-swap="innerHTML"
+                       hx-include="[name='status']"
+                       hx-push-url="true">
+            </div>
+            
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+                <a href="{{ url_for('quotes.list_quotes') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="quotes-list-container">
+    {% include 'quotes/_list_table.html' %}
+</div>
+{% endblock %}

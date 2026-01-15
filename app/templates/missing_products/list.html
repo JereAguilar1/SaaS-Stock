@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Productos Faltantes - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-exclamation-triangle"></i> Productos Faltantes
+        </h1>
+        <p class="text-muted">Productos que los clientes piden pero no tenemos en el sistema</p>
+    </div>
+</div>
+
+<!-- Quick Add Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-plus-circle"></i> Registrar Producto Faltante
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('missing_products.register_request') }}" class="row g-3">
+                    <div class="col-md-9">
+                        <label for="product_name" class="form-label">
+                            Nombre del Producto <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="product_name" 
+                               name="name" 
+                               placeholder="Ej: Tornillo hexagonal 10mm"
+                               required>
+                        <div class="form-text">
+                            Si ya se registró antes, se incrementará el contador automáticamente
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-warning w-100 btn-lg">
+                            <i class="bi bi-plus-circle"></i> Registrar Pedido
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-3">
+    <div class="col-md-8">
+        <form method="GET" class="row g-2">
+            <div class="col-auto">
+                <input type="text" 
+                       name="q" 
+                       class="form-control" 
+                       placeholder="Buscar por nombre..."
+                       value="{{ search_query or '' }}">
+            </div>
+            <div class="col-auto">
+                <select name="status" class="form-select">
+                    <option value="all" {% if selected_status == 'all' %}selected{% endif %}>Todos los estados</option>
+                    <option value="OPEN" {% if selected_status == 'OPEN' %}selected{% endif %}>Pendientes</option>
+                    <option value="RESOLVED" {% if selected_status == 'RESOLVED' %}selected{% endif %}>Resueltos</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+                {% if search_query or selected_status != 'all' %}
+                <a href="{{ url_for('missing_products.list_missing_products') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+                {% endif %}
+            </div>
+            <div class="col-auto">
+                <a href="{{ url_for('missing_products.list_missing_products', status='OPEN') }}" 
+                   class="btn btn-outline-warning {% if selected_status == 'OPEN' %}active{% endif %}">
+                    <i class="bi bi-clock-history"></i> Solo Pendientes
+                </a>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-4 text-end">
+        <span class="text-muted">
+            <strong>{{ requests|length }}</strong> producto(s) registrado(s)
+        </span>
+    </div>
+</div>
+
+<!-- List -->
+<div class="row">
+    <div class="col-12">
+        {% if requests %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center" style="width: 120px;">
+                            <i class="bi bi-hash"></i> Pedidos
+                        </th>
+                        <th style="width: 180px;">Último Pedido</th>
+                        <th class="text-center" style="width: 120px;">Estado</th>
+                        <th class="text-center" style="width: 200px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr class="{% if req.status == 'RESOLVED' %}table-secondary text-muted{% elif req.request_count >= 5 %}table-warning{% endif %}">
+                        <td>
+                            <strong>{{ req.name }}</strong>
+                            {% if req.notes %}
+                            <br>
+                            <small class="text-muted">
+                                <i class="bi bi-sticky"></i> {{ req.notes }}
+                            </small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if req.request_count >= 10 %}
+                            <span class="badge bg-danger fs-5">{{ req.request_count }}</span>
+                            {% elif req.request_count >= 5 %}
+                            <span class="badge bg-warning text-dark fs-5">{{ req.request_count }}</span>
+                            {% else %}
+                            <span class="badge bg-info fs-5">{{ req.request_count }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ req.last_requested_at|datetime_ar(with_time=True) }}</small>
+                        </td>
+                        <td class="text-center">
+                            {% if req.status == 'OPEN' %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% else %}
+                            <span class="badge bg-success">Resuelto</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if req.status == 'OPEN' %}
+                            <form method="POST" action="{{ url_for('missing_products.resolve_request', request_id=req.id) }}" style="display:inline;">
+                                <button type="submit" 
+                                        class="btn btn-sm btn-success" 
+                                        title="Marcar como resuelto"
+                                        onclick="return confirm('¿Marcar \"{{ req.name }}\" como resuelto?\n\nSe mantendrá el historial pero el estado cambiará a RESUELTO.')">
+                                    <i class="bi bi-check-circle"></i> Resolver
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('missing_products.reopen_request', request_id=req.id) }}" style="display:inline;">
+                                <button type="submit" 
+                                        class="btn btn-sm btn-warning" 
+                                        title="Reabrir"
+                                        onclick="return confirm('¿Reabrir \"{{ req.name }}\"?')">
+                                    <i class="bi bi-arrow-clockwise"></i> Reabrir
+                                </button>
+                            </form>
+                            {% endif %}
+                            
+                            <!-- Notes button/modal -->
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-secondary" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#notesModal{{ req.id }}"
+                                    title="Editar notas">
+                                <i class="bi bi-sticky"></i>
+                            </button>
+                            
+                            <!-- Notes Modal -->
+                            <div class="modal fade" id="notesModal{{ req.id }}" tabindex="-1" aria-labelledby="notesModalLabel{{ req.id }}" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="notesModalLabel{{ req.id }}">
+                                                Notas: {{ req.name }}
+                                            </h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('missing_products.update_notes', request_id=req.id) }}">
+                                            <div class="modal-body">
+                                                <textarea class="form-control" 
+                                                          name="notes" 
+                                                          rows="4" 
+                                                          placeholder="Agregar notas, observaciones, proveedor potencial, etc.">{{ req.notes or '' }}</textarea>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-primary">Guardar Notas</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <div class="card text-center border-warning">
+                    <div class="card-body">
+                        <h3 class="text-warning mb-0">
+                            {{ requests|selectattr('status', 'equalto', 'OPEN')|list|length }}
+                        </h3>
+                        <small class="text-muted">Pendientes</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h3 class="text-success mb-0">
+                            {{ requests|selectattr('status', 'equalto', 'RESOLVED')|list|length }}
+                        </h3>
+                        <small class="text-muted">Resueltos</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center border-info">
+                    <div class="card-body">
+                        <h3 class="text-info mb-0">
+                            {{ requests|sum(attribute='request_count') }}
+                        </h3>
+                        <small class="text-muted">Total Pedidos</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            No hay productos faltantes registrados.
+            {% if search_query or selected_status != 'all' %}
+            <br><br>
+            <a href="{{ url_for('missing_products.list_missing_products') }}" class="alert-link">Ver todos</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Help Info -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-info-circle"></i> ¿Cómo usar este módulo?</h6>
+                <ul class="mb-0">
+                    <li>Registra productos que los clientes piden pero no tienes en stock NI en el catálogo</li>
+                    <li>Si registras el mismo producto varias veces, se incrementa el contador automáticamente</li>
+                    <li>Los productos más pedidos aparecen primero (ordenados por cantidad)</li>
+                    <li>Marca como "Resuelto" cuando consigas el producto o lo agregues al catálogo</li>
+                    <li>Usa las notas para agregar información adicional (proveedor, observaciones, etc.)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

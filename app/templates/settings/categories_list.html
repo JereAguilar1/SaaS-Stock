@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Categorías - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-tags"></i> Categorías
+        </h1>
+        <p class="text-muted">Administrar categorías de productos</p>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('settings.new_category') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nueva Categoría
+        </a>
+    </div>
+</div>
+
+{% if categories_with_count %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th class="text-center">Productos</th>
+                        <th class="text-center">Fecha Creación</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, product_count in categories_with_count %}
+                    <tr>
+                        <td>{{ category.id }}</td>
+                        <td>
+                            <strong>{{ category.name }}</strong>
+                        </td>
+                        <td class="text-center">
+                            {% if product_count > 0 %}
+                            <span class="badge bg-info">{{ product_count }}</span>
+                            {% else %}
+                            <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center text-muted">
+                            {{ category.created_at|date_ar }}
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ url_for('settings.edit_category', category_id=category.id) }}" 
+                               class="btn btn-sm btn-outline-primary"
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            
+                            {% if product_count == 0 %}
+                            <form method="POST" 
+                                  action="{{ url_for('settings.delete_category', category_id=category.id) }}" 
+                                  class="d-inline"
+                                  onsubmit="return confirm('¿Está seguro de eliminar la categoría \"{{ category.name }}\"?');">
+                                <button type="submit" 
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-secondary" 
+                                    disabled
+                                    title="No se puede eliminar ({{ product_count }} productos asociados)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <i class="bi bi-info-circle"></i>
+    <strong>Nota:</strong> Las categorías que estén asociadas a productos no pueden ser eliminadas.
+    Primero debe eliminar o reasignar los productos a otra categoría.
+</div>
+
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    <strong>No hay categorías registradas.</strong>
+    <br>
+    Las categorías ayudan a organizar los productos. Aunque son opcionales, se recomienda crear al menos una.
+    <br>
+    <a href="{{ url_for('settings.new_category') }}" class="alert-link">Crear primera categoría →</a>
+</div>
+{% endif %}
+{% endblock %}

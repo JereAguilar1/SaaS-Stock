@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Balance Financiero - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-graph-up-arrow"></i> Balance Financiero
+        </h1>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('balance.list_ledger') }}" class="btn btn-outline-primary">
+            <i class="bi bi-journal-text"></i> Ver Libro Mayor
+        </a>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3" id="viewTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if view == 'daily' %}active{% endif %}" 
+           href="{{ url_for('balance.index', view='daily') }}">
+            <i class="bi bi-calendar-day"></i> Diario
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if view == 'monthly' %}active{% endif %}" 
+           href="{{ url_for('balance.index', view='monthly') }}">
+            <i class="bi bi-calendar-month"></i> Mensual
+        </a>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link {% if view == 'yearly' %}active{% endif %}" 
+           href="{{ url_for('balance.index', view='yearly') }}">
+            <i class="bi bi-calendar"></i> Anual
+        </a>
+    </li>
+</ul>
+
+<!-- Filters -->
+<div class="card mb-3">
+    <div class="card-body">
+        {% if view == 'daily' %}
+        <!-- MEJORA 5: Daily view with Year/Month filters -->
+        <form method="GET" action="{{ url_for('balance.index') }}" class="row g-3">
+            <input type="hidden" name="view" value="daily">
+            
+            <div class="col-md-3">
+                <label for="year" class="form-label">
+                    <i class="bi bi-calendar"></i> Año
+                </label>
+                <select class="form-select" id="year" name="year" required>
+                    {% if available_years %}
+                        {% for year in available_years %}
+                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="{{ selected_year or '' }}">{{ selected_year or 'Sin datos' }}</option>
+                    {% endif %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label for="month" class="form-label">
+                    <i class="bi bi-calendar-month"></i> Mes
+                </label>
+                <select class="form-select" id="month" name="month" required>
+                    <option value="1" {% if selected_month == 1 %}selected{% endif %}>Enero</option>
+                    <option value="2" {% if selected_month == 2 %}selected{% endif %}>Febrero</option>
+                    <option value="3" {% if selected_month == 3 %}selected{% endif %}>Marzo</option>
+                    <option value="4" {% if selected_month == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if selected_month == 5 %}selected{% endif %}>Mayo</option>
+                    <option value="6" {% if selected_month == 6 %}selected{% endif %}>Junio</option>
+                    <option value="7" {% if selected_month == 7 %}selected{% endif %}>Julio</option>
+                    <option value="8" {% if selected_month == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if selected_month == 9 %}selected{% endif %}>Septiembre</option>
+                    <option value="10" {% if selected_month == 10 %}selected{% endif %}>Octubre</option>
+                    <option value="11" {% if selected_month == 11 %}selected{% endif %}>Noviembre</option>
+                    <option value="12" {% if selected_month == 12 %}selected{% endif %}>Diciembre</option>
+                </select>
+            </div>
+            
+            <!-- MEJORA 12: Payment Method Filter -->
+            <div class="col-md-3">
+                <label for="method_daily" class="form-label">
+                    <i class="bi bi-cash-coin"></i> Método
+                </label>
+                <select class="form-select" id="method_daily" name="method">
+                    <option value="all" {% if selected_method == 'all' %}selected{% endif %}>Todos</option>
+                    <option value="cash" {% if selected_method == 'cash' %}selected{% endif %}>Efectivo</option>
+                    <option value="transfer" {% if selected_method == 'transfer' %}selected{% endif %}>Transferencia</option>
+                </select>
+            </div>
+            
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-funnel"></i> Aplicar Filtros
+                </button>
+                <a href="{{ url_for('balance.index', view='daily') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+            
+            {% if selected_year and selected_month %}
+            <div class="col-12">
+                <div class="alert alert-info alert-sm d-flex align-items-center mb-0" role="alert">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <small>
+                        Mostrando balance diario para <strong>{{ ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][selected_month] }} {{ selected_year }}</strong>
+                        {% if selected_method != 'all' %}
+                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif %}</strong>
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+        </form>
+        
+        {% elif view == 'monthly' %}
+        <!-- MEJORA 6: Monthly view with Year filter -->
+        <form method="GET" action="{{ url_for('balance.index') }}" class="row g-3">
+            <input type="hidden" name="view" value="monthly">
+            
+            <div class="col-md-4">
+                <label for="year" class="form-label">
+                    <i class="bi bi-calendar"></i> Año
+                </label>
+                <select class="form-select" id="year" name="year" required>
+                    {% if available_years %}
+                        {% for year in available_years %}
+                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="{{ selected_year or '' }}">{{ selected_year or 'Sin datos' }}</option>
+                    {% endif %}
+                </select>
+            </div>
+            
+            <!-- MEJORA 12: Payment Method Filter -->
+            <div class="col-md-3">
+                <label for="method_monthly" class="form-label">
+                    <i class="bi bi-cash-coin"></i> Método
+                </label>
+                <select class="form-select" id="method_monthly" name="method">
+                    <option value="all" {% if selected_method == 'all' %}selected{% endif %}>Todos</option>
+                    <option value="cash" {% if selected_method == 'cash' %}selected{% endif %}>Efectivo</option>
+                    <option value="transfer" {% if selected_method == 'transfer' %}selected{% endif %}>Transferencia</option>
+                </select>
+            </div>
+            
+            <div class="col-md-5 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-funnel"></i> Aplicar Filtro
+                </button>
+                <a href="{{ url_for('balance.index', view='monthly') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </a>
+            </div>
+            
+            {% if selected_year %}
+            <div class="col-12">
+                <div class="alert alert-info alert-sm d-flex align-items-center mb-0" role="alert">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <small>
+                        Mostrando balance mensual para el año <strong>{{ selected_year }}</strong>
+                        {% if selected_method != 'all' %}
+                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif %}</strong>
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+        </form>
+        
+        {% else %}
+        <!-- Yearly view with date range filters -->
+        <form method="GET" action="{{ url_for('balance.index') }}" class="row g-3">
+            <input type="hidden" name="view" value="{{ view }}">
+            
+            <div class="col-md-4">
+                <label for="start" class="form-label">Fecha Inicio</label>
+                <input type="date" class="form-control" id="start" name="start" value="{{ start }}">
+            </div>
+            
+            <div class="col-md-3">
+                <label for="end" class="form-label">Fecha Fin</label>
+                <input type="date" class="form-control" id="end" name="end" value="{{ end }}">
+            </div>
+            
+            <!-- MEJORA 12: Payment Method Filter -->
+            <div class="col-md-2">
+                <label for="method_yearly" class="form-label">Método</label>
+                <select class="form-select" id="method_yearly" name="method">
+                    <option value="all" {% if selected_method == 'all' %}selected{% endif %}>Todos</option>
+                    <option value="cash" {% if selected_method == 'cash' %}selected{% endif %}>Efectivo</option>
+                    <option value="transfer" {% if selected_method == 'transfer' %}selected{% endif %}>Transferencia</option>
+                </select>
+            </div>
+            
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-funnel"></i> Aplicar Filtros
+                </button>
+                <a href="{{ url_for('balance.index', view=view) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Restablecer
+                </a>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Totals Summary -->
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-1">
+                    <i class="bi bi-arrow-down-circle"></i> Ingresos Totales
+                </h6>
+                <h3 class="mb-0 text-success">${{ "%.2f"|format(totals.total_income) }}</h3>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-1">
+                    <i class="bi bi-arrow-up-circle"></i> Egresos Totales
+                </h6>
+                <h3 class="mb-0 text-danger">${{ "%.2f"|format(totals.total_expense) }}</h3>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card {% if totals.total_net >= 0 %}border-primary{% else %}border-warning{% endif %}">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-1">
+                    <i class="bi bi-calculator"></i> Neto
+                </h6>
+                <h3 class="mb-0 {% if totals.total_net >= 0 %}text-primary{% else %}text-warning{% endif %}">
+                    ${{ "%.2f"|format(totals.total_net) }}
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Balance Table -->
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0">
+            Balance 
+            {% if view == 'daily' %}Diario
+            {% elif view == 'monthly' %}Mensual
+            {% else %}Anual
+            {% endif %}
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if series %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Período</th>
+                        <th class="text-end">Ingresos</th>
+                        <th class="text-end">Egresos</th>
+                        <th class="text-end">Neto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in series %}
+                    <tr>
+                        <td><strong>
+                            {% if view == 'daily' %}
+                                {{ item.period|date_ar }}
+                            {% elif view == 'monthly' %}
+                                {{ item.period|month_ar }}
+                            {% else %}
+                                {{ item.period|year_ar }}
+                            {% endif %}
+                        </strong></td>
+                        <td class="text-end text-success">
+                            {% if item.income > 0 %}
+                            ${{ "%.2f"|format(item.income) }}
+                            {% else %}
+                            <span class="text-muted">$0.00</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-danger">
+                            {% if item.expense > 0 %}
+                            ${{ "%.2f"|format(item.expense) }}
+                            {% else %}
+                            <span class="text-muted">$0.00</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end {% if item.net >= 0 %}text-primary{% else %}text-warning{% endif %}">
+                            <strong>${{ "%.2f"|format(item.net) }}</strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-active">
+                    <tr>
+                        <td><strong>TOTALES</strong></td>
+                        <td class="text-end text-success">
+                            <strong>${{ "%.2f"|format(totals.total_income) }}</strong>
+                        </td>
+                        <td class="text-end text-danger">
+                            <strong>${{ "%.2f"|format(totals.total_expense) }}</strong>
+                        </td>
+                        <td class="text-end {% if totals.total_net >= 0 %}text-primary{% else %}text-warning{% endif %}">
+                            <strong>${{ "%.2f"|format(totals.total_net) }}</strong>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            <p class="text-muted mb-0">
+                <i class="bi bi-info-circle"></i>
+                Mostrando {{ series|length }} período(s) desde <strong>{{ start|date_ar }}</strong> hasta <strong>{{ end|date_ar }}</strong>
+            </p>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            No hay datos financieros para el rango de fechas seleccionado.
+            <br>
+            <small>Los ingresos provienen de ventas confirmadas y los egresos de boletas pagadas.</small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Help Card -->
+<div class="card mt-3">
+    <div class="card-header bg-light">
+        <h6 class="card-title mb-0">
+            <i class="bi bi-question-circle"></i> Información
+        </h6>
+    </div>
+    <div class="card-body">
+        <ul class="mb-0 small">
+            <li><strong>Ingresos:</strong> Provienen de ventas confirmadas (type=INCOME en finance_ledger)</li>
+            <li><strong>Egresos:</strong> Provienen de pagos de boletas a proveedores (type=EXPENSE en finance_ledger)</li>
+            <li><strong>Neto:</strong> Diferencia entre ingresos y egresos (Ingresos - Egresos)</li>
+            <li><strong>Vista Diaria:</strong> Muestra balance agrupado por día</li>
+            <li><strong>Vista Mensual:</strong> Muestra balance agrupado por mes</li>
+            <li><strong>Vista Anual:</strong> Muestra balance agrupado por año</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+

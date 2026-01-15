@@ -1,0 +1,90 @@
+<div class="row">
+    <div class="col-12">
+        {% if invoices %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Proveedor</th>
+                        <th>Nº Boleta</th>
+                        <th>Fecha</th>
+                        <th>Vencimiento</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr class="{% if invoice.is_overdue %}table-danger{% endif %}">
+                        <td>{{ invoice.id }}</td>
+                        <td>{{ invoice.supplier.name }}</td>
+                        <td><strong>{{ invoice.invoice_number }}</strong></td>
+                        <td>{{ invoice.invoice_date|date_ar }}</td>
+                        <td>
+                            {% if invoice.due_date %}
+                            {{ invoice.due_date|date_ar }}
+                            {% if invoice.is_overdue %}
+                            <span class="badge bg-danger ms-1" title="Vencida">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </span>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><strong>${{ invoice.total_amount|money_ar }}</strong></td>
+                        <td class="text-center">
+                            {% if invoice.is_overdue %}
+                            <span class="badge bg-danger">Caducada</span>
+                            {% elif invoice.status.value == 'PENDING' %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% else %}
+                            <span class="badge bg-success">Pagada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{{ url_for('invoices.view_invoice', invoice_id=invoice.id) }}" 
+                               class="btn btn-sm btn-outline-primary"
+                               title="Ver detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if invoice.status.value == 'PENDING' %}
+                            <button type="button"
+                                    class="btn btn-sm btn-warning"
+                                    title="Pagar"
+                                    hx-get="{{ url_for('invoices.pay_invoice_preview', invoice_id=invoice.id) }}"
+                                    hx-target="#modal-container"
+                                    hx-swap="innerHTML">
+                                <i class="bi bi-credit-card"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-3">
+            <p class="text-muted">
+                <strong>{{ invoices|length }}</strong> boleta(s) encontrada(s)
+                {% if search_query %}
+                para la búsqueda: <strong>"{{ search_query }}"</strong>
+                {% endif %}
+            </p>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            {% if search_query %}
+            No se encontraron boletas que coincidan con: <strong>"{{ search_query }}"</strong>
+            {% else %}
+            No hay boletas registradas. 
+            <a href="{{ url_for('invoices.new_invoice') }}" class="alert-link">Crear la primera</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>

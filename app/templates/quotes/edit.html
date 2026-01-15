@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Presupuesto {{ quote.quote_number }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-pencil-square"></i> Editar Presupuesto {{ quote.quote_number }}
+        </h1>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('quotes.view_quote', quote_id=quote.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Detalle
+        </a>
+    </div>
+</div>
+
+<form method="POST" id="quote-edit-form" action="{{ url_for('quotes.save_quote_edit', quote_id=quote.id) }}">
+    <div class="row">
+        <!-- General Data Section -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Datos Generales</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Payment Method -->
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">Método de Pago</label>
+                        <select class="form-select" id="payment_method" name="payment_method">
+                            <option value="">No especificado</option>
+                            <option value="CASH" {% if quote.payment_method == 'CASH' %}selected{% endif %}>
+                                💵 Efectivo
+                            </option>
+                            <option value="TRANSFER" {% if quote.payment_method == 'TRANSFER' %}selected{% endif %}>
+                                🏦 Transferencia
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Valid Until -->
+                    <div class="mb-3">
+                        <label for="valid_until" class="form-label">Válido Hasta</label>
+                        <input type="date" 
+                               class="form-control" 
+                               id="valid_until" 
+                               name="valid_until"
+                               value="{% if quote.valid_until %}{{ quote.valid_until.strftime('%Y-%m-%d') }}{% endif %}"
+                               min="{{ quote.issued_at.date().strftime('%Y-%m-%d') }}">
+                        <small class="text-muted">Fecha hasta la cual el presupuesto es válido</small>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas</label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="3"
+                                  placeholder="Notas adicionales sobre el presupuesto...">{{ quote.notes or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Item Section -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Agregar Producto</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="new_product_id" class="form-label">Producto</label>
+                        <select class="form-select" id="new_product_id">
+                            <option value="">Seleccione producto...</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}" 
+                                    data-name="{{ product.name }}"
+                                    data-price="{{ product.sale_price }}"
+                                    data-uom="{{ product.uom.symbol }}">
+                                {{ product.name }} ({{ product.sku or 'Sin SKU' }}) - {{ product.uom.symbol }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="new_qty" class="form-label">Cantidad</label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="new_qty"
+                                       min="0.001" 
+                                       step="0.001" 
+                                       value="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-success w-100" id="add-line-btn">
+                        <i class="bi bi-plus-circle"></i> Agregar a Líneas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lines Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="card-title mb-0">Líneas del Presupuesto</h5>
+                </div>
+                <div class="card-body">
+                    <div id="lines-container">
+                        {% for line in quote.lines %}
+                        <div class="line-item mb-3 p-3 border rounded" data-line-index="{{ loop.index0 }}">
+                            <div class="row align-items-center">
+                                <div class="col-md-5">
+                                    <input type="hidden" name="lines[{{ loop.index0 }}][product_id]" value="{{ line.product_id }}">
+                                    <strong>{{ line.product_name_snapshot }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        SKU: {{ line.product.sku or '-' }} | 
+                                        {{ line.uom_snapshot or line.product.uom.symbol }}
+                                    </small>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Cantidad</label>
+                                    <input type="number" 
+                                           class="form-control form-control-sm line-qty" 
+                                           name="lines[{{ loop.index0 }}][qty]"
+                                           value="{{ line.qty }}"
+                                           min="0.001" 
+                                           step="0.001"
+                                           required
+                                           onchange="updateLineSubtotal(this)">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Precio Unit.</label>
+                                    <input type="text" 
+                                           class="form-control form-control-sm line-unit-price" 
+                                           value="${{ line.unit_price|money_ar }}"
+                                           data-price="{{ line.unit_price }}"
+                                           readonly
+                                           style="background-color: #e9ecef;">
+                                    <small class="text-muted">Precio congelado</small>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Subtotal</label>
+                                    <input type="text" 
+                                           class="form-control form-control-sm line-subtotal" 
+                                           value="${{ line.line_total|money_ar }}"
+                                           readonly
+                                           style="background-color: #e9ecef;">
+                                </div>
+                                <div class="col-md-1 text-center">
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger remove-line-btn"
+                                            title="Eliminar línea">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if not quote.lines %}
+                    <div class="alert alert-info text-center">
+                        <i class="bi bi-info-circle"></i>
+                        <p class="mb-0">No hay líneas agregadas</p>
+                        <small>Agregue al menos una línea para guardar el presupuesto</small>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">Total: <span id="total-amount" class="text-primary">${{ quote.total_amount|money_ar }}</span></h5>
+                            </div>
+                            <div>
+                                <button type="button" 
+                                        class="btn btn-primary btn-lg"
+                                        id="preview-btn"
+                                        hx-post="{{ url_for('quotes.edit_quote_preview', quote_id=quote.id) }}"
+                                        hx-target="#quote-edit-modal-container"
+                                        hx-swap="innerHTML"
+                                        hx-include="#quote-edit-form"
+                                        hx-indicator="#preview-loading">
+                                    <i class="bi bi-eye"></i> Revisar y Guardar
+                                </button>
+                                <div id="preview-loading" class="htmx-indicator ms-2 d-inline-block">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Modal Container for HTMX -->
+<div id="quote-edit-modal-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let lineIndex = {{ quote.lines|length }};
+    const linesContainer = document.getElementById('lines-container');
+    const newProductSelect = document.getElementById('new_product_id');
+    const newQtyInput = document.getElementById('new_qty');
+    const addLineBtn = document.getElementById('add-line-btn');
+
+    // Add new line
+    addLineBtn.addEventListener('click', function() {
+        const productId = newProductSelect.value;
+        const qty = parseFloat(newQtyInput.value);
+
+        if (!productId) {
+            alert('Debe seleccionar un producto');
+            return;
+        }
+
+        if (!qty || qty <= 0) {
+            alert('La cantidad debe ser mayor a 0');
+            return;
+        }
+
+        const selectedOption = newProductSelect.options[newProductSelect.selectedIndex];
+        const productName = selectedOption.dataset.name;
+        const productPrice = parseFloat(selectedOption.dataset.price);
+        const productUom = selectedOption.dataset.uom;
+        const productSku = selectedOption.text.match(/\(([^)]+)\)/)?.[1] || '-';
+
+        // Check if product already exists in lines
+        const existingLines = linesContainer.querySelectorAll('[name*="[product_id]"]');
+        for (let input of existingLines) {
+            if (input.value == productId) {
+                alert('Este producto ya está en las líneas. Modifique la cantidad de la línea existente.');
+                return;
+            }
+        }
+
+        // Create line HTML
+        const lineHtml = `
+            <div class="line-item mb-3 p-3 border rounded" data-line-index="${lineIndex}">
+                <div class="row align-items-center">
+                    <div class="col-md-5">
+                        <input type="hidden" name="lines[${lineIndex}][product_id]" value="${productId}">
+                        <strong>${productName}</strong>
+                        <br>
+                        <small class="text-muted">SKU: ${productSku} | ${productUom}</small>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Cantidad</label>
+                        <input type="number" 
+                               class="form-control form-control-sm line-qty" 
+                               name="lines[${lineIndex}][qty]"
+                               value="${qty}"
+                               min="0.001" 
+                               step="0.001"
+                               required
+                               onchange="updateLineSubtotal(this)">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Precio Unit.</label>
+                        <input type="text" 
+                               class="form-control form-control-sm" 
+                               value="$${productPrice.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}"
+                               readonly
+                               style="background-color: #e9ecef;">
+                        <small class="text-muted">Precio actual</small>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Subtotal</label>
+                        <input type="text" 
+                               class="form-control form-control-sm line-subtotal" 
+                               value="$${(qty * productPrice).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}"
+                               readonly
+                               style="background-color: #e9ecef;">
+                    </div>
+                    <div class="col-md-1 text-center">
+                        <button type="button" 
+                                class="btn btn-sm btn-outline-danger remove-line-btn"
+                                title="Eliminar línea">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        linesContainer.insertAdjacentHTML('beforeend', lineHtml);
+        
+        // Reset form
+        newProductSelect.value = '';
+        newQtyInput.value = '1';
+        
+        // Update total
+        updateTotal();
+        lineIndex++;
+    });
+
+    // Remove line
+    linesContainer.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-line-btn')) {
+            const lineItem = e.target.closest('.line-item');
+            lineItem.remove();
+            reindexLines();
+            updateTotal();
+        }
+    });
+
+    // Update line subtotal when qty changes
+    function updateLineSubtotal(qtyInput) {
+        const lineItem = qtyInput.closest('.line-item');
+        const priceInput = lineItem.querySelector('.line-unit-price');
+        let price;
+        
+        // Try to get price from data-price attribute first
+        if (priceInput && priceInput.dataset.price) {
+            price = parseFloat(priceInput.dataset.price);
+        } else {
+            // Fallback: parse from displayed value
+            const priceText = priceInput ? priceInput.value : lineItem.querySelector('.col-md-2 input[readonly]').value;
+            price = parseFloat(priceText.replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+        }
+        
+        const qty = parseFloat(qtyInput.value) || 0;
+        const subtotal = qty * price;
+        
+        const subtotalInput = lineItem.querySelector('.line-subtotal');
+        if (subtotalInput) {
+            subtotalInput.value = '$' + subtotal.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+        
+        updateTotal();
+    }
+
+    // Reindex lines after removal
+    function reindexLines() {
+        const lines = linesContainer.querySelectorAll('.line-item');
+        lines.forEach((line, index) => {
+            line.dataset.lineIndex = index;
+            const inputs = line.querySelectorAll('input[name*="lines["]');
+            inputs.forEach(input => {
+                const name = input.name;
+                input.name = name.replace(/lines\[\d+\]/, `lines[${index}]`);
+            });
+        });
+        lineIndex = lines.length;
+    }
+
+    // Update total
+    function updateTotal() {
+        const subtotals = linesContainer.querySelectorAll('.line-subtotal');
+        let total = 0;
+        subtotals.forEach(subtotalInput => {
+            const value = parseFloat(subtotalInput.value.replace(/[^0-9.,]/g, '').replace(',', '.')) || 0;
+            total += value;
+        });
+        
+        const totalElement = document.getElementById('total-amount');
+        totalElement.textContent = '$' + total.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    // Attach change listeners to existing qty inputs
+    linesContainer.querySelectorAll('.line-qty, input[name*="[qty]"]').forEach(input => {
+        input.addEventListener('change', function() {
+            updateLineSubtotal(this);
+        });
+    });
+});
+</script>
+{% endblock %}

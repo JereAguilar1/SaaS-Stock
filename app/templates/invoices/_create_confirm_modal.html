@@ -1,0 +1,138 @@
+<div class="modal fade" id="confirmCreateInvoiceModal" tabindex="-1" aria-labelledby="confirmCreateInvoiceModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="confirmCreateInvoiceModalLabel">
+                    <i class="bi bi-file-earmark-check"></i> Confirmar Creación de Boleta
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small" role="alert">
+                    <i class="bi bi-info-circle"></i> Revise los detalles antes de confirmar. Esta acción creará la boleta y aumentará el stock automáticamente.
+                </div>
+
+                <!-- Invoice Header -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Información de la Boleta</h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Proveedor:</dt>
+                            <dd class="col-sm-8"><strong>{{ supplier.name }}</strong></dd>
+                            
+                            <dt class="col-sm-4">Nº Boleta:</dt>
+                            <dd class="col-sm-8"><strong>{{ invoice_number }}</strong></dd>
+                            
+                            <dt class="col-sm-4">Fecha Boleta:</dt>
+                            <dd class="col-sm-8">{{ invoice_date|date_ar }}</dd>
+                            
+                            {% if due_date %}
+                            <dt class="col-sm-4">Vencimiento:</dt>
+                            <dd class="col-sm-8">{{ due_date|date_ar }}</dd>
+                            {% endif %}
+                            
+                            <dt class="col-sm-4">Total:</dt>
+                            <dd class="col-sm-8">
+                                <h5 class="mb-0 text-primary">${{ total_amount|money_ar }}</h5>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Items Detail -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-list-ul"></i> Detalle de Ítems ({{ lines|length }})</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-end">Costo Unit.</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for line in lines %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ line.product.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                SKU: {{ line.product.sku or '-' }} | 
+                                                {{ line.product.uom.symbol }}
+                                            </small>
+                                        </td>
+                                        <td class="text-center">{{ line.qty|num_ar }}</td>
+                                        <td class="text-end">${{ line.unit_cost|money_ar }}</td>
+                                        <td class="text-end"><strong>${{ line.line_total|money_ar }}</strong></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
+                                        <td class="text-end">
+                                            <h5 class="mb-0 text-primary">${{ total_amount|money_ar }}</h5>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Warning -->
+                <div class="alert alert-warning mt-3 mb-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Importante:</strong> Al confirmar, se registrará automáticamente un <strong>INGRESO</strong> de stock para cada producto y se creará la boleta en el sistema.
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                
+                <form method="POST" action="{{ url_for('invoices.create_invoice') }}" id="confirmCreateForm">
+                    <button type="submit" 
+                            class="btn btn-primary"
+                            id="confirmCreateBtn">
+                        <i class="bi bi-check-circle"></i> Confirmar Creación
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-open the modal when it's inserted into the DOM
+(function() {
+    const modalElement = document.getElementById('confirmCreateInvoiceModal');
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // Disable button on submit to prevent double-click
+        const form = document.getElementById('confirmCreateForm');
+        const btn = document.getElementById('confirmCreateBtn');
+        if (form && btn) {
+            form.addEventListener('submit', function() {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
+            });
+        }
+        
+        // Optional: Remove modal from DOM after it's hidden
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            modalElement.remove();
+        });
+    }
+})();
+</script>

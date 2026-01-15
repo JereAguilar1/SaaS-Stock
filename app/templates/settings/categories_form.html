@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar' if category else 'Nueva' }} Categoría - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-tags"></i> {{ 'Editar' if category else 'Nueva' }} Categoría
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('settings.list_categories') }}">Categorías</a></li>
+                <li class="breadcrumb-item active">{{ 'Editar' if category else 'Nueva' }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    {{ 'Editar Categoría' if category else 'Crear Nueva Categoría' }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">
+                            Nombre <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="name" 
+                               name="name" 
+                               value="{{ category.name if category else '' }}"
+                               placeholder="Ej: Herramientas Manuales, Pintura, Electricidad"
+                               maxlength="120"
+                               required
+                               autofocus>
+                        <div class="form-text">Nombre de la categoría (máx. 120 caracteres)</div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Ejemplos de categorías:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Herramientas Manuales</strong> - Martillos, destornilladores, llaves, etc.</li>
+                            <li><strong>Herramientas Eléctricas</strong> - Taladros, amoladoras, sierras, etc.</li>
+                            <li><strong>Pintura y Accesorios</strong> - Pinturas, pinceles, rodillos, etc.</li>
+                            <li><strong>Electricidad</strong> - Cables, interruptores, tomas, etc.</li>
+                            <li><strong>Plomería</strong> - Caños, llaves, grifos, etc.</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('settings.list_categories') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> {{ 'Actualizar' if category else 'Crear' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightbulb"></i> Consejos
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>¿Para qué sirven las categorías?</h6>
+                <p>Las categorías permiten organizar y clasificar los productos para:</p>
+                <ul>
+                    <li>Facilitar la búsqueda y navegación</li>
+                    <li>Generar reportes por tipo de producto</li>
+                    <li>Analizar ventas por categoría</li>
+                    <li>Mantener el catálogo ordenado</li>
+                </ul>
+
+                <hr>
+
+                <h6>Buenas prácticas:</h6>
+                <ul>
+                    <li>Usar nombres claros y descriptivos</li>
+                    <li>Evitar categorías demasiado genéricas o específicas</li>
+                    <li>Mantener un número manejable de categorías</li>
+                    <li>Agrupar productos relacionados</li>
+                </ul>
+
+                <hr>
+
+                <h6>Restricciones:</h6>
+                <ul class="mb-0">
+                    <li>El nombre debe ser único</li>
+                    <li>No se puede eliminar si tiene productos asociados</li>
+                    <li>Las categorías son opcionales para los productos</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

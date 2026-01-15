@@ -1,0 +1,62 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    container_name: Stock-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-stock}
+      POSTGRES_USER: ${DB_USER:-stock}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stock}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stock} -d ${DB_NAME:-stock}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - stock-network
+
+  # Flask Web Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: Stock-web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-stock}
+      - DB_USER=${DB_USER:-stock}
+      - DB_PASSWORD=${DB_PASSWORD:-stock}
+      - SECRET_KEY=${SECRET_KEY:-stock}
+      - FLASK_DEBUG=${FLASK_DEBUG:-0}
+      - APP_PASSWORD=${APP_PASSWORD}
+      - SESSION_AUTH_KEY=${SESSION_AUTH_KEY:-authenticated}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - stock-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  stock-network:
+    driver: bridge
+

@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Venta #{{ sale.id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-pencil-square"></i> Editando Venta #{{ sale.id }}
+        </h1>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}" class="btn btn-secondary">
+            <i class="bi bi-x-circle"></i> Cancelar
+        </a>
+    </div>
+</div>
+
+<!-- Warning Alert -->
+<div class="alert alert-warning">
+    <strong><i class="bi bi-exclamation-triangle"></i> Advertencia:</strong>
+    Al guardar los cambios, se generarán automáticamente:
+    <ul class="mb-0 mt-2">
+        <li>Ajustes de stock (movimientos de tipo ADJUST)</li>
+        <li>Asientos contables compensatorios (en el libro mayor)</li>
+    </ul>
+    Esto mantiene la trazabilidad de la operación original.
+</div>
+
+<!-- Current Sale Info -->
+<div class="card mb-3">
+    <div class="card-header bg-info text-white">
+        <h6 class="mb-0">
+            <i class="bi bi-info-circle"></i> Información Original
+        </h6>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Fecha:</dt>
+            <dd class="col-sm-9">{{ sale.datetime|datetime_ar }}</dd>
+            
+            <dt class="col-sm-3">Total Original:</dt>
+            <dd class="col-sm-9"><strong>${{ "%.2f"|format(sale.total) }}</strong></dd>
+        </dl>
+    </div>
+</div>
+
+<!-- Edit Form -->
+<form method="POST" action="{{ url_for('sales.edit_sale_save', sale_id=sale.id) }}" id="editSaleForm">
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-cart-check"></i> Líneas de Venta (Editar Cantidades)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="lines-container">
+                <div class="table-responsive">
+                    <table class="table table-sm" id="lines-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center" style="width: 150px;">Cantidad</th>
+                                <th class="text-end">Precio Unit.</th>
+                                <th class="text-end">Stock Disponible</th>
+                                <th class="text-end">Subtotal</th>
+                                <th class="text-center" style="width: 80px;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lines-tbody">
+                            {% for line in sale.lines %}
+                            <tr class="line-row" data-product-id="{{ line.product_id }}">
+                                <td>
+                                    <strong>{{ line.product_name }}</strong>
+                                    <br><small class="text-muted">SKU: {{ line.product_sku or '-' }} | {{ line.product_uom }}</small>
+                                    <input type="hidden" name="lines[{{ loop.index0 }}][product_id]" value="{{ line.product_id }}">
+                                </td>
+                                <td>
+                                    <input type="number" 
+                                           class="form-control form-control-sm qty-input" 
+                                           name="lines[{{ loop.index0 }}][qty]" 
+                                           value="{{ line.qty }}"
+                                           min="0.01"
+                                           step="0.01"
+                                           data-unit-price="{{ line.unit_price }}"
+                                           data-stock="{{ line.current_stock }}"
+                                           required>
+                                </td>
+                                <td class="text-end unit-price">${{ "%.2f"|format(line.unit_price) }}</td>
+                                <td class="text-end">
+                                    <span class="badge bg-info">{{ line.current_stock }}</span>
+                                </td>
+                                <td class="text-end line-total">
+                                    ${{ "%.2f"|format(line.line_total) }}
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-danger remove-line-btn" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="4" class="text-end"><strong>TOTAL:</strong></td>
+                                <td class="text-end">
+                                    <h5 class="mb-0 text-primary" id="total-display">
+                                        ${{ "%.2f"|format(sale.total) }}
+                                    </h5>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Product Section -->
+    <div class="card mb-3">
+        <div class="card-header bg-success text-white">
+            <h6 class="mb-0">
+                <i class="bi bi-plus-circle"></i> Agregar Producto Nuevo
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="new-product" class="form-label">Producto</label>
+                    <select class="form-select" id="new-product">
+                        <option value="">Seleccione un producto...</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}" 
+                                data-name="{{ product.name }}"
+                                data-sku="{{ product.sku or '-' }}"
+                                data-uom="{{ product.uom.symbol if product.uom else '-' }}"
+                                data-price="{{ product.sale_price }}"
+                                data-stock="{{ product.on_hand_qty }}">
+                            {{ product.name }} (Stock: {{ product.on_hand_qty }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="new-qty" class="form-label">Cantidad</label>
+                    <input type="number" 
+                           class="form-control" 
+                           id="new-qty" 
+                           min="0.01"
+                           step="0.01"
+                           placeholder="1.00">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" class="btn btn-success w-100" id="add-product-btn">
+                        <i class="bi bi-plus-circle"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Save Button (MEJORA 17: Opens preview modal with HTMX) -->
+    <div class="d-grid gap-2">
+        <button type="button" 
+                class="btn btn-primary btn-lg"
+                hx-post="{{ url_for('sales.edit_sale_preview', sale_id=sale.id) }}"
+                hx-target="#edit-modal-container"
+                hx-swap="innerHTML"
+                hx-include="closest form"
+                hx-indicator="#preview-loading">
+            <i class="bi bi-check-circle"></i> Guardar Cambios
+        </button>
+        <div id="preview-loading" class="htmx-indicator text-center mt-2">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Generando vista previa...</span>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- MEJORA 17: Modal Container -->
+<div id="edit-modal-container"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    let lineIndex = {{ sale.lines|length }};
+    
+    // Calculate line total
+    function calculateLineTotal(qtyInput) {
+        const qty = parseFloat(qtyInput.value) || 0;
+        const unitPrice = parseFloat(qtyInput.dataset.unitPrice) || 0;
+        const lineTotal = qty * unitPrice;
+        
+        const row = qtyInput.closest('tr');
+        row.querySelector('.line-total').textContent = '$' + lineTotal.toFixed(2);
+        
+        calculateGrandTotal();
+    }
+    
+    // Calculate grand total
+    function calculateGrandTotal() {
+        let total = 0;
+        document.querySelectorAll('.line-row').forEach(row => {
+            const qtyInput = row.querySelector('.qty-input');
+            if (qtyInput) {
+                const qty = parseFloat(qtyInput.value) || 0;
+                const unitPrice = parseFloat(qtyInput.dataset.unitPrice) || 0;
+                total += qty * unitPrice;
+            }
+        });
+        
+        document.getElementById('total-display').textContent = '$' + total.toFixed(2);
+    }
+    
+    // Qty input change
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('qty-input')) {
+            calculateLineTotal(e.target);
+        }
+    });
+    
+    // Remove line
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-line-btn')) {
+            const row = e.target.closest('tr');
+            row.remove();
+            calculateGrandTotal();
+            
+            // Reindex remaining lines
+            reindexLines();
+        }
+    });
+    
+    // Reindex form field names after removing lines
+    function reindexLines() {
+        const rows = document.querySelectorAll('.line-row');
+        rows.forEach((row, index) => {
+            row.querySelectorAll('input[name^="lines["]').forEach(input => {
+                const fieldName = input.name.match(/\[([^\]]+)\]$/)[1];
+                input.name = `lines[${index}][${fieldName}]`;
+            });
+        });
+        lineIndex = rows.length;
+    }
+    
+    // Add product
+    document.getElementById('add-product-btn').addEventListener('click', function() {
+        const select = document.getElementById('new-product');
+        const qtyInput = document.getElementById('new-qty');
+        
+        if (!select.value || !qtyInput.value) {
+            alert('Seleccione un producto e ingrese cantidad');
+            return;
+        }
+        
+        const option = select.options[select.selectedIndex];
+        const productId = option.value;
+        const productName = option.dataset.name;
+        const productSku = option.dataset.sku;
+        const productUom = option.dataset.uom;
+        const unitPrice = parseFloat(option.dataset.price);
+        const stock = parseFloat(option.dataset.stock);
+        const qty = parseFloat(qtyInput.value);
+        
+        // Check if product already exists
+        const existingRow = document.querySelector(`.line-row[data-product-id="${productId}"]`);
+        if (existingRow) {
+            alert('Este producto ya está en la lista. Modifique la cantidad en la tabla.');
+            return;
+        }
+        
+        // Check stock
+        if (qty > stock) {
+            alert(`Stock insuficiente. Disponible: ${stock}`);
+            return;
+        }
+        
+        const lineTotal = qty * unitPrice;
+        
+        // Create new row
+        const tbody = document.getElementById('lines-tbody');
+        const newRow = document.createElement('tr');
+        newRow.className = 'line-row';
+        newRow.dataset.productId = productId;
+        newRow.innerHTML = `
+            <td>
+                <strong>${productName}</strong>
+                <br><small class="text-muted">SKU: ${productSku} | ${productUom}</small>
+                <input type="hidden" name="lines[${lineIndex}][product_id]" value="${productId}">
+            </td>
+            <td>
+                <input type="number" 
+                       class="form-control form-control-sm qty-input" 
+                       name="lines[${lineIndex}][qty]" 
+                       value="${qty}"
+                       min="0.01"
+                       step="0.01"
+                       data-unit-price="${unitPrice}"
+                       data-stock="${stock}"
+                       required>
+            </td>
+            <td class="text-end unit-price">$${unitPrice.toFixed(2)}</td>
+            <td class="text-end">
+                <span class="badge bg-info">${stock}</span>
+            </td>
+            <td class="text-end line-total">
+                $${lineTotal.toFixed(2)}
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-danger remove-line-btn" title="Eliminar">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        
+        tbody.appendChild(newRow);
+        lineIndex++;
+        
+        // Reset inputs
+        select.value = '';
+        qtyInput.value = '';
+        
+        calculateGrandTotal();
+    });
+    
+    // Form validation (MEJORA 17: removed confirm, now using modal)
+    // Validation is now handled by HTMX preview modal
+})();
+</script>
+{% endblock %}

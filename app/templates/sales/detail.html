@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de Venta #{{ sale.id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-receipt"></i> Venta #{{ sale.id }}
+        </h1>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('sales.list_sales') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Listado
+        </a>
+        {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
+        <a href="{{ url_for('sales.edit_sale_form', sale_id=sale.id) }}" class="btn btn-warning">
+            <i class="bi bi-pencil"></i> Editar/Ajustar
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Sale Info Card -->
+<div class="card mb-3">
+    <div class="card-header bg-primary text-white">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-info-circle"></i> Información de la Venta
+        </h5>
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">ID Venta:</dt>
+            <dd class="col-sm-9"><strong>#{{ sale.id }}</strong></dd>
+            
+            <dt class="col-sm-3">Fecha y Hora:</dt>
+            <dd class="col-sm-9">{{ sale.datetime|datetime_ar }}</dd>
+            
+            <dt class="col-sm-3">Total:</dt>
+            <dd class="col-sm-9">
+                <h4 class="mb-0 text-success">${{ "%.2f"|format(sale.total) }}</h4>
+            </dd>
+            
+            <dt class="col-sm-3">Estado:</dt>
+            <dd class="col-sm-9">
+                {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
+                    <span class="badge bg-success">Confirmada</span>
+                {% elif sale.status.value == 'CANCELLED' or sale.status == 'CANCELLED' %}
+                    <span class="badge bg-danger">Cancelada</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ sale.status.value if sale.status.value else sale.status }}</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<!-- Sale Lines Card -->
+<div class="card">
+    <div class="card-header bg-success text-white">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-cart-check"></i> Productos Vendidos
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-end">Precio Unit.</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in sale.lines %}
+                    <tr>
+                        <td>
+                            <strong>{{ line.product.name }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                SKU: {{ line.product.sku or '-' }} | 
+                                {{ line.product.uom.symbol if line.product.uom else '-' }}
+                            </small>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary">{{ line.qty }}</span>
+                        </td>
+                        <td class="text-end">${{ "%.2f"|format(line.unit_price) }}</td>
+                        <td class="text-end">
+                            <strong>${{ "%.2f"|format(line.line_total) }}</strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
+                        <td class="text-end">
+                            <h5 class="mb-0 text-success">
+                                <strong>${{ "%.2f"|format(sale.total) }}</strong>
+                            </h5>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="mt-3">
+    <div class="alert alert-info">
+        <strong><i class="bi bi-info-circle"></i> Nota:</strong>
+        Esta venta ya fue procesada (stock descontado y registro contable creado).
+        {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
+        Si necesita corregir cantidades o agregar/eliminar productos, use el botón 
+        <strong>"Editar/Ajustar"</strong>. Esto creará movimientos de ajuste para mantener la trazabilidad.
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

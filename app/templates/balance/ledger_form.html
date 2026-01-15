@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Movimiento Manual - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1 class="h2">
+            <i class="bi bi-plus-circle"></i> Nuevo Movimiento Manual
+        </h1>
+    </div>
+    <div class="col text-end">
+        <a href="{{ url_for('balance.list_ledger') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Libro Mayor
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Datos del Movimiento</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('balance.create_ledger') }}">
+                    <!-- Type -->
+                    <div class="mb-3">
+                        <label for="type" class="form-label">
+                            Tipo de Movimiento <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="type" name="type" required>
+                            <option value="">Seleccione...</option>
+                            <option value="INCOME">Ingreso</option>
+                            <option value="EXPENSE">Egreso</option>
+                        </select>
+                        <div class="form-text">
+                            Ingreso: entrada de dinero | Egreso: salida de dinero
+                        </div>
+                    </div>
+
+                    <!-- MEJORA 12: Payment Method -->
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">
+                            Método de Pago/Cobro <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="payment_method" name="payment_method" required>
+                            <option value="CASH" selected>
+                                <i class="bi bi-cash"></i> Efectivo
+                            </option>
+                            <option value="TRANSFER">
+                                <i class="bi bi-bank"></i> Transferencia
+                            </option>
+                        </select>
+                        <div class="form-text">
+                            Forma en que se realizó el ingreso o egreso
+                        </div>
+                    </div>
+
+                    <!-- Amount -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">
+                            Monto <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="amount" 
+                                   name="amount" 
+                                   min="0.01" 
+                                   step="0.01" 
+                                   required>
+                        </div>
+                        <div class="form-text">
+                            El monto debe ser mayor a 0
+                        </div>
+                    </div>
+
+                    <!-- DateTime -->
+                    <div class="mb-3">
+                        <label for="datetime" class="form-label">
+                            Fecha y Hora
+                        </label>
+                        <input type="datetime-local" 
+                               class="form-control" 
+                               id="datetime" 
+                               name="datetime" 
+                               value="{{ today }}T{{ '%H:%M'|format() }}">
+                        <div class="form-text">
+                            Si no se especifica, se usa la fecha/hora actual
+                        </div>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Categoría</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="category" 
+                               name="category" 
+                               maxlength="100"
+                               placeholder="Ej: Servicios, Impuestos, Otros ingresos, etc.">
+                        <div class="form-text">
+                            Opcional. Categoría o concepto del movimiento
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notas</label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="3"
+                                  placeholder="Descripción del movimiento..."></textarea>
+                        <div class="form-text">
+                            Opcional. Descripción o detalle adicional
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('balance.list_ledger') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save"></i> Registrar Movimiento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-question-circle"></i> Ayuda
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>¿Cuándo usar movimientos manuales?</h6>
+                <ul class="small">
+                    <li><strong>Ingresos:</strong> Otros ingresos que no provienen de ventas (ej: préstamos, aportes de capital, intereses recibidos)</li>
+                    <li><strong>Egresos:</strong> Otros gastos que no son pagos a proveedores (ej: servicios, sueldos, impuestos, alquileres)</li>
+                </ul>
+
+                <hr>
+
+                <h6 class="mt-3">Movimientos automáticos:</h6>
+                <ul class="small mb-0">
+                    <li><strong>Ventas:</strong> Se registran automáticamente al confirmar una venta</li>
+                    <li><strong>Pagos a proveedores:</strong> Se registran automáticamente al pagar una boleta</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Importante
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small mb-0">
+                    Los movimientos manuales NO afectan el stock. Solo se registran en el libro mayor para el balance financiero.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

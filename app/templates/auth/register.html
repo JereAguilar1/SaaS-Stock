@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Cuenta - Sistema Ferretería SaaS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+        .register-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 2.5rem;
+            max-width: 500px;
+            width: 100%;
+            margin: 1rem;
+        }
+        .register-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .register-icon {
+            font-size: 3.5rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .btn-register {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+        }
+        .btn-register:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+            color: white;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #dee2e6;
+        }
+        .section-divider {
+            margin: 1.5rem 0;
+            text-align: center;
+            position: relative;
+        }
+        .section-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #dee2e6;
+        }
+        .section-divider span {
+            background: white;
+            padding: 0 1rem;
+            position: relative;
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-card">
+        <div class="register-header">
+            <i class="bi bi-shop register-icon"></i>
+            <h2 class="mb-0">Crear Cuenta Nueva</h2>
+            <p class="text-muted mt-2">Registra tu negocio en minutos</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {% if category == 'danger' %}
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% elif category == 'success' %}
+                        <i class="bi bi-check-circle-fill"></i>
+                    {% else %}
+                        <i class="bi bi-info-circle-fill"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Registration Form -->
+        <form method="POST" action="{{ url_for('auth.register') }}">
+            <h6 class="text-muted mb-3">
+                <i class="bi bi-person-circle"></i> Tus Datos
+            </h6>
+            
+            <div class="mb-3">
+                <label for="full_name" class="form-label">Nombre Completo</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="full_name" 
+                    name="full_name" 
+                    placeholder="Juan Pérez"
+                    required 
+                    autofocus
+                >
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input 
+                    type="email" 
+                    class="form-control" 
+                    id="email" 
+                    name="email" 
+                    placeholder="tu@email.com"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Contraseña</label>
+                <input 
+                    type="password" 
+                    class="form-control" 
+                    id="password" 
+                    name="password" 
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                    autocomplete="new-password"
+                    minlength="6"
+                >
+                <div class="form-text">Mínimo 6 caracteres</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="password_confirm" class="form-label">Confirmar Contraseña</label>
+                <input 
+                    type="password" 
+                    class="form-control" 
+                    id="password_confirm" 
+                    name="password_confirm" 
+                    placeholder="Repite tu contraseña"
+                    required
+                    autocomplete="new-password"
+                >
+            </div>
+
+            <div class="section-divider">
+                <span><i class="bi bi-shop-window"></i> Datos del Negocio</span>
+            </div>
+
+            <div class="mb-3">
+                <label for="business_name" class="form-label">Nombre del Negocio</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="business_name" 
+                    name="business_name" 
+                    placeholder="Ferretería López"
+                    required
+                >
+                <div class="form-text">Este será el nombre de tu negocio en el sistema</div>
+            </div>
+
+            <button type="submit" class="btn btn-register btn-lg w-100 mt-4">
+                <i class="bi bi-rocket-takeoff"></i> Crear Cuenta y Empezar
+            </button>
+        </form>
+
+        <div class="login-link">
+            <p class="text-muted mb-2">¿Ya tienes cuenta?</p>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary w-100">
+                <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Simple password confirmation validation -->
+    <script>
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('password_confirm').value;
+            
+            if (password !== confirm) {
+                e.preventDefault();
+                alert('Las contraseñas no coinciden');
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>

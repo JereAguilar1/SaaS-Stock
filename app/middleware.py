@@ -1,0 +1,113 @@
+"""Middleware for authentication and tenant context."""
+from functools import wraps
+from flask import session, g, redirect, url_for, flash, request
+from app.database import db_session
+from app.models import AppUser, UserTenant
+
+
+def load_user_and_tenant():
+    """
+    Load current user and tenant into g (Flask's per-request global).
+    
+    Called before each request to establish user and tenant context.
+    Sets g.user and g.tenant_id if authenticated.
+    """
+    g.user = None
+    g.tenant_id = None
+    
+    user_id = session.get('user_id')
+    if user_id:
+        user = db_session.query(AppUser).filter_by(id=user_id, active=True).first()
+        if user:
+            g.user = user
+            
+            # Load tenant_id from session
+            tenant_id = session.get('tenant_id')
+            if tenant_id:
+                # Verify user has access to this tenant
+                user_tenant = db_session.query(UserTenant).filter_by(
+                    user_id=user.id,
+                    tenant_id=tenant_id,
+                    active=True
+                ).first()
+                
+                if user_tenant:
+                    g.tenant_id = tenant_id
+                else:
+                    # User doesn't have access to this tenant, clear it
+                    session.pop('tenant_id', None)
+
+
+def require_login(f):
+    """
+    Decorator: Require user to be logged in.
+    
+    Redirects to login page if not authenticated.
+    Sets next parameter to return to original page after login.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if g.user is None:
+            flash('Debes iniciar sesión para acceder a esta página.', 'warning')
+            return redirect(url_for('auth.login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_tenant(f):
+    """
+    Decorator: Require tenant to be selected.
+    
+    Must be used AFTER require_login.
+    Redirects to tenant selection if no tenant in session.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if g.tenant_id is None:
+            flash('Debes seleccionar un negocio primero.', 'warning')
+            return redirect(url_for('auth.select_tenant'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_role(min_role='STAFF'):
+    """
+    Decorator: Require minimum role for tenant.
+    
+    Roles hierarchy: OWNER > ADMIN > STAFF
+    
+    Args:
+        min_role: Minimum role required ('OWNER', 'ADMIN', or 'STAFF')
+    
+    Must be used AFTER require_login and require_tenant.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if g.user is None or g.tenant_id is None:
+                flash('Acceso denegado.', 'danger')
+                return redirect(url_for('auth.login'))
+            
+            # Get user's role for current tenant
+            user_tenant = db_session.query(UserTenant).filter_by(
+                user_id=g.user.id,
+                tenant_id=g.tenant_id,
+                active=True
+            ).first()
+            
+            if not user_tenant:
+                flash('No tienes acceso a este negocio.', 'danger')
+                return redirect(url_for('auth.select_tenant'))
+            
+            # Check role hierarchy
+            role_hierarchy = {'OWNER': 3, 'ADMIN': 2, 'STAFF': 1}
+            user_role_level = role_hierarchy.get(user_tenant.role, 0)
+            required_level = role_hierarchy.get(min_role, 1)
+            
+            if user_role_level < required_level:
+                flash(f'Necesitas rol de {min_role} o superior para acceder.', 'danger')
+                return redirect(url_for('main.index'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
