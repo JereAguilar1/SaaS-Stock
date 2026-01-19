@@ -35,11 +35,15 @@ def create_app(config_object='config.Config'):
     
     # SaaS Multi-Tenant: Load user and tenant context before each request
     from app.middleware import load_user_and_tenant
-    
+    from flask import request, redirect
+
     @app.before_request
     def before_request_handler():
         """Load user and tenant context for each request."""
         load_user_and_tenant()
+    def force_https():
+    if not request.is_secure and not app.debug:
+        return redirect(request.url.replace("http://", "https://"), code=301)
     
     # Context processor for invoice alerts (MEJORA 21) - now tenant-aware
     @app.context_processor

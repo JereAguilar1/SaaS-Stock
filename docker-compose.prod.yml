@@ -1,52 +1,49 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   db:
     image: postgres:14-alpine
-    container_name: ferreteria_db_prod
+    container_name: SaaS-Stock_db_prod
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-ferreteria_db}
-      POSTGRES_USER: ${POSTGRES_USER:-ferreteria_user}
+      POSTGRES_DB: ${POSTGRES_DB:-stock_db}
+      POSTGRES_USER: ${POSTGRES_USER:-stock_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_AR.UTF-8"
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
     networks:
-      - ferreteria_network
+      - stock_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ferreteria_user} -d ${POSTGRES_DB:-ferreteria_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stock_user} -d ${POSTGRES_DB:-stock_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   # Flask App with Gunicorn
   web:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ferreteria_web_prod
+    container_name: SaaS-Stock_web_prod
     restart: unless-stopped
     environment:
       FLASK_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ferreteria_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ferreteria_db}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stock_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-stock_db}
       SECRET_KEY: ${SECRET_KEY}
+
       BUSINESS_NAME: ${BUSINESS_NAME:-Ferretería}
       BUSINESS_ADDRESS: ${BUSINESS_ADDRESS:-}
       BUSINESS_PHONE: ${BUSINESS_PHONE:-}
       BUSINESS_EMAIL: ${BUSINESS_EMAIL:-}
+
       QUOTE_VALID_DAYS: ${QUOTE_VALID_DAYS:-7}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
-      SESSION_COOKIE_SECURE: "true"
+
+      SESSION_COOKIE_SECURE: "false"
       SESSION_COOKIE_SAMESITE: "Lax"
-      PREFERRED_URL_SCHEME: "https"
+      PREFERRED_URL_SCHEME: "http"
+
       # Gunicorn config
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
@@ -60,7 +57,7 @@ services:
       db:
         condition: service_healthy
     networks:
-      - ferreteria_network
+      - stock_network
     command: >
       gunicorn --bind 0.0.0.0:5000
                --workers ${GUNICORN_WORKERS:-4}
@@ -71,7 +68,7 @@ services:
                --log-level info
                wsgi:app
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -85,7 +82,7 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:1.25-alpine
-    container_name: ferreteria_nginx_prod
+    container_name: SaaS-Stock_nginx_prod
     restart: unless-stopped
     ports:
       - "80:80"
@@ -102,9 +99,9 @@ services:
     depends_on:
       - web
     networks:
-      - ferreteria_network
+      - stock_network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      test: ["CMD", "wget", "--no-check-certificate", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -116,14 +113,14 @@ services:
 
   # Certbot for Let's Encrypt
   certbot:
-    image: certbot/certbot:latest
-    container_name: ferreteria_certbot
+    image: certbot/certbot:latest  
+    container_name: SaaS-Stock_certbot
     volumes:
       - certbot_webroot:/var/www/certbot
       - letsencrypt:/etc/letsencrypt
       - certbot_logs:/var/log/letsencrypt
     networks:
-      - ferreteria_network
+      - stock_network
     # Renewal loop: check twice daily
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
     logging:
@@ -135,12 +132,12 @@ services:
   # Uptime Kuma - Lightweight Monitoring (Optional but recommended)
   uptime-kuma:
     image: louislam/uptime-kuma:1
-    container_name: ferreteria_monitor
+    container_name: SaaS-Stock_monitor
     restart: unless-stopped
     volumes:
       - uptime_kuma_data:/app/data
     networks:
-      - ferreteria_network
+      - stock_network
     ports:
       - "3001:3001"  # Access at http://your-vps-ip:3001 (not exposed via nginx by default)
     healthcheck:
@@ -173,5 +170,5 @@ volumes:
     driver: local
 
 networks:
-  ferreteria_network:
+  stock_network:
     driver: bridge
