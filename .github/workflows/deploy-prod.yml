@@ -50,7 +50,7 @@ jobs:
       - name: Create pre-deployment backup
         run: |
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            cd /root/ferreteria
+            cd /home/saas_stock/saas_stock
             echo "Creating pre-deployment backup..."
             ./infra/backups/backup_db.sh
             echo "Backup completed successfully"
@@ -59,7 +59,7 @@ jobs:
       - name: Verify backup
         run: |
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            LATEST_BACKUP=$(ls -t /var/backups/ferreteria/daily/*.sql.gz | head -1)
+            LATEST_BACKUP=$(ls -t /var/backups/saas_stock/daily/*.sql.gz | head -1)
             if [ ! -s "$LATEST_BACKUP" ]; then
               echo "ERROR: Backup file is empty or does not exist"
               exit 1
@@ -95,7 +95,7 @@ jobs:
             set -e
             
             echo "=== Starting deployment ==="
-            cd /saas_stock/saas_stock            
+            cd /home/saas_stock/saas_stock            
             # Pull latest code
             echo "Pulling latest code..."
             git fetch --all --tags
@@ -191,7 +191,7 @@ jobs:
           
           # Verify Docker containers
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            docker compose -f /root/ferreteria/docker-compose.prod.yml ps
+            docker compose -f /home/saas_stock/saas_stock/docker-compose.prod.yml ps
           EOF
           
           echo "✓ All verification checks passed"
