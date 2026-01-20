@@ -95,8 +95,7 @@ jobs:
             set -e
             
             echo "=== Starting deployment ==="
-            cd /root/ferreteria
-            
+            cd /saas_stock/saas_stock            
             # Pull latest code
             echo "Pulling latest code..."
             git fetch --all --tags
@@ -143,7 +142,7 @@ jobs:
         run: |
           echo "⚠️  Deployment failed, initiating rollback..."
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            cd /root/ferreteria
+            cd /home/saas_stock/saas_stock
             
             # Get previous tag
             PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "main")

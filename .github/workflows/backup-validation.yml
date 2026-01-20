@@ -30,7 +30,7 @@ jobs:
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             echo "=== Backup Validation Report ==="
             
-            BACKUP_DIR="/var/backups/ferreteria/daily"
+            BACKUP_DIR="/var/backups/saas_stock/daily"
             
             # Check if backup directory exists
             if [ ! -d "$BACKUP_DIR" ]; then
@@ -87,7 +87,7 @@ jobs:
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             echo "Testing restore capability..."
             
-            LATEST_BACKUP=$(ls -t /var/backups/ferreteria/daily/*.sql.gz | head -1)
+            LATEST_BACKUP=$(ls -t /var/backups/saas_stock/daily/*.sql.gz | head -1)
             
             # Test that backup can be decompressed
             gunzip -c "$LATEST_BACKUP" | head -20 > /dev/null
