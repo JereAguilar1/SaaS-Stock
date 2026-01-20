@@ -10,10 +10,11 @@ def load_user_and_tenant():
     Load current user and tenant into g (Flask's per-request global).
     
     Called before each request to establish user and tenant context.
-    Sets g.user and g.tenant_id if authenticated.
+    Sets g.user, g.tenant_id, and g.user_role if authenticated.
     """
     g.user = None
     g.tenant_id = None
+    g.user_role = None  # PASO 6: Add role to context
     
     user_id = session.get('user_id')
     if user_id:
@@ -33,6 +34,7 @@ def load_user_and_tenant():
                 
                 if user_tenant:
                     g.tenant_id = tenant_id
+                    g.user_role = user_tenant.role  # PASO 6: Set user role
                 else:
                     # User doesn't have access to this tenant, clear it
                     session.pop('tenant_id', None)

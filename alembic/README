@@ -1,0 +1,47 @@
+Generic single-database configuration for Alembic migrations.
+
+## Usage
+
+### Create a new migration
+
+```bash
+# Auto-generate migration from model changes
+alembic revision --autogenerate -m "description of changes"
+
+# Create empty migration template
+alembic revision -m "description"
+```
+
+### Apply migrations
+
+```bash
+# Upgrade to latest
+alembic upgrade head
+
+# Upgrade one version
+alembic upgrade +1
+
+# Downgrade one version
+alembic downgrade -1
+```
+
+### Check current version
+
+```bash
+alembic current
+```
+
+### View migration history
+
+```bash
+alembic history
+```
+
+## In Production
+
+Migrations are automatically run during deployment via the CD pipeline.
+
+Manual migration:
+```bash
+docker compose -f docker-compose.prod.yml exec web alembic upgrade head
+```

@@ -50,3 +50,6 @@ instance/
 # Logs
 *.log
 
+# md
+*.md
+

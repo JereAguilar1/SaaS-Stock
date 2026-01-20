@@ -49,11 +49,11 @@ def register():
     3. Create AppUser
     4. Create UserTenant with role=OWNER
     5. Auto-login (set session)
-    6. Redirect to /products
+    6. Redirect to dashboard
     """
-    # If already authenticated, redirect to products
+    # If already authenticated, redirect to dashboard
     if g.user:
-        return redirect(url_for('catalog.list_products'))
+        return redirect(url_for('dashboard.index'))
     
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
@@ -132,7 +132,7 @@ def register():
             session.permanent = True
             
             flash(f'¡Bienvenido {full_name}! Tu negocio "{business_name}" ha sido creado.', 'success')
-            return redirect(url_for('catalog.list_products'))
+            return redirect(url_for('dashboard.index'))
             
         except IntegrityError as e:
             db_session.rollback()
@@ -161,11 +161,11 @@ def login():
     3. If user has only 1 tenant -> auto-select tenant_id
     4. If user has multiple tenants -> redirect to /select-tenant
     5. If user has 0 tenants -> error (shouldn't happen)
-    6. Redirect to products or 'next' param
+    6. Redirect to dashboard or 'next' param
     """
-    # If already authenticated, redirect to products
+    # If already authenticated, redirect to dashboard
     if g.user:
-        return redirect(url_for('catalog.list_products'))
+        return redirect(url_for('dashboard.index'))
     
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
@@ -210,10 +210,10 @@ def login():
             session['tenant_id'] = user_tenants[0].tenant_id
             flash(f'Bienvenido, {user.full_name or user.email}!', 'success')
             
-            # Redirect to 'next' or products
+            # Redirect to 'next' or dashboard
             if next_url:
                 return redirect(next_url)
-            return redirect(url_for('catalog.list_products'))
+            return redirect(url_for('dashboard.index'))
         
         else:
             # User has multiple tenants -> let them choose
@@ -265,7 +265,7 @@ def select_tenant():
         tenant_name = next(ut.Tenant.name for ut in user_tenants if ut.UserTenant.tenant_id == tenant_id)
         flash(f'Trabajando en: {tenant_name}', 'success')
         
-        return redirect(url_for('catalog.list_products'))
+        return redirect(url_for('dashboard.index'))
     
     # GET request - show tenant selection
     return render_template('auth/select_tenant.html', user_tenants=user_tenants)
@@ -284,7 +284,7 @@ def root():
     """Root route - redirect based on authentication status."""
     if g.user:
         if g.tenant_id:
-            return redirect(url_for('catalog.list_products'))
+            return redirect(url_for('dashboard.index'))
         else:
             return redirect(url_for('auth.select_tenant'))
     else:

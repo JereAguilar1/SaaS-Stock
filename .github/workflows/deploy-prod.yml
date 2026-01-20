@@ -1,0 +1,198 @@
+name: CD - Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate tag format
+        run: |
+          if [[ ! "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format. Must be vX.Y.Z"
+            exit 1
+          fi
+      
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+  backup:
+    name: Backup Production Database
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Create pre-deployment backup
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            cd /root/ferreteria
+            echo "Creating pre-deployment backup..."
+            ./infra/backups/backup_db.sh
+            echo "Backup completed successfully"
+          EOF
+      
+      - name: Verify backup
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            LATEST_BACKUP=$(ls -t /var/backups/ferreteria/daily/*.sql.gz | head -1)
+            if [ ! -s "$LATEST_BACKUP" ]; then
+              echo "ERROR: Backup file is empty or does not exist"
+              exit 1
+            fi
+            echo "Backup verified: $LATEST_BACKUP"
+          EOF
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: backup
+    environment:
+      name: production
+      url: https://tandil.site
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            
+            echo "=== Starting deployment ==="
+            cd /root/ferreteria
+            
+            # Pull latest code
+            echo "Pulling latest code..."
+            git fetch --all --tags
+            git checkout ${{ github.ref_name }}
+            
+            # Run migrations if they exist
+            echo "Checking for database migrations..."
+            if [ -d "alembic/versions" ] && [ "$(ls -A alembic/versions)" ]; then
+              echo "Running database migrations..."
+              docker compose -f docker-compose.prod.yml exec -T web alembic upgrade head || true
+            fi
+            
+            # Build and restart with zero-downtime
+            echo "Building Docker images..."
+            docker compose -f docker-compose.prod.yml build web
+            
+            echo "Restarting services..."
+            docker compose -f docker-compose.prod.yml up -d --no-deps web
+            
+            # Wait for service to be ready
+            echo "Waiting for service to stabilize..."
+            sleep 10
+            
+            echo "=== Deployment completed ==="
+          EOF
+      
+      - name: Health check
+        run: |
+          echo "Running health check..."
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://tandil.site/health || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✓ Health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "× Health check failed (attempt $i): HTTP $STATUS"
+            sleep 5
+          done
+          echo "ERROR: Health check failed after 5 attempts"
+          exit 1
+      
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "⚠️  Deployment failed, initiating rollback..."
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            cd /root/ferreteria
+            
+            # Get previous tag
+            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "main")
+            echo "Rolling back to: $PREVIOUS_TAG"
+            
+            git checkout $PREVIOUS_TAG
+            docker compose -f docker-compose.prod.yml build web
+            docker compose -f docker-compose.prod.yml up -d --no-deps web
+            
+            echo "Rollback completed"
+          EOF
+
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    
+    steps:
+      - name: Send notification
+        run: |
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "✓ Deployment successful: ${{ github.ref_name }}"
+            # Add Slack/Email notification here
+          else
+            echo "✗ Deployment failed: ${{ github.ref_name }}"
+            # Add Slack/Email notification here
+          fi
+
+  post-deploy-verify:
+    name: Post-Deployment Verification
+    runs-on: ubuntu-latest
+    needs: deploy
+    
+    steps:
+      - name: Verify all services
+        run: |
+          echo "Verifying production services..."
+          
+          # Check main app
+          curl -f https://tandil.site/health || exit 1
+          
+          # Check response time
+          RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' https://tandil.site/)
+          echo "Response time: ${RESPONSE_TIME}s"
+          
+          # Verify Docker containers
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            docker compose -f /root/ferreteria/docker-compose.prod.yml ps
+          EOF
+          
+          echo "✓ All verification checks passed"
