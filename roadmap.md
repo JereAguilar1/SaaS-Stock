@@ -52,3 +52,5 @@ IMPORTANTE:
 - No introducir pagos/planes todavía.
 - No subdominios todavía.
 - En este punto NO tocamos el código: solo DB.
+
+hola
