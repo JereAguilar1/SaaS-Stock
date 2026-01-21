@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Aceptar Invitación - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-envelope-check-fill me-2"></i>Aceptar Invitación
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success">
+                        <h5 class="alert-heading">¡Has sido invitado!</h5>
+                        <p class="mb-0">
+                            <strong>Email:</strong> {{ email }}<br>
+                            <strong>Nombre:</strong> {{ full_name }}<br>
+                            <strong>Rol asignado:</strong> 
+                            <span class="badge {% if role == 'ADMIN' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                {{ role }}
+                            </span>
+                        </p>
+                    </div>
+
+                    <p class="text-muted mb-4">
+                        Completa el formulario para crear tu contraseña y acceder al sistema.
+                    </p>
+
+                    <form method="POST" action="{{ url_for('users.accept_invite', token=request.args.get('token')) }}">
+                        <!-- Password -->
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña <span class="text-danger">*</span></label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="password" 
+                                   name="password" 
+                                   required 
+                                   minlength="6"
+                                   placeholder="Mínimo 6 caracteres">
+                            <small class="form-text text-muted">
+                                Usa una contraseña segura.
+                            </small>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div class="mb-4">
+                            <label for="password_confirm" class="form-label">Confirmar Contraseña <span class="text-danger">*</span></label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   id="password_confirm" 
+                                   name="password_confirm" 
+                                   required 
+                                   minlength="6"
+                                   placeholder="Repite la contraseña">
+                        </div>
+
+                        <!-- Role Permissions Info -->
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle me-2"></i>Tus permisos como {{ role }}:
+                            </h6>
+                            <ul class="mb-0 small">
+                                {% if role == 'ADMIN' %}
+                                <li>Gestionar productos y categorías</li>
+                                <li>Registrar y gestionar ventas</li>
+                                <li>Crear y convertir presupuestos</li>
+                                <li>Gestionar proveedores y facturas</li>
+                                <li>Ver finanzas y balance</li>
+                                {% elif role == 'STAFF' %}
+                                <li>Ver catálogo de productos</li>
+                                <li>Registrar ventas en POS</li>
+                                <li>Crear presupuestos</li>
+                                <li>Ver productos faltantes</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle-fill me-2"></i>Crear Cuenta y Acceder
+                            </button>
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
+                                Ya tengo cuenta - Iniciar Sesión
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validar que las contraseñas coincidan
+document.querySelector('form').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('password_confirm').value;
+    
+    if (password !== confirm) {
+        e.preventDefault();
+        alert('Las contraseñas no coinciden. Por favor verifica.');
+        document.getElementById('password_confirm').focus();
+    }
+});
+</script>
+{% endblock %}

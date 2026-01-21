@@ -1,12 +1,27 @@
 """Flask application factory."""
 from flask import Flask, g
 from app.database import db, init_db
+import os
 
 
 def create_app(config_object='config.Config'):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_object(config_object)
+    
+    # PASO 5: Initialize Sentry for error tracking in production
+    if os.getenv('SENTRY_DSN') and (app.config.get('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production'):
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        
+        sentry_sdk.init(
+            dsn=os.getenv('SENTRY_DSN'),
+            integrations=[FlaskIntegration()],
+            traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+            profiles_sample_rate=0.1,  # 10% for profiling
+            environment=os.getenv('FLASK_ENV', 'production'),
+            release=os.getenv('GIT_COMMIT', 'unknown')
+        )
     
     # Production: Enable ProxyFix for HTTPS behind Nginx reverse proxy
     if app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production':
@@ -87,6 +102,8 @@ def create_app(config_object='config.Config'):
     # Register blueprints
     from app.blueprints.auth import auth_bp
     from app.blueprints.main import main_bp
+    from app.blueprints.dashboard import dashboard_bp
+    from app.blueprints.users import users_bp  # PASO 6
     from app.blueprints.catalog import catalog_bp
     from app.blueprints.sales import sales_bp
     from app.blueprints.suppliers import suppliers_bp
@@ -98,6 +115,8 @@ def create_app(config_object='config.Config'):
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(users_bp)  # PASO 6
     app.register_blueprint(catalog_bp)
     app.register_blueprint(sales_bp)
     app.register_blueprint(suppliers_bp)
