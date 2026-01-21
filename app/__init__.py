@@ -42,8 +42,8 @@ def create_app(config_object='config.Config'):
         """Load user and tenant context for each request."""
         load_user_and_tenant()
     def force_https():
-    if not request.is_secure and not app.debug:
-        return redirect(request.url.replace("http://", "https://"), code=301)
+        if not request.is_secure and not app.debug:
+            return redirect(request.url.replace("http://", "https://"), code=301)
     
     # Context processor for invoice alerts (MEJORA 21) - now tenant-aware
     @app.context_processor
