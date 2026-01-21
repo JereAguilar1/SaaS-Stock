@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Usuario - Sistema Ferretería{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">
+                        <i class="bi bi-pencil-fill me-2"></i>Editar Rol de Usuario
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Usuario:</strong> {{ user.full_name or 'Sin nombre' }}<br>
+                        <strong>Email:</strong> {{ user.email }}<br>
+                        <strong>Rol actual:</strong> 
+                        <span class="badge bg-secondary">{{ user_tenant.role }}</span>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('users.edit_user', id=user_tenant.id) }}">
+                        <div class="mb-4">
+                            <label for="role" class="form-label">Nuevo Rol <span class="text-danger">*</span></label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Selecciona un rol...</option>
+                                <option value="ADMIN" {% if user_tenant.role == 'ADMIN' %}selected{% endif %}>
+                                    ADMIN - Administrador
+                                </option>
+                                <option value="STAFF" {% if user_tenant.role == 'STAFF' %}selected{% endif %}>
+                                    STAFF - Personal
+                                </option>
+                            </select>
+                            <small class="form-text text-muted">
+                                Solo puedes asignar roles ADMIN o STAFF.
+                            </small>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Nota:
+                            </h6>
+                            <p class="mb-0 small">
+                                Al cambiar el rol, el usuario tendrá acceso inmediato a las nuevas funcionalidades o restricciones.
+                            </p>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning text-dark">
+                                <i class="bi bi-check-circle me-2"></i>Guardar Cambios
+                            </button>
+                            <a href="{{ url_for('users.list_users') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
