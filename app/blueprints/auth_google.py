@@ -47,6 +47,7 @@ def start():
         authorization_url = oauth_service.get_authorization_url(state)
         
         logger.info("Redirecting to Google consent screen")
+        print("GOOGLE REDIRECT URI:", authorization_url)  # 👈 ACÁ
         return redirect(authorization_url)
         
     except ValueError as e:
