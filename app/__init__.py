@@ -23,6 +23,10 @@ def create_app(config_object='config.Config'):
             release=os.getenv('GIT_COMMIT', 'unknown')
         )
     
+    # PASO 6: Initialize Flask-Mail for email invitations
+    from app.services.email_service import init_mail
+    init_mail(app)
+    
     # Production: Enable ProxyFix for HTTPS behind Nginx reverse proxy
     if app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production':
         from werkzeug.middleware.proxy_fix import ProxyFix
@@ -98,6 +102,13 @@ def create_app(config_object='config.Config'):
                 pass
         
         return {'current_tenant': None}
+
+    
+    
+
+    
+
+
     
     # Register blueprints
     from app.blueprints.auth import auth_bp
@@ -112,6 +123,8 @@ def create_app(config_object='config.Config'):
     from app.blueprints.settings import settings_bp
     from app.blueprints.quotes import quotes_bp  # MEJORA 13
     from app.blueprints.missing_products import missing_products_bp  # MEJORA 18
+    from app.blueprints.debug import debug_bp
+
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -125,6 +138,11 @@ def create_app(config_object='config.Config'):
     app.register_blueprint(settings_bp)
     app.register_blueprint(quotes_bp)  # MEJORA 13
     app.register_blueprint(missing_products_bp)  # MEJORA 18
+    app.register_blueprint(debug_bp)
+    app.logger.info(f"MAIL_SERVER={app.config.get('MAIL_SERVER')}")
+    app.logger.info(f"MAIL_USERNAME={app.config.get('MAIL_USERNAME')}")
+    app.logger.info(f"MAIL_DEFAULT_SENDER={app.config.get('MAIL_DEFAULT_SENDER')}")
+
     
     return app
 

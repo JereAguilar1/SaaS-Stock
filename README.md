@@ -506,6 +506,65 @@ Todas las fases del proyecto han sido implementadas exitosamente:
 
 El sistema está listo para producción o desarrollo continuo.
 
+## 📦 Object Storage (PASO 7)
+
+La aplicación utiliza **MinIO** (compatible con S3) para almacenar archivos (imágenes de productos), permitiendo:
+
+- ✅ **Aplicación Stateless:** Sin dependencia de filesystem local
+- ✅ **Escalado Horizontal:** Múltiples instancias Flask sin problemas
+- ✅ **Migración Sencilla:** Compatible con AWS S3, DigitalOcean Spaces
+- ✅ **Tenant Isolation:** Cada tenant tiene su carpeta (`products/tenant_1/`)
+
+### Acceso a MinIO Console (Local)
+
+- **URL:** http://localhost:9001
+- **Usuario:** `minioadmin`
+- **Contraseña:** `minioadmin`
+
+### Configuración Rápida
+
+```bash
+# 1. Levantar stack (incluye MinIO)
+docker compose up -d
+
+# 2. Verificar bucket 'uploads' creado automáticamente
+# En MinIO Console: http://localhost:9001
+
+# 3. Subir imagen de producto
+# La app la guarda automáticamente en MinIO
+
+# 4. Verificar URL en DB
+SELECT id, name, image_path FROM product WHERE image_path IS NOT NULL;
+```
+
+### Migración a Producción
+
+**AWS S3:**
+```bash
+# .env producción
+S3_ENDPOINT=  # Dejar vacío para AWS S3 nativo
+S3_ACCESS_KEY=YOUR_AWS_ACCESS_KEY
+S3_SECRET_KEY=YOUR_AWS_SECRET_KEY
+S3_BUCKET=mi-app-uploads
+S3_REGION=us-east-1
+S3_PUBLIC_URL=https://mi-app-uploads.s3.amazonaws.com
+```
+
+**DigitalOcean Spaces:**
+```bash
+# .env producción
+S3_ENDPOINT=https://nyc3.digitaloceanspaces.com
+S3_ACCESS_KEY=YOUR_DO_ACCESS_KEY
+S3_SECRET_KEY=YOUR_DO_SECRET_KEY
+S3_BUCKET=mi-app-uploads
+S3_REGION=us-east-1
+S3_PUBLIC_URL=https://mi-app-uploads.nyc3.digitaloceanspaces.com
+```
+
+📄 **Documentación completa:** [`PASO7_OBJECT_STORAGE.md`](PASO7_OBJECT_STORAGE.md)
+
+---
+
 ## 🏢 Arquitectura Multi-Tenant (SaaS)
 
 ### Transformación a SaaS Multi-Tenant
@@ -732,8 +791,11 @@ Para más de 10 clientes, ver guía de escalabilidad en [`README_PROD_DEPLOY.md`
 - ✅ **PASO 2:** Database Migration (Multi-Tenant)
 - ✅ **PASO 3:** Application Layer (Auth + Tenant Context)
 - ✅ **PASO 4:** Infraestructura Básica (Nginx, SSL, Backups)
-- 🔜 **PASO 5:** CI/CD y Automatización
-- 🔜 **PASO 6:** Escalabilidad (Redis, Object Storage)
+- ✅ **PASO 5:** CI/CD y Automatización (`PASO5_IMPLEMENTATION_COMPLETE.md`)
+- ✅ **PASO 6:** Advanced Roles y User Management (`PASO6_IMPLEMENTATION_COMPLETE.md`)
+- ✅ **PASO 7:** Object Storage y Escalabilidad (`PASO7_OBJECT_STORAGE.md`)
+- 🔜 **PASO 8:** Redis y Cache Layer
+- 🔜 **PASO 9:** Observabilidad Completa (Prometheus, Grafana)
 
 ---
 

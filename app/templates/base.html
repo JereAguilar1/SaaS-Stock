@@ -137,6 +137,14 @@
                             </a></li>
                         </ul>
                     </li>
+                    
+                    {% if g.user_role == 'OWNER' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('users.list_users') }}">
+                            <i class="bi bi-people-fill"></i> Usuarios
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
                 <!-- MEJORA 8: Logout button -->
                 <div class="d-flex ms-auto">

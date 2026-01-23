@@ -184,7 +184,7 @@
                         <label for="image" class="form-label">Imagen del Producto</label>
                         {% if product and product.image_path %}
                         <div class="mb-2">
-                            <img src="{{ url_for('static', filename='uploads/products/' + product.image_path) }}" 
+                            <img src="{{ product.image_path }}" alt="{{ product.name }}" 
                                  alt="{{ product.name }}"
                                  class="img-thumbnail"
                                  style="max-width: 200px; max-height: 200px;">

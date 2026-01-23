@@ -29,7 +29,7 @@
                         Completa el formulario para crear tu contraseña y acceder al sistema.
                     </p>
 
-                    <form method="POST" action="{{ url_for('users.accept_invite', token=request.args.get('token')) }}">
+                    <form method="POST" action="{{ url_for('users.accept_invite', token=token) }}">
                         <!-- Password -->
                         <div class="mb-3">
                             <label for="password" class="form-label">Contraseña <span class="text-danger">*</span></label>

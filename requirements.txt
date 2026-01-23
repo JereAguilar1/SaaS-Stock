@@ -21,6 +21,7 @@ reportlab==4.0.7
 # Authentication
 bcrypt==4.2.0
 PyJWT==2.8.0
+Flask-Mail==0.9.1
 
 # CI/CD and Testing (PASO 5)
 pytest==8.0.0
@@ -32,3 +33,7 @@ sentry-sdk[flask]==1.40.0
 flake8==7.0.0
 black==24.1.1
 mypy==1.8.0
+
+# Object Storage (PASO 7 - MinIO/S3)
+boto3==1.35.91
+botocore==1.35.91

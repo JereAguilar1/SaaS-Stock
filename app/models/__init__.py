@@ -20,6 +20,7 @@ from app.models.purchase_invoice_line import PurchaseInvoiceLine
 from app.models.quote import Quote, QuoteStatus
 from app.models.quote_line import QuoteLine
 from app.models.missing_product_request import MissingProductRequest, normalize_missing_product_name
+from app.models.audit_log import AuditLog, AuditAction  # PASO 6
 
 __all__ = [
     # SaaS Core
@@ -31,6 +32,7 @@ __all__ = [
     'FinanceLedger', 'LedgerType', 'LedgerReferenceType', 'PaymentMethod', 'normalize_payment_method',
     'Supplier', 'PurchaseInvoice', 'InvoiceStatus', 'PurchaseInvoiceLine',
     'Quote', 'QuoteStatus', 'QuoteLine',
-    'MissingProductRequest', 'normalize_missing_product_name'
+    'MissingProductRequest', 'normalize_missing_product_name',
+    'AuditLog', 'AuditAction',  # PASO 6
 ]
 

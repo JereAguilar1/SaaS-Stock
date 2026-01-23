@@ -58,4 +58,39 @@ class Config:
     BUSINESS_PHONE = os.getenv('BUSINESS_PHONE', '')
     BUSINESS_EMAIL = os.getenv('BUSINESS_EMAIL', '')
     QUOTE_VALID_DAYS = int(os.getenv('QUOTE_VALID_DAYS', '7'))
+    
+    # Email configuration (PASO 6)
+    MAIL_SERVER = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+    MAIL_PORT = int(os.getenv('SMTP_PORT', 587))
+    MAIL_USE_TLS = True
+    MAIL_USE_SSL = False
+    MAIL_USERNAME = os.getenv('SMTP_USER') or ''
+    MAIL_PASSWORD = os.getenv('SMTP_PASSWORD') or ''
+    MAIL_DEFAULT_SENDER = (
+        os.getenv('SMTP_FROM')
+        or MAIL_USERNAME
+        or 'no-reply@localhost'
+    )
+    MAIL_DEBUG = True
+    MAIL_SUPPRESS_SEND = False
+    
+    # Object Storage Configuration (PASO 7 - MinIO/S3)
+    # Compatible with AWS S3, DigitalOcean Spaces, MinIO
+    S3_ENDPOINT = os.getenv('S3_ENDPOINT', 'http://minio:9000')
+    S3_ACCESS_KEY = os.getenv('S3_ACCESS_KEY', 'minioadmin')
+    S3_SECRET_KEY = os.getenv('S3_SECRET_KEY', 'minioadmin')
+    S3_BUCKET = os.getenv('S3_BUCKET', 'uploads')
+    S3_REGION = os.getenv('S3_REGION', 'us-east-1')
+    S3_PUBLIC_URL = os.getenv('S3_PUBLIC_URL', 'http://localhost:9000')
+    
+    # Upload constraints
+    MAX_UPLOAD_SIZE = int(os.getenv('MAX_UPLOAD_SIZE', 2 * 1024 * 1024))  # 2MB
+    ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+    ALLOWED_MIME_TYPES = {
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp'
+    }
+
 

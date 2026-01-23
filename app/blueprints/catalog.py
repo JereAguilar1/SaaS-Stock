@@ -3,57 +3,87 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
-import os
+import time
 from app.database import get_session
 from app.models import Product, ProductStock, UOM, Category
 from app.middleware import require_login, require_tenant
+from app.services.storage_service import get_storage_service
 
 catalog_bp = Blueprint('catalog', __name__, url_prefix='/products')
 
-# Allowed image extensions
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
-MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
 
-
-def allowed_file(filename):
-    """Check if file has allowed extension."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def save_product_image(file):
+def save_product_image(file, tenant_id: int):
     """
-    Save product image and return the filename.
-    Returns None if no file or invalid file.
+    Upload product image to S3-compatible storage (MinIO/S3).
+    
+    Args:
+        file: Werkzeug FileStorage object
+        tenant_id: Tenant ID for organizing uploads
+    
+    Returns:
+        Full public URL if successful, None if failed
+    
+    Note:
+        This function is now stateless - no local filesystem dependencies.
+        Compatible with horizontal scaling and multiple Flask instances.
     """
     if not file or file.filename == '':
         return None
     
-    if not allowed_file(file.filename):
-        flash('Formato de imagen no permitido. Use JPG, JPEG o PNG', 'danger')
+    try:
+        # Generate secure object name (S3 key)
+        filename = secure_filename(file.filename)
+        timestamp = int(time.time())
+        object_name = f"products/tenant_{tenant_id}/{timestamp}_{filename}"
+        
+        # Upload to S3-compatible storage
+        storage = get_storage_service()
+        url = storage.upload_file(
+            file=file,
+            object_name=object_name,
+            content_type=file.content_type
+        )
+        
+        return url
+        
+    except ValueError as e:
+        # Validation errors (size, type)
+        flash(str(e), 'danger')
         return None
-    
-    # Check file size
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    file.seek(0)  # Reset file pointer
-    
-    if file_size > MAX_FILE_SIZE:
-        flash('La imagen es demasiado grande. Máximo 2MB', 'danger')
+    except Exception as e:
+        flash(f'Error al subir imagen: {str(e)}', 'danger')
         return None
+
+
+def delete_product_image(image_url: str):
+    """
+    Delete product image from S3-compatible storage.
     
-    # Generate secure filename
-    filename = secure_filename(file.filename)
-    # Add timestamp to avoid collisions
-    import time
-    filename = f"{int(time.time())}_{filename}"
+    Args:
+        image_url: Full public URL or object name
     
-    # Save file
-    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'products')
-    os.makedirs(upload_folder, exist_ok=True)
-    filepath = os.path.join(upload_folder, filename)
-    file.save(filepath)
+    Returns:
+        True if deleted successfully, False otherwise
+    """
+    if not image_url:
+        return False
     
-    return filename
+    try:
+        # Extract object name from URL
+        # URL format: http://localhost:9000/uploads/products/tenant_1/123_image.jpg
+        # Object name: products/tenant_1/123_image.jpg
+        storage = get_storage_service()
+        bucket = current_app.config['S3_BUCKET']
+        
+        if f"/{bucket}/" in image_url:
+            object_name = image_url.split(f"/{bucket}/", 1)[1]
+        else:
+            object_name = image_url  # Assume it's already an object name
+        
+        return storage.delete_file(object_name)
+        
+    except Exception:
+        return False
 
 
 @catalog_bp.route('/')
@@ -268,11 +298,11 @@ def create_product():
                                  categories=categories,
                                  action='new')
         
-        # Handle image upload
-        image_filename = None
+        # Handle image upload (S3/MinIO)
+        image_url = None
         if 'image' in request.files:
             image_file = request.files['image']
-            image_filename = save_product_image(image_file)
+            image_url = save_product_image(image_file, g.tenant_id)
         
         # Create product with tenant_id
         product = Product(
@@ -284,7 +314,7 @@ def create_product():
             uom_id=int(uom_id),
             sale_price=sale_price_decimal,
             active=active,
-            image_path=image_filename,
+            image_path=image_url,  # Now stores full URL instead of filename
             min_stock_qty=min_stock_qty_decimal
         )
         
@@ -435,23 +465,18 @@ def update_product(product_id):
                                  categories=categories,
                                  action='edit')
         
-        # Handle image upload
+        # Handle image upload (S3/MinIO)
         if 'image' in request.files:
             image_file = request.files['image']
             if image_file and image_file.filename != '':
-                # Delete old image if exists
+                # Delete old image from S3 if exists
                 if product.image_path:
-                    old_image_path = os.path.join(current_app.root_path, 'static', 'uploads', 'products', product.image_path)
-                    if os.path.exists(old_image_path):
-                        try:
-                            os.remove(old_image_path)
-                        except Exception:
-                            pass
+                    delete_product_image(product.image_path)
                 
-                # Save new image
-                image_filename = save_product_image(image_file)
-                if image_filename:
-                    product.image_path = image_filename
+                # Upload new image to S3
+                image_url = save_product_image(image_file, g.tenant_id)
+                if image_url:
+                    product.image_path = image_url  # Store full URL
         
         # Update product
         product.name = name

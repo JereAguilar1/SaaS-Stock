@@ -102,10 +102,30 @@ def invite():
         # Create invitation link
         invitation_link = url_for('users.accept_invite', token=token, _external=True)
         
-        # TODO PASO 6: Send email with invitation link
-        # For now, just show the link
-        flash(f'Invitación generada. Envía este link a {email}:', 'success')
-        flash(invitation_link, 'info')
+        # Send invitation email
+        try:
+            from app.services.email_service import send_invitation_email
+            tenant = session.query(Tenant).filter_by(id=g.tenant_id).first()
+            tenant_name = tenant.name if tenant else "Sistema Ferretería"
+            
+            email_sent = send_invitation_email(
+                to_email=email,
+                full_name=full_name,
+                invite_link=invitation_link,
+                role=role,
+                tenant_name=tenant_name
+            )
+            
+            if email_sent:
+                flash(f'Invitación enviada a {email}.', 'success')
+            else:
+                # If email fails, show link
+                flash(f'No se pudo enviar el email. Envía este link manualmente:', 'warning')
+                flash(invitation_link, 'info')
+        except Exception as e:
+            # Fallback: show link if email service is not configured
+            flash(f'Invitación generada. Envía este link a {email}:', 'success')
+            flash(invitation_link, 'info')
         
         return redirect(url_for('users.list_users'))
     
@@ -197,7 +217,7 @@ def accept_invite(token):
     
     # GET request - show accept form
     return render_template('users/accept_invite.html', 
-                           email=email, full_name=full_name, role=role)
+                           email=email, full_name=full_name, role=role, token=token)
 
 
 @users_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
