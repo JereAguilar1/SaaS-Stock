@@ -188,6 +188,14 @@ def confirm_sale(cart: dict, session, payment_method: str = 'CASH', tenant_id: i
         # Commit transaction
         session.commit()
         
+        # PASO 8: Invalidate balance cache (async, non-blocking)
+        try:
+            from app.services.cache_service import get_cache
+            cache = get_cache()
+            cache.invalidate_module(tenant_id, 'balance')
+        except Exception:
+            pass  # Graceful degradation
+        
         return sale.id
         
     except ValueError:

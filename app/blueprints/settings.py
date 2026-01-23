@@ -13,6 +13,36 @@ from app.middleware import require_login, require_tenant
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
 
 
+def invalidate_categories_cache(tenant_id: int):
+    """Invalidate categories cache for a tenant (PASO 8)."""
+    try:
+        from app.services.cache_service import get_cache
+        cache = get_cache()
+        cache.invalidate_module(tenant_id, 'categories')
+    except Exception:
+        pass
+
+
+def invalidate_uom_cache(tenant_id: int):
+    """Invalidate UOM cache for a tenant (PASO 8)."""
+    try:
+        from app.services.cache_service import get_cache
+        cache = get_cache()
+        cache.invalidate_module(tenant_id, 'uom')
+    except Exception:
+        pass
+
+
+def invalidate_products_cache(tenant_id: int):
+    """Invalidate products cache for a tenant (PASO 8)."""
+    try:
+        from app.services.cache_service import get_cache
+        cache = get_cache()
+        cache.invalidate_module(tenant_id, 'products')
+    except Exception:
+        pass
+
+
 # ============================================================================
 # UOM (Unidades de Medida) Routes - TENANT-SCOPED
 # ============================================================================
@@ -84,6 +114,10 @@ def new_uom():
             )
             session.add(uom)
             session.commit()
+            
+            # PASO 8: Invalidate UOM cache
+            invalidate_uom_cache(g.tenant_id)
+            
             flash(f'Unidad de medida "{name}" creada exitosamente.', 'success')
             return redirect(url_for('settings.list_uoms'))
         except Exception as e:
@@ -146,6 +180,10 @@ def edit_uom(uom_id):
             uom.name = name
             uom.symbol = symbol
             session.commit()
+            
+            # PASO 8: Invalidate UOM cache
+            invalidate_uom_cache(g.tenant_id)
+            
             flash(f'Unidad de medida "{name}" actualizada exitosamente.', 'success')
             return redirect(url_for('settings.list_uoms'))
         except Exception as e:
@@ -189,6 +227,10 @@ def delete_uom(uom_id):
         uom_name = uom.name
         session.delete(uom)
         session.commit()
+        
+        # PASO 8: Invalidate UOM cache
+        invalidate_uom_cache(g.tenant_id)
+        
         flash(f'Unidad de medida "{uom_name}" eliminada exitosamente.', 'success')
     except Exception as e:
         session.rollback()
@@ -258,6 +300,11 @@ def new_category():
             )
             session.add(category)
             session.commit()
+            
+            # PASO 8: Invalidate categories & products cache
+            invalidate_categories_cache(g.tenant_id)
+            invalidate_products_cache(g.tenant_id)  # Products show category
+            
             flash(f'Categoría "{name}" creada exitosamente.', 'success')
             return redirect(url_for('settings.list_categories'))
         except Exception as e:
@@ -310,6 +357,11 @@ def edit_category(category_id):
         try:
             category.name = name
             session.commit()
+            
+            # PASO 8: Invalidate categories & products cache
+            invalidate_categories_cache(g.tenant_id)
+            invalidate_products_cache(g.tenant_id)  # Products show category
+            
             flash(f'Categoría "{name}" actualizada exitosamente.', 'success')
             return redirect(url_for('settings.list_categories'))
         except Exception as e:
@@ -353,6 +405,11 @@ def delete_category(category_id):
         category_name = category.name
         session.delete(category)
         session.commit()
+        
+        # PASO 8: Invalidate categories & products cache
+        invalidate_categories_cache(g.tenant_id)
+        invalidate_products_cache(g.tenant_id)  # Products show category
+        
         flash(f'Categoría "{category_name}" eliminada exitosamente.', 'success')
     except Exception as e:
         session.rollback()

@@ -37,3 +37,7 @@ mypy==1.8.0
 # Object Storage (PASO 7 - MinIO/S3)
 boto3==1.35.91
 botocore==1.35.91
+
+# Redis Cache (PASO 8)
+redis==5.2.1
+hiredis==3.0.0  # C parser for better performance

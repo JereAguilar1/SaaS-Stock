@@ -92,5 +92,17 @@ class Config:
         'image/gif',
         'image/webp'
     }
+    
+    # Redis Cache Configuration (PASO 8)
+    # Shared cache layer for reducing PostgreSQL load and accelerating read endpoints
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
+    CACHE_ENABLED = os.getenv('CACHE_ENABLED', 'true').lower() == 'true'
+    CACHE_DEFAULT_TTL = int(os.getenv('CACHE_DEFAULT_TTL', '60'))  # seconds
+    CACHE_PRODUCTS_TTL = int(os.getenv('CACHE_PRODUCTS_TTL', '60'))
+    CACHE_CATEGORIES_TTL = int(os.getenv('CACHE_CATEGORIES_TTL', '300'))
+    CACHE_UOM_TTL = int(os.getenv('CACHE_UOM_TTL', '3600'))
+    CACHE_BALANCE_TTL = int(os.getenv('CACHE_BALANCE_TTL', '60'))
+    CACHE_NEGATIVE_TTL = int(os.getenv('CACHE_NEGATIVE_TTL', '15'))  # For "cache miss"
+    CACHE_KEY_PREFIX = os.getenv('CACHE_KEY_PREFIX', 'stock')
 
 

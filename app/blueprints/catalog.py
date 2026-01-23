@@ -8,8 +8,27 @@ from app.database import get_session
 from app.models import Product, ProductStock, UOM, Category
 from app.middleware import require_login, require_tenant
 from app.services.storage_service import get_storage_service
+from app.services.cache_service import get_cache
 
 catalog_bp = Blueprint('catalog', __name__, url_prefix='/products')
+
+
+def invalidate_products_cache(tenant_id: int):
+    """Invalidate all products cache for a tenant (PASO 8)."""
+    try:
+        cache = get_cache()
+        cache.invalidate_module(tenant_id, 'products')
+    except Exception:
+        pass  # Graceful degradation
+
+
+def invalidate_categories_cache(tenant_id: int):
+    """Invalidate categories cache for a tenant (PASO 8)."""
+    try:
+        cache = get_cache()
+        cache.invalidate_module(tenant_id, 'categories')
+    except Exception:
+        pass
 
 
 def save_product_image(file, tenant_id: int):
@@ -321,6 +340,9 @@ def create_product():
         session.add(product)
         session.commit()
         
+        # PASO 8: Invalidate products cache
+        invalidate_products_cache(g.tenant_id)
+        
         flash(f'Producto "{product.name}" creado exitosamente', 'success')
         return redirect(url_for('catalog.list_products'))
         
@@ -490,6 +512,9 @@ def update_product(product_id):
         
         session.commit()
         
+        # PASO 8: Invalidate products cache
+        invalidate_products_cache(g.tenant_id)
+        
         flash(f'Producto "{product.name}" actualizado exitosamente', 'success')
         return redirect(url_for('catalog.list_products'))
         
@@ -593,6 +618,9 @@ def delete_product(product_id):
                         os.remove(image_full_path)
                 except Exception as img_err:
                     current_app.logger.warning(f"Failed to delete image {image_path}: {img_err}")
+            
+            # PASO 8: Invalidate products cache
+            invalidate_products_cache(g.tenant_id)
             
             flash(f'Producto "{product_name}" eliminado exitosamente', 'success')
             return redirect(url_for('catalog.list_products'))

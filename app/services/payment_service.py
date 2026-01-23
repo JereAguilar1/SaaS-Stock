@@ -107,6 +107,14 @@ def pay_invoice(invoice_id: int, paid_at: date, session, payment_method: str = '
         # Step 6: Commit transaction
         session.commit()
         
+        # PASO 8: Invalidate balance cache
+        try:
+            from app.services.cache_service import get_cache
+            cache = get_cache()
+            cache.invalidate_module(tenant_id, 'balance')
+        except Exception:
+            pass  # Graceful degradation
+        
     except ValueError:
         # Business logic errors - rollback and re-raise
         session.rollback()

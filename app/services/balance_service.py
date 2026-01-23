@@ -3,11 +3,22 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from sqlalchemy import func, case, extract
 from app.models import FinanceLedger, LedgerType
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _build_balance_cache_key(view: str, start: date, end: date, method: str) -> str:
+    """Build cache key for balance queries (PASO 8)."""
+    return f"series:{view}:{start.isoformat()}:{end.isoformat()}:{method}"
 
 
 def get_balance_series(view: str, start: date, end: date, session, tenant_id: int, method: str = 'all'):
     """
     Get balance series (income, expense, net) grouped by period (tenant-scoped).
+    
+    Uses Redis cache (PASO 8) with TTL from config.
+    Cache key includes tenant_id to prevent data leaks.
     
     Args:
         view: 'daily', 'monthly', or 'yearly'
@@ -25,6 +36,24 @@ def get_balance_series(view: str, start: date, end: date, session, tenant_id: in
         - expense: Decimal
         - net: Decimal
     """
+    
+    # PASO 8: Try cache first
+    try:
+        from flask import current_app
+        from app.services.cache_service import get_cache
+        
+        cache = get_cache()
+        cache_key = _build_balance_cache_key(view, start, end, method)
+        cached_result = cache.get(tenant_id, 'balance', cache_key)
+        
+        if cached_result is not None:
+            logger.debug(f"[CACHE] Balance HIT: tenant={tenant_id}, key={cache_key}")
+            return cached_result
+        
+        logger.debug(f"[CACHE] Balance MISS: tenant={tenant_id}, key={cache_key}")
+        
+    except Exception as e:
+        logger.debug(f"[CACHE] Balance error (continuing without cache): {e}")
     
     # Map view to date_trunc granularity
     granularity_map = {
@@ -100,6 +129,19 @@ def get_balance_series(view: str, start: date, end: date, session, tenant_id: in
             'expense': expense,
             'net': net
         })
+    
+    # PASO 8: Cache the result
+    try:
+        from flask import current_app
+        from app.services.cache_service import get_cache
+        
+        cache = get_cache()
+        ttl = current_app.config.get('CACHE_BALANCE_TTL', 60)
+        cache.set(tenant_id, 'balance', cache_key, series, ttl=ttl)
+        logger.debug(f"[CACHE] Balance CACHED: tenant={tenant_id}, key={cache_key}, ttl={ttl}s")
+        
+    except Exception as e:
+        logger.debug(f"[CACHE] Balance cache set error (continuing): {e}")
     
     return series
 

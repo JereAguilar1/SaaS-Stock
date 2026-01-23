@@ -27,6 +27,10 @@ def create_app(config_object='config.Config'):
     from app.services.email_service import init_mail
     init_mail(app)
     
+    # PASO 8: Initialize Redis Cache
+    from app.services.cache_service import init_cache
+    init_cache(app)
+    
     # Production: Enable ProxyFix for HTTPS behind Nginx reverse proxy
     if app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production':
         from werkzeug.middleware.proxy_fix import ProxyFix
