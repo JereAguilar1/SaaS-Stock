@@ -19,6 +19,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    
+  minio:
+    image: minio/minio:latest
+    container_name: SaaS-Stock_minio_prod
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data_prod:/data
+    networks:
+      - stock_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/ready > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 
   # Flask App with Gunicorn
   web:
@@ -44,6 +63,13 @@ services:
       SESSION_COOKIE_SAMESITE: "Lax"
       PREFERRED_URL_SCHEME: "http"
 
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-uploads}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_PUBLIC_URL: https://minio.tandil.site
+
       # Gunicorn config
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-4}
@@ -55,6 +81,8 @@ services:
       - static_prod:/app/app/static:ro
     depends_on:
       db:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - stock_network
@@ -168,6 +196,9 @@ volumes:
     driver: local
   uptime_kuma_data:
     driver: local
+  minio_data_prod:
+    driver: local
+
 
 networks:
   stock_network:
