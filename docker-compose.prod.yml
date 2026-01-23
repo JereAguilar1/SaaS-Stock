@@ -80,10 +80,9 @@ services:
       - uploads_prod:/app/uploads
       - static_prod:/app/app/static:ro
     depends_on:
-      db:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
+      - db
+      - minio
+
     networks:
       - stock_network
     command: >
