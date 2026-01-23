@@ -44,3 +44,7 @@ hiredis==3.0.0  # C parser for better performance
 
 # Observability - Prometheus Metrics (PASO 9)
 prometheus-client==0.21.0
+
+# Google OAuth Authentication (GOOGLE_AUTH)
+authlib==1.3.0
+requests==2.31.0

@@ -133,9 +133,11 @@ def create_app(config_object='config.Config'):
     from app.blueprints.missing_products import missing_products_bp  # MEJORA 18
     from app.blueprints.debug import debug_bp
     from app.blueprints.metrics import metrics_bp  # PASO 9
+    from app.blueprints.auth_google import auth_google_bp  # GOOGLE_AUTH
 
     
     app.register_blueprint(auth_bp)
+    app.register_blueprint(auth_google_bp)  # GOOGLE_AUTH
     app.register_blueprint(main_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(users_bp)  # PASO 6

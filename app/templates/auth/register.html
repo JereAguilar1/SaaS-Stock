@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,24 +16,28 @@
             justify-content: center;
             padding: 2rem 0;
         }
+
         .register-card {
             background: white;
             border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             padding: 2.5rem;
             max-width: 500px;
             width: 100%;
             margin: 1rem;
         }
+
         .register-header {
             text-align: center;
             margin-bottom: 2rem;
         }
+
         .register-icon {
             font-size: 3.5rem;
             color: #667eea;
             margin-bottom: 1rem;
         }
+
         .btn-register {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
@@ -40,21 +45,25 @@
             font-weight: 600;
             padding: 0.75rem;
         }
+
         .btn-register:hover {
             background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
             color: white;
         }
+
         .login-link {
             text-align: center;
             margin-top: 1.5rem;
             padding-top: 1.5rem;
             border-top: 1px solid #dee2e6;
         }
+
         .section-divider {
             margin: 1.5rem 0;
             text-align: center;
             position: relative;
         }
+
         .section-divider::before {
             content: '';
             position: absolute;
@@ -64,6 +73,7 @@
             height: 1px;
             background: #dee2e6;
         }
+
         .section-divider span {
             background: white;
             padding: 0 1rem;
@@ -74,6 +84,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="register-card">
         <div class="register-header">
@@ -84,81 +95,78 @@
 
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {% if category == 'danger' %}
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                    {% elif category == 'success' %}
-                        <i class="bi bi-check-circle-fill"></i>
-                    {% else %}
-                        <i class="bi bi-info-circle-fill"></i>
-                    {% endif %}
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                {% endfor %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {% if category == 'danger' %}
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            {% elif category == 'success' %}
+            <i class="bi bi-check-circle-fill"></i>
+            {% else %}
+            <i class="bi bi-info-circle-fill"></i>
             {% endif %}
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
+
+        <!-- Google OAuth Button (Quick Registration) -->
+        <a href="{{ url_for('auth_google.start') }}"
+            class="btn btn-outline-secondary btn-lg w-100 d-flex align-items-center justify-content-center mb-3">
+            <svg class="me-2" width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                <path fill="#EA4335"
+                    d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4"
+                    d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05"
+                    d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853"
+                    d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                <path fill="none" d="M0 0h48v48H0z" />
+            </svg>
+            Registrarse con Google
+        </a>
+
+        <!-- Divider -->
+        <div class="text-center my-3">
+            <div class="d-flex align-items-center">
+                <hr class="flex-grow-1">
+                <span class="px-3 text-muted small">o regístrate con email</span>
+                <hr class="flex-grow-1">
+            </div>
+        </div>
 
         <!-- Registration Form -->
         <form method="POST" action="{{ url_for('auth.register') }}">
             <h6 class="text-muted mb-3">
                 <i class="bi bi-person-circle"></i> Tus Datos
             </h6>
-            
+
             <div class="mb-3">
                 <label for="full_name" class="form-label">Nombre Completo</label>
-                <input 
-                    type="text" 
-                    class="form-control" 
-                    id="full_name" 
-                    name="full_name" 
-                    placeholder="Juan Pérez"
-                    required 
-                    autofocus
-                >
+                <input type="text" class="form-control" id="full_name" name="full_name" placeholder="Juan Pérez"
+                    required autofocus>
             </div>
 
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
-                <input 
-                    type="email" 
-                    class="form-control" 
-                    id="email" 
-                    name="email" 
-                    placeholder="tu@email.com"
-                    required
-                    autocomplete="email"
-                >
+                <input type="email" class="form-control" id="email" name="email" placeholder="tu@email.com" required
+                    autocomplete="email">
             </div>
 
             <div class="mb-3">
                 <label for="password" class="form-label">Contraseña</label>
-                <input 
-                    type="password" 
-                    class="form-control" 
-                    id="password" 
-                    name="password" 
-                    placeholder="Mínimo 6 caracteres"
-                    required
-                    autocomplete="new-password"
-                    minlength="6"
-                >
+                <input type="password" class="form-control" id="password" name="password"
+                    placeholder="Mínimo 6 caracteres" required autocomplete="new-password" minlength="6">
                 <div class="form-text">Mínimo 6 caracteres</div>
             </div>
 
             <div class="mb-3">
                 <label for="password_confirm" class="form-label">Confirmar Contraseña</label>
-                <input 
-                    type="password" 
-                    class="form-control" 
-                    id="password_confirm" 
-                    name="password_confirm" 
-                    placeholder="Repite tu contraseña"
-                    required
-                    autocomplete="new-password"
-                >
+                <input type="password" class="form-control" id="password_confirm" name="password_confirm"
+                    placeholder="Repite tu contraseña" required autocomplete="new-password">
             </div>
 
             <div class="section-divider">
@@ -167,14 +175,8 @@
 
             <div class="mb-3">
                 <label for="business_name" class="form-label">Nombre del Negocio</label>
-                <input 
-                    type="text" 
-                    class="form-control" 
-                    id="business_name" 
-                    name="business_name" 
-                    placeholder="Ferretería López"
-                    required
-                >
+                <input type="text" class="form-control" id="business_name" name="business_name"
+                    placeholder="Ferretería López" required>
                 <div class="form-text">Este será el nombre de tu negocio en el sistema</div>
             </div>
 
@@ -192,13 +194,13 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Simple password confirmation validation -->
     <script>
-        document.querySelector('form').addEventListener('submit', function(e) {
+        document.querySelector('form').addEventListener('submit', function (e) {
             const password = document.getElementById('password').value;
             const confirm = document.getElementById('password_confirm').value;
-            
+
             if (password !== confirm) {
                 e.preventDefault();
                 alert('Las contraseñas no coinciden');
@@ -207,4 +209,5 @@
         });
     </script>
 </body>
+
 </html>

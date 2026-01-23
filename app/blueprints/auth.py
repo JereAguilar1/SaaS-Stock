@@ -183,6 +183,15 @@ def login():
             flash('Email o contraseña incorrectos.', 'danger')
             return render_template('auth/login.html'), 401
         
+        # Check if user is OAuth-only (no password)
+        if not user.password_hash:
+            flash(
+                'Esta cuenta usa inicio de sesión con Google. '
+                'Usa el botón "Continuar con Google" a continuación.',
+                'info'
+            )
+            return render_template('auth/login.html'), 401
+        
         # Verify password
         if not user.check_password(password):
             flash('Email o contraseña incorrectos.', 'danger')
