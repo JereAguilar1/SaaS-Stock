@@ -31,6 +31,10 @@ def create_app(config_object='config.Config'):
     from app.services.cache_service import init_cache
     init_cache(app)
     
+    # PASO 9: Setup Prometheus metrics instrumentation
+    from app.blueprints.metrics import setup_metrics_instrumentation
+    setup_metrics_instrumentation(app)
+    
     # Production: Enable ProxyFix for HTTPS behind Nginx reverse proxy
     if app.config.get('ENV') == 'production' or app.config.get('FLASK_ENV') == 'production':
         from werkzeug.middleware.proxy_fix import ProxyFix
@@ -128,6 +132,7 @@ def create_app(config_object='config.Config'):
     from app.blueprints.quotes import quotes_bp  # MEJORA 13
     from app.blueprints.missing_products import missing_products_bp  # MEJORA 18
     from app.blueprints.debug import debug_bp
+    from app.blueprints.metrics import metrics_bp  # PASO 9
 
     
     app.register_blueprint(auth_bp)
@@ -143,6 +148,7 @@ def create_app(config_object='config.Config'):
     app.register_blueprint(quotes_bp)  # MEJORA 13
     app.register_blueprint(missing_products_bp)  # MEJORA 18
     app.register_blueprint(debug_bp)
+    app.register_blueprint(metrics_bp)  # PASO 9
     app.logger.info(f"MAIL_SERVER={app.config.get('MAIL_SERVER')}")
     app.logger.info(f"MAIL_USERNAME={app.config.get('MAIL_USERNAME')}")
     app.logger.info(f"MAIL_DEFAULT_SENDER={app.config.get('MAIL_DEFAULT_SENDER')}")

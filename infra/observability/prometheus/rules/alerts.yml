@@ -1,0 +1,147 @@
+# Prometheus Alert Rules for SaaS Stock (PASO 9)
+# Production-ready alerts for incident detection
+
+groups:
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # High 5xx Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (rate(http_requests_total{http_status=~"5.."}[5m]) / rate(http_requests_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "High 5xx error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 1%) for endpoint {{ $labels.endpoint }}"
+
+      # High Latency P95 Alert
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High latency detected (P95)"
+          description: "P95 latency is {{ $value }}s (threshold: 800ms) for endpoint {{ $labels.endpoint }}"
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # PostgreSQL Too Many Connections
+      - alert: PostgresTooManyConnections
+        expr: |
+          (pg_stat_database_numbackends / pg_settings_max_connections) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "PostgreSQL connection usage is high"
+          description: "Database {{ $labels.datname }} is using {{ $value | humanizePercentage }} of max connections (threshold: 80%)"
+
+      # PostgreSQL Down
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "postgres-exporter cannot connect to PostgreSQL database"
+
+  - name: cache_alerts
+    interval: 30s
+    rules:
+      # Redis Down
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis is down"
+          description: "redis-exporter cannot connect to Redis (app should continue with degraded performance)"
+
+      # Redis Memory Usage High
+      - alert: RedisMemoryHigh
+        expr: |
+          (redis_memory_used_bytes / redis_memory_max_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis is using {{ $value | humanizePercentage }} of max memory (threshold: 90%)"
+
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # Instance Down
+      - alert: InstanceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Instance {{ $labels.instance }} is down"
+          description: "{{ $labels.job }} target {{ $labels.instance }} has been down for more than 2 minutes"
+
+      # Disk Space Low
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Disk space is running low"
+          description: "Disk space on {{ $labels.instance }} is at {{ $value | humanizePercentage }} free (threshold: 15%)"
+
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: |
+          (100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage on {{ $labels.instance }} is {{ $value }}% (threshold: 80%)"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage on {{ $labels.instance }} is {{ $value | humanizePercentage }} (threshold: 90%)"
+
+  - name: container_alerts
+    interval: 30s
+    rules:
+      # Container Restarting
+      - alert: ContainerRestarting
+        expr: |
+          rate(container_last_seen{name=~".+"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: containers
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting"
+          description: "Container {{ $labels.name }} has restarted in the last 5 minutes"

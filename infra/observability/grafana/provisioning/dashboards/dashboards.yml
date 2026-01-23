@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning for SaaS Stock (PASO 9)
+# Auto-load dashboards from /etc/grafana/dashboards directory
+
+apiVersion: 1
+
+providers:
+  - name: 'SaaS Stock Dashboards'
+    orgId: 1
+    folder: 'SaaS Stock'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false
