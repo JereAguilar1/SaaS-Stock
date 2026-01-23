@@ -2,108 +2,88 @@
 
 {% block title %}Boletas de Compra - Sistema Ferretería{% endblock %}
 
+{% block page_title %}Boletas de Compra{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('invoices.new_invoice') }}" class="btn-custom btn-success-custom">
+    <i class="bi bi-plus-circle"></i> Nueva Boleta
+</a>
+{% endblock %}
+
 {% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-file-earmark-text"></i> Boletas de Compra
-        </h1>
+<!-- Quick Filter Buttons -->
+<div style="margin-bottom: var(--spacing-4);">
+    <div class="btn-group-custom">
+        <a href="{{ url_for('invoices.list_invoices') }}"
+            class="btn-custom {% if not selected_status and not due_soon and not overdue %}btn-primary-custom{% else %}btn-secondary-custom{% endif %}">
+            <i class="bi bi-list"></i> Todas
+        </a>
+        <a href="{{ url_for('invoices.list_invoices', status='PENDING') }}"
+            class="btn-custom {% if selected_status == 'PENDING' and not due_soon and not overdue %}btn-primary-custom{% else %}btn-secondary-custom{% endif %}">
+            <i class="bi bi-clock-history"></i> Pendientes
+        </a>
+        <a href="{{ url_for('invoices.list_invoices', due_soon=1) }}"
+            class="btn-custom {% if due_soon %}btn-primary-custom{% else %}btn-secondary-custom{% endif %}">
+            <i class="bi bi-clock"></i> Por vencer (mañana)
+        </a>
+        <a href="{{ url_for('invoices.list_invoices', overdue=1) }}"
+            class="btn-custom {% if overdue %}btn-primary-custom{% else %}btn-secondary-custom{% endif %}">
+            <i class="bi bi-exclamation-triangle"></i> Caducadas
+        </a>
     </div>
 </div>
 
-<!-- MEJORA 21: Quick Filter Buttons -->
-<div class="row mb-2">
-    <div class="col-12">
-        <div class="btn-group" role="group">
-            <a href="{{ url_for('invoices.list_invoices') }}" 
-               class="btn btn-outline-secondary {% if not selected_status and not due_soon and not overdue %}active{% endif %}">
-                <i class="bi bi-list"></i> Todas
-            </a>
-            <a href="{{ url_for('invoices.list_invoices', status='PENDING') }}" 
-               class="btn btn-outline-warning {% if selected_status == 'PENDING' and not due_soon and not overdue %}active{% endif %}">
-                <i class="bi bi-clock-history"></i> Pendientes
-            </a>
-            <a href="{{ url_for('invoices.list_invoices', due_soon=1) }}" 
-               class="btn btn-outline-warning {% if due_soon %}active{% endif %}">
-                <i class="bi bi-clock"></i> Por vencer (mañana)
-            </a>
-            <a href="{{ url_for('invoices.list_invoices', overdue=1) }}" 
-               class="btn btn-outline-danger {% if overdue %}active{% endif %}">
-                <i class="bi bi-exclamation-triangle"></i> Caducadas
-            </a>
-        </div>
-    </div>
-</div>
-
-<div class="row mb-3">
-    <div class="col-md-8">
-        <form method="GET" class="row g-2">
-            <div class="col-md-3">
-                <input type="text"
-                       name="q"
-                       class="form-control"
-                       placeholder="Buscar por número..."
-                       value="{{ search_query or '' }}"
-                       hx-get="{{ url_for('invoices.list_invoices') }}"
-                       hx-trigger="input changed delay:350ms, search"
-                       hx-target="#invoices-list-container"
-                       hx-swap="innerHTML"
-                       hx-include="[name='supplier_id'], [name='status']"
-                       hx-push-url="true">
+<!-- Filters Card -->
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
+    <div class="card-body-custom">
+        <form method="GET" class="form-row form-row-3">
+            <div class="form-group">
+                <label class="form-label-custom">Buscar</label>
+                <div style="position: relative;">
+                    <i class="bi bi-search"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
+                    <input type="text" name="q" class="form-input-custom" placeholder="Buscar por número..."
+                        value="{{ search_query or '' }}" style="padding-left: 36px;"
+                        hx-get="{{ url_for('invoices.list_invoices') }}" hx-trigger="input changed delay:350ms, search"
+                        hx-target="#invoices-list-container" hx-swap="innerHTML"
+                        hx-include="[name='supplier_id'], [name='status']" hx-push-url="true">
+                </div>
             </div>
-            <div class="col-auto">
-                <select name="supplier_id" 
-                        class="form-select"
-                        hx-get="{{ url_for('invoices.list_invoices') }}"
-                        hx-trigger="change"
-                        hx-target="#invoices-list-container"
-                        hx-swap="innerHTML"
-                        hx-include="[name='q'], [name='status']"
-                        hx-push-url="true">
+
+            <div class="form-group">
+                <label class="form-label-custom">Proveedor</label>
+                <select name="supplier_id" class="form-select-custom" hx-get="{{ url_for('invoices.list_invoices') }}"
+                    hx-trigger="change" hx-target="#invoices-list-container" hx-swap="innerHTML"
+                    hx-include="[name='q'], [name='status']" hx-push-url="true">
                     <option value="">Todos los proveedores</option>
                     {% for supplier in suppliers %}
-                    <option value="{{ supplier.id }}" {% if selected_supplier == supplier.id %}selected{% endif %}>
+                    <option value="{{ supplier.id }}" {% if selected_supplier==supplier.id %}selected{% endif %}>
                         {{ supplier.name }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-auto">
-                <select name="status" 
-                        class="form-select"
-                        hx-get="{{ url_for('invoices.list_invoices') }}"
-                        hx-trigger="change"
-                        hx-target="#invoices-list-container"
-                        hx-swap="innerHTML"
-                        hx-include="[name='q'], [name='supplier_id']"
-                        hx-push-url="true">
-                    <option value="">Todos los estados</option>
-                    <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>Pendiente</option>
-                    <option value="PAID" {% if selected_status == 'PAID' %}selected{% endif %}>Pagada</option>
-                </select>
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-funnel"></i> Filtrar
-                </button>
-                {% if selected_supplier or selected_status or search_query %}
-                <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-x-circle"></i> Limpiar
-                </a>
-                {% endif %}
-            </div>
-            <div class="col-auto">
-                <a href="{{ url_for('invoices.list_invoices', status='PENDING') }}" 
-                   class="btn btn-outline-warning {% if selected_status == 'PENDING' %}active{% endif %}">
-                    <i class="bi bi-clock-history"></i> Solo Pendientes
-                </a>
+
+            <div class="form-group">
+                <label class="form-label-custom">Estado</label>
+                <div style="display: flex; gap: var(--spacing-2);">
+                    <select name="status" class="form-select-custom" hx-get="{{ url_for('invoices.list_invoices') }}"
+                        hx-trigger="change" hx-target="#invoices-list-container" hx-swap="innerHTML"
+                        hx-include="[name='q'], [name='supplier_id']" hx-push-url="true">
+                        <option value="">Todos los estados</option>
+                        <option value="PENDING" {% if selected_status=='PENDING' %}selected{% endif %}>Pendiente
+                        </option>
+                        <option value="PAID" {% if selected_status=='PAID' %}selected{% endif %}>Pagada</option>
+                    </select>
+
+                    {% if selected_supplier or selected_status or search_query %}
+                    <a href="{{ url_for('invoices.list_invoices') }}" class="btn-custom btn-secondary-custom">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </form>
-    </div>
-    <div class="col-md-4 text-end">
-        <a href="{{ url_for('invoices.new_invoice') }}" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Nueva Boleta
-        </a>
     </div>
 </div>
 
@@ -114,4 +94,3 @@
 <!-- Modal Container for HTMX -->
 <div id="modal-container"></div>
 {% endblock %}
-

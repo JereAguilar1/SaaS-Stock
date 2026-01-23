@@ -4,223 +4,190 @@
 {% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %} - Sistema Ferretería
 {% endblock %}
 
-{% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-box-seam"></i> 
-            {% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %}
-        </h1>
-    </div>
-</div>
+{% block page_title %}{% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %}{% endblock %}
 
-<!-- MEJORA 9: Alert if no UOMs available -->
+{% block topbar_actions %}
+<a href="{{ url_for('catalog.list_products') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Alert if no UOMs available -->
 {% if not uoms or uoms|length == 0 %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle"></i>
-    <strong>No hay unidades de medida registradas.</strong>
-    <br>
-    Debe crear al menos una unidad de medida antes de poder crear productos.
-    <br>
-    <a href="{{ url_for('settings.list_uoms') }}" class="alert-link">
-        <i class="bi bi-plus-circle"></i> Ir a Unidades de Medida
-    </a>
+<div class="alert-custom alert-warning" style="margin-bottom: var(--spacing-6);">
+    <i class="alert-custom-icon bi bi-exclamation-triangle"></i>
+    <div class="alert-custom-content">
+        <strong>No hay unidades de medida registradas.</strong>
+        <p style="margin: var(--spacing-1) 0 0 0;">Debe crear al menos una unidad de medida antes de poder crear
+            productos.</p>
+        <a href="{{ url_for('settings.list_uoms') }}"
+            style="color: inherit; font-weight: var(--font-weight-bold); margin-top: var(--spacing-2); display: inline-block;">
+            <i class="bi bi-plus-circle"></i> Ir a Unidades de Medida
+        </a>
+    </div>
 </div>
 {% endif %}
 
-<div class="row">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST" 
-                      action="{% if action == 'new' %}{{ url_for('catalog.create_product') }}{% else %}{{ url_for('catalog.update_product', product_id=product.id) }}{% endif %}"
-                      enctype="multipart/form-data">
-                    
+<div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--spacing-6);">
+    <div>
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h2 class="card-title">
+                    {{ 'Crear Nuevo Producto' if action == 'new' else 'Editar Producto' }}
+                </h2>
+            </div>
+            <div class="card-body-custom">
+                <form method="POST"
+                    action="{% if action == 'new' %}{{ url_for('catalog.create_product') }}{% else %}{{ url_for('catalog.update_product', product_id=product.id) }}{% endif %}"
+                    enctype="multipart/form-data">
+
                     <!-- Name -->
-                    <div class="mb-3">
-                        <label for="name" class="form-label">
-                            Nombre <span class="text-danger">*</span>
+                    <div class="form-group">
+                        <label for="name" class="form-label-custom">
+                            Nombre <span style="color: var(--color-danger);">*</span>
                         </label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="name" 
-                               name="name" 
-                               value="{{ product.name if product else '' }}"
-                               required
-                               maxlength="255">
-                        <div class="form-text">Nombre descriptivo del producto</div>
+                        <input type="text" class="form-input-custom" id="name" name="name"
+                            value="{{ product.name if product else '' }}" required maxlength="255"
+                            placeholder="Ej: Martillo Galponero 25mm"
+                            style="font-size: var(--font-size-lg); font-weight: var(--font-weight-medium);">
                     </div>
 
                     <!-- SKU and Barcode -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="sku" class="form-label">SKU</label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="sku" 
-                                       name="sku" 
-                                       value="{{ product.sku if product else '' }}"
-                                       maxlength="100">
-                                <div class="form-text">Código interno único (opcional)</div>
-                            </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                        <div class="form-group">
+                            <label for="sku" class="form-label-custom">SKU</label>
+                            <input type="text" class="form-input-custom" id="sku" name="sku"
+                                value="{{ product.sku if product else '' }}" maxlength="100"
+                                placeholder="Código interno">
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="barcode" class="form-label">Código de Barras</label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="barcode" 
-                                       name="barcode" 
-                                       value="{{ product.barcode if product else '' }}"
-                                       maxlength="100">
-                                <div class="form-text">Código de barras (opcional)</div>
-                            </div>
+                        <div class="form-group">
+                            <label for="barcode" class="form-label-custom">Código de Barras</label>
+                            <input type="text" class="form-input-custom" id="barcode" name="barcode"
+                                value="{{ product.barcode if product else '' }}" maxlength="100"
+                                placeholder="EAN-13 / UPC">
                         </div>
                     </div>
 
                     <!-- Category and UOM -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="category_id" class="form-label">Categoría</label>
-                                <select class="form-select" id="category_id" name="category_id">
-                                    <option value="">Sin categoría</option>
-                                    {% for category in categories %}
-                                    <option value="{{ category.id }}" 
-                                            {% if product and product.category_id == category.id %}selected{% endif %}>
-                                        {{ category.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <div class="form-text">Categoría del producto (opcional)</div>
-                            </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                        <div class="form-group">
+                            <label for="category_id" class="form-label-custom">Categoría</label>
+                            <select class="form-select-custom" id="category_id" name="category_id">
+                                <option value="">Sin categoría</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" {% if product and product.category_id==category.id
+                                    %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="uom_id" class="form-label">
-                                    Unidad de Medida <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select" id="uom_id" name="uom_id" required {% if not uoms or uoms|length == 0 %}disabled{% endif %}>
-                                    <option value="">{% if uoms and uoms|length > 0 %}Seleccione una unidad{% else %}Sin unidades disponibles{% endif %}</option>
-                                    {% for uom in uoms %}
-                                    <option value="{{ uom.id }}" 
-                                            {% if product and product.uom_id == uom.id %}selected{% endif %}>
-                                        {{ uom.name }} ({{ uom.symbol }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <div class="form-text">
-                                    Unidad para medir el producto
-                                    {% if not uoms or uoms|length == 0 %}
-                                    <br><a href="{{ url_for('settings.list_uoms') }}" class="text-warning"><i class="bi bi-plus-circle"></i> Crear unidades de medida</a>
-                                    {% endif %}
-                                </div>
-                            </div>
+                        <div class="form-group">
+                            <label for="uom_id" class="form-label-custom">
+                                Unidad de Medida <span style="color: var(--color-danger);">*</span>
+                            </label>
+                            <select class="form-select-custom" id="uom_id" name="uom_id" required {% if not uoms or
+                                uoms|length==0 %}disabled{% endif %}>
+                                <option value="">{% if uoms and uoms|length > 0 %}Seleccione una unidad{% else %}Sin
+                                    unidades disponibles{% endif %}</option>
+                                {% for uom in uoms %}
+                                <option value="{{ uom.id }}" {% if product and product.uom_id==uom.id %}selected{% endif
+                                    %}>
+                                    {{ uom.name }} ({{ uom.symbol }})
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
+
+                    <hr style="border-color: var(--color-border-light); margin: var(--spacing-6) 0;">
 
                     <!-- Sale Price -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="sale_price" class="form-label">
-                                    Precio de Venta <span class="text-danger">*</span>
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" 
-                                           class="form-control" 
-                                           id="sale_price" 
-                                           name="sale_price" 
-                                           value="{{ product.sale_price if product else '0.00' }}"
-                                           step="0.01"
-                                           min="0"
-                                           required>
-                                </div>
-                                <div class="form-text">Precio de venta al público</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                        <div class="form-group">
+                            <label for="sale_price" class="form-label-custom">
+                                Precio de Venta <span style="color: var(--color-danger);">*</span>
+                            </label>
+                            <div style="position: relative;">
+                                <span
+                                    style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);">$</span>
+                                <input type="number" class="form-input-custom" id="sale_price" name="sale_price"
+                                    value="{{ product.sale_price if product else '0.00' }}" step="0.01" min="0" required
+                                    style="padding-left: 28px; font-weight: var(--font-weight-bold); color: var(--color-success);">
                             </div>
                         </div>
-                        
-                        <!-- MEJORA 11: Stock Mínimo -->
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="min_stock_qty" class="form-label">
-                                    Stock Mínimo
-                                </label>
-                                <input type="number" 
-                                       class="form-control" 
-                                       id="min_stock_qty" 
-                                       name="min_stock_qty" 
-                                       value="{{ product.min_stock_qty if product else '0' }}"
-                                       step="0.01"
-                                       min="0">
-                                <div class="form-text">
-                                    Umbral de stock bajo. Si es 0, el producto no se marca como "poco stock".
-                                </div>
-                            </div>
+
+                        <div class="form-group">
+                            <label for="min_stock_qty" class="form-label-custom">
+                                Stock Mínimo
+                            </label>
+                            <input type="number" class="form-input-custom" id="min_stock_qty" name="min_stock_qty"
+                                value="{{ product.min_stock_qty if product else '0' }}" step="0.01" min="0">
                         </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Estado</label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           id="active" 
-                                           name="active"
-                                           {% if not product or product.active %}checked{% endif %}>
-                                    <label class="form-check-label" for="active">
-                                        Producto activo
-                                    </label>
-                                </div>
-                                <div class="form-text">Los productos inactivos no aparecen en ventas</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-custom">Estado</label>
+                        <div style="display: flex; align-items: center; gap: var(--spacing-2);">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="active" name="active" {% if not
+                                    product or product.active %}checked{% endif %}>
+                                <label class="form-check-label" for="active" style="cursor: pointer;">
+                                    Producto activo (visible en ventas)
+                                </label>
                             </div>
                         </div>
                     </div>
 
+                    <hr style="border-color: var(--color-border-light); margin: var(--spacing-6) 0;">
+
                     <!-- Product Image -->
-                    <div class="mb-3">
-                        <label for="image" class="form-label">Imagen del Producto</label>
+                    <div class="form-group">
+                        <label for="image" class="form-label-custom">Imagen del Producto</label>
                         {% if product and product.image_path %}
-                        <div class="mb-2">
-                            <img src="{{ product.image_path }}" alt="{{ product.name }}" 
-                                 alt="{{ product.name }}"
-                                 class="img-thumbnail"
-                                 style="max-width: 200px; max-height: 200px;">
-                            <p class="small text-muted">Imagen actual</p>
+                        <div style="margin-bottom: var(--spacing-4);">
+                            <div
+                                style="border: 1px solid var(--color-border-medium); padding: var(--spacing-2); display: inline-block; border-radius: var(--radius-md); background-color: white;">
+                                <img src="{{ product.image_path }}" alt="{{ product.name }}"
+                                    style="max-width: 150px; h eight: auto; display: block;">
+                            </div>
+                            <p
+                                style="margin: var(--spacing-1) 0 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted);">
+                                Imagen actual</p>
                         </div>
                         {% endif %}
-                        <input type="file" 
-                               class="form-control" 
-                               id="image" 
-                               name="image"
-                               accept="image/jpeg,image/jpg,image/png">
-                        <div class="form-text">
-                            Formatos permitidos: JPG, JPEG, PNG. Tamaño máximo: 2MB
+                        <input type="file" class="form-input-custom" id="image" name="image"
+                            accept="image/jpeg,image/jpg,image/png">
+                        <small
+                            style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
+                            Formatos permitidos: JPG, JPEG, PNG. Tamaño máximo: 2MB.
                             {% if product and product.image_path %}
-                            <br><small class="text-info">Si selecciona una nueva imagen, reemplazará la actual</small>
+                            Subir una imagen reemplazará la actual.
                             {% endif %}
-                        </div>
+                        </small>
                     </div>
 
                     {% if product %}
                     <!-- Stock Info (read-only) -->
-                    <div class="alert alert-info">
-                        <strong><i class="bi bi-info-circle"></i> Stock actual:</strong> 
-                        {{ "%.2f"|format(product.on_hand_qty) }} {{ product.uom.symbol }}
-                        <br>
-                        <small class="text-muted">El stock se actualiza automáticamente con las ventas y compras</small>
+                    <div class="alert-custom alert-info" style="margin-top: var(--spacing-6);">
+                        <i class="alert-custom-icon bi bi-info-circle"></i>
+                        <div class="alert-custom-content">
+                            <strong>Stock actual:</strong>
+                            {{ "%.2f"|format(product.on_hand_qty) }} {{ product.uom.symbol }}
+                        </div>
                     </div>
                     {% endif %}
 
                     <!-- Actions -->
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('catalog.list_products') }}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Volver
+                    <div
+                        style="display: flex; justify-content: flex-end; gap: var(--spacing-2); margin-top: var(--spacing-6);">
+                        <a href="{{ url_for('catalog.list_products') }}" class="btn-custom btn-secondary-custom">
+                            <i class="bi bi-x-circle"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary" {% if not uoms or uoms|length == 0 %}disabled title="Debe crear al menos una unidad de medida"{% endif %}>
-                            <i class="bi bi-save"></i> 
+                        <button type="submit" class="btn-custom btn-primary-custom" {% if not uoms or uoms|length==0
+                            %}disabled style="opacity: 0.5; cursor: not-allowed;" {% endif %}>
+                            <i class="bi bi-save"></i>
                             {% if action == 'new' %}Crear Producto{% else %}Guardar Cambios{% endif %}
                         </button>
                     </div>
@@ -230,37 +197,42 @@
     </div>
 
     <!-- Help Card -->
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">
+    <div>
+        <div class="card-custom" style="background-color: var(--color-bg-muted);">
+            <div class="card-header-custom">
+                <h2 class="card-title" style="font-size: var(--font-size-sm);">
                     <i class="bi bi-question-circle"></i> Ayuda
-                </h5>
+                </h2>
             </div>
-            <div class="card-body">
-                <h6>Campos requeridos:</h6>
-                <ul class="small">
+            <div class="card-body-custom">
+                <h6 style="margin-bottom: var(--spacing-2); font-weight: var(--font-weight-semibold);">Campos
+                    requeridos:</h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin-bottom: var(--spacing-4);">
                     <li><strong>Nombre:</strong> Identificación del producto</li>
                     <li><strong>Unidad de Medida:</strong> Cómo se mide (UN, KG, M, etc.)</li>
                     <li><strong>Precio de Venta:</strong> Precio al público</li>
                 </ul>
-                
-                <h6 class="mt-3">Campos opcionales:</h6>
-                <ul class="small">
+
+                <h6 style="margin-bottom: var(--spacing-2); font-weight: var(--font-weight-semibold);">Campos
+                    opcionales:</h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin: 0;">
                     <li><strong>SKU:</strong> Código interno único</li>
                     <li><strong>Código de Barras:</strong> Para escaneo</li>
                     <li><strong>Categoría:</strong> Para organizar productos</li>
                 </ul>
 
-                <div class="alert alert-warning alert-sm mt-3">
-                    <small>
-                        <i class="bi bi-exclamation-triangle"></i>
+                <hr style="border-color: var(--color-border-light); margin: var(--spacing-4) 0;">
+
+                <div class="alert-custom alert-warning" style="margin: 0; padding: var(--spacing-3);">
+                    <i class="alert-custom-icon bi bi-exclamation-triangle" style="font-size: var(--font-size-md);"></i>
+                    <div class="alert-custom-content" style="font-size: var(--font-size-xs);">
                         El SKU y código de barras deben ser únicos si se proporcionan.
-                    </small>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-

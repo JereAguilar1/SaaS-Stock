@@ -2,79 +2,71 @@
 
 {% block title %}{{ 'Editar' if uom else 'Nueva' }} Unidad de Medida - Sistema Ferretería{% endblock %}
 
+{% block page_title %}{{ 'Editar' if uom else 'Nueva' }} Unidad de Medida{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('settings.list_uoms') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+{% endblock %}
+
 {% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-rulers"></i> {{ 'Editar' if uom else 'Nueva' }} Unidad de Medida
-        </h1>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('settings.list_uoms') }}">Unidades de Medida</a></li>
-                <li class="breadcrumb-item active">{{ 'Editar' if uom else 'Nueva' }}</li>
-            </ol>
-        </nav>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
+<div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--spacing-6);">
+    <div>
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h2 class="card-title">
                     {{ 'Editar Unidad' if uom else 'Crear Nueva Unidad' }}
-                </h5>
+                </h2>
             </div>
-            <div class="card-body">
+            <div class="card-body-custom">
                 <form method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">
-                            Nombre <span class="text-danger">*</span>
+                    <div class="form-group">
+                        <label for="name" class="form-label-custom">
+                            Nombre <span style="color: var(--color-danger);">*</span>
                         </label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="name" 
-                               name="name" 
-                               value="{{ uom.name if uom else '' }}"
-                               placeholder="Ej: Unidad, Metro, Kilogramo, Litro"
-                               maxlength="80"
-                               required
-                               autofocus>
-                        <div class="form-text">Nombre completo de la unidad de medida (máx. 80 caracteres)</div>
+                        <input type="text" class="form-input-custom" id="name" name="name"
+                            value="{{ uom.name if uom else '' }}" placeholder="Ej: Unidad, Metro, Kilogramo, Litro"
+                            maxlength="80" required autofocus>
+                        <small
+                            style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
+                            Nombre completo de la unidad de medida (máx. 80 caracteres)
+                        </small>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="symbol" class="form-label">
-                            Símbolo <span class="text-danger">*</span>
+                    <div class="form-group">
+                        <label for="symbol" class="form-label-custom">
+                            Símbolo <span style="color: var(--color-danger);">*</span>
                         </label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="symbol" 
-                               name="symbol" 
-                               value="{{ uom.symbol if uom else '' }}"
-                               placeholder="Ej: ud, m, kg, l"
-                               maxlength="16"
-                               required>
-                        <div class="form-text">Abreviatura o símbolo (máx. 16 caracteres)</div>
+                        <input type="text" class="form-input-custom" id="symbol" name="symbol"
+                            value="{{ uom.symbol if uom else '' }}" placeholder="Ej: ud, m, kg, l" maxlength="16"
+                            required>
+                        <small
+                            style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
+                            Abreviatura o símbolo (máx. 16 caracteres)
+                        </small>
                     </div>
 
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i>
-                        <strong>Ejemplos:</strong>
-                        <ul class="mb-0 mt-2">
-                            <li><strong>Unidad</strong> (ud) - Para productos individuales</li>
-                            <li><strong>Metro</strong> (m) - Para longitudes</li>
-                            <li><strong>Kilogramo</strong> (kg) - Para peso</li>
-                            <li><strong>Litro</strong> (l) - Para volumen</li>
-                            <li><strong>Caja</strong> (caja) - Para embalajes</li>
-                        </ul>
+                    <div class="alert-custom alert-info" style="margin-top: var(--spacing-4);">
+                        <i class="alert-custom-icon bi bi-info-circle"></i>
+                        <div class="alert-custom-content">
+                            <strong>Ejemplos:</strong>
+                            <ul style="margin: var(--spacing-2) 0 0 0; padding-left: var(--spacing-4);">
+                                <li><strong>Unidad</strong> (ud) - Para productos individuales</li>
+                                <li><strong>Metro</strong> (m) - Para longitudes</li>
+                                <li><strong>Kilogramo</strong> (kg) - Para peso</li>
+                                <li><strong>Litro</strong> (l) - Para volumen</li>
+                                <li><strong>Caja</strong> (caja) - Para embalajes</li>
+                            </ul>
+                        </div>
                     </div>
 
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('settings.list_uoms') }}" class="btn btn-outline-secondary">
+                    <div
+                        style="display: flex; justify-content: flex-end; gap: var(--spacing-2); margin-top: var(--spacing-6);">
+                        <a href="{{ url_for('settings.list_uoms') }}" class="btn-custom btn-secondary-custom">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn-custom btn-primary-custom">
                             <i class="bi bi-save"></i> {{ 'Actualizar' if uom else 'Crear' }}
                         </button>
                     </div>
@@ -83,27 +75,37 @@
         </div>
     </div>
 
-    <div class="col-md-6">
-        <div class="card bg-light">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
+    <div>
+        <div class="card-custom" style="background-color: var(--color-bg-muted);">
+            <div class="card-header-custom">
+                <h2 class="card-title" style="font-size: var(--font-size-sm);">
                     <i class="bi bi-lightbulb"></i> Consejos
-                </h5>
+                </h2>
             </div>
-            <div class="card-body">
-                <h6>¿Para qué sirven las unidades de medida?</h6>
-                <p>Las unidades de medida definen cómo se cuantifican los productos en el sistema:</p>
-                <ul>
-                    <li><strong>Unidad:</strong> Productos que se venden individualmente (tornillos, herramientas, etc.)</li>
-                    <li><strong>Metro/Metro cuadrado:</strong> Productos que se venden por longitud o área (cables, alfombras, etc.)</li>
-                    <li><strong>Kilogramo:</strong> Productos que se venden por peso (clavos a granel, pintura, etc.)</li>
+            <div class="card-body-custom">
+                <h6 style="margin-bottom: var(--spacing-2); font-weight: var(--font-weight-semibold);">¿Para qué sirven
+                    las unidades de medida?</h6>
+                <p
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--spacing-2);">
+                    Las unidades de medida definen cómo se cuantifican los productos en el sistema:
+                </p>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin-bottom: var(--spacing-4);">
+                    <li><strong>Unidad:</strong> Productos que se venden individualmente (tornillos, herramientas, etc.)
+                    </li>
+                    <li><strong>Metro/Metro cuadrado:</strong> Productos que se venden por longitud o área (cables,
+                        alfombras, etc.)</li>
+                    <li><strong>Kilogramo:</strong> Productos que se venden por peso (clavos a granel, pintura, etc.)
+                    </li>
                     <li><strong>Litro:</strong> Productos líquidos (solventes, selladores, etc.)</li>
                 </ul>
 
-                <hr>
+                <hr style="border-color: var(--color-border-light); margin: var(--spacing-4) 0;">
 
-                <h6>Restricciones importantes:</h6>
-                <ul class="mb-0">
+                <h6 style="margin-bottom: var(--spacing-2); font-weight: var(--font-weight-semibold);">Restricciones
+                    importantes:</h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin: 0;">
                     <li>El nombre y símbolo deben ser únicos</li>
                     <li>Una vez asignada a productos, la unidad no puede eliminarse</li>
                     <li>Los productos siempre requieren una unidad de medida</li>

@@ -2,103 +2,105 @@
 
 {% block title %}Unidades de Medida - Sistema Ferretería{% endblock %}
 
+{% block page_title %}Unidades de Medida{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('settings.new_uom') }}" class="btn-custom btn-success-custom">
+    <i class="bi bi-plus-circle"></i> Nueva Unidad
+</a>
+{% endblock %}
+
 {% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-rulers"></i> Unidades de Medida
-        </h1>
-        <p class="text-muted">Administrar unidades de medida para productos</p>
-    </div>
-    <div class="col text-end">
-        <a href="{{ url_for('settings.new_uom') }}" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Nueva Unidad
-        </a>
-    </div>
+<div style="margin-bottom: var(--spacing-6);">
+    <p style="color: var(--color-text-secondary); margin: 0;">Administrar unidades de medida para productos</p>
 </div>
 
 {% if uoms_with_count %}
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Símbolo</th>
-                        <th class="text-center">Productos</th>
-                        <th class="text-center">Fecha Creación</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for uom, product_count in uoms_with_count %}
-                    <tr>
-                        <td>{{ uom.id }}</td>
-                        <td><strong>{{ uom.name }}</strong></td>
-                        <td>
-                            <span class="badge bg-primary">{{ uom.symbol }}</span>
-                        </td>
-                        <td class="text-center">
-                            {% if product_count > 0 %}
-                            <span class="badge bg-info">{{ product_count }}</span>
-                            {% else %}
-                            <span class="text-muted">0</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center text-muted">
-                            {{ uom.created_at|date_ar }}
-                        </td>
-                        <td class="text-center">
-                            <a href="{{ url_for('settings.edit_uom', uom_id=uom.id) }}" 
-                               class="btn btn-sm btn-outline-primary"
-                               title="Editar">
+<div class="card-custom">
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th>Nombre</th>
+                    <th>Símbolo</th>
+                    <th style="text-align: center;">Productos</th>
+                    <th style="text-align: center;">Fecha Creación</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for uom, product_count in uoms_with_count %}
+                <tr>
+                    <td>{{ uom.id }}</td>
+                    <td><strong style="color: var(--color-text-primary);">{{ uom.name }}</strong></td>
+                    <td>
+                        <span class="badge-custom badge-secondary" style="font-family: monospace;">{{ uom.symbol
+                            }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        {% if product_count > 0 %}
+                        <span class="badge-custom badge-info">{{ product_count }}</span>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">0</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center; color: var(--color-text-muted);">
+                        {{ uom.created_at|date_ar }}
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="table-actions" style="justify-content: center;">
+                            <a href="{{ url_for('settings.edit_uom', uom_id=uom.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            
+
                             {% if product_count == 0 %}
-                            <form method="POST" 
-                                  action="{{ url_for('settings.delete_uom', uom_id=uom.id) }}" 
-                                  class="d-inline"
-                                  onsubmit="return confirm('¿Está seguro de eliminar la unidad \"{{ uom.name }}\"?');">
-                                <button type="submit" 
-                                        class="btn btn-sm btn-outline-danger"
-                                        title="Eliminar">
+                            <form method="POST" action="{{ url_for('settings.delete_uom', uom_id=uom.id) }}"
+                                style="display: inline;" onsubmit="return confirm('¿Está seguro de eliminar la unidad \"
+                                {{ uom.name }}\"?');">
+                                <button type="submit" class="btn-custom btn-danger-custom btn-sm" title="Eliminar">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
                             {% else %}
-                            <button type="button" 
-                                    class="btn btn-sm btn-outline-secondary" 
-                                    disabled
-                                    title="No se puede eliminar ({{ product_count }} productos asociados)">
+                            <button type="button" class="btn-custom btn-secondary-custom btn-sm" disabled
+                                title="No se puede eliminar ({{ product_count }} productos asociados)"
+                                style="opacity: 0.5; cursor: not-allowed;">
                                 <i class="bi bi-trash"></i>
                             </button>
                             {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
-<div class="alert alert-info mt-3">
-    <i class="bi bi-info-circle"></i>
-    <strong>Nota:</strong> Las unidades de medida que estén asociadas a productos no pueden ser eliminadas.
-    Primero debe eliminar o reasignar los productos.
+<div class="alert-custom alert-info" style="margin-top: var(--spacing-6);">
+    <i class="alert-custom-icon bi bi-info-circle"></i>
+    <div class="alert-custom-content">
+        <strong>Nota:</strong> Las unidades de medida que estén asociadas a productos no pueden ser eliminadas.
+        Primero debe eliminar o reasignar los productos.
+    </div>
 </div>
 
 {% else %}
-<div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle"></i>
-    <strong>No hay unidades de medida registradas.</strong>
-    <br>
-    Para poder crear productos, primero debe crear al menos una unidad de medida.
-    <br>
-    <a href="{{ url_for('settings.new_uom') }}" class="alert-link">Crear primera unidad de medida →</a>
+<div class="card-custom">
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-rulers"></i>
+            <div class="empty-state-title">No hay unidades de medida registradas</div>
+            <p class="empty-state-description">
+                Para poder crear productos, primero debe crear al menos una unidad de medida.
+            </p>
+            <a href="{{ url_for('settings.new_uom') }}" class="btn-custom btn-primary-custom">
+                <i class="bi bi-plus-circle"></i> Crear primera unidad de medida
+            </a>
+        </div>
+    </div>
 </div>
 {% endif %}
 {% endblock %}

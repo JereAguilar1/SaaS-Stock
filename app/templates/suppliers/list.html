@@ -2,72 +2,95 @@
 
 {% block title %}Proveedores - Sistema Ferretería{% endblock %}
 
-{% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-truck"></i> Proveedores
-        </h1>
-    </div>
-</div>
+{% block page_title %}Proveedores{% endblock %}
 
-<div class="row mb-3">
-    <div class="col text-end">
-        <a href="{{ url_for('suppliers.new_supplier') }}" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Nuevo Proveedor
-        </a>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-12">
-        {% if suppliers %}
-        <div class="table-responsive">
-            <table class="table table-hover table-striped">
-                <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>RFC/RUT</th>
-                        <th>Teléfono</th>
-                        <th>Email</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for supplier in suppliers %}
-                    <tr>
-                        <td>{{ supplier.id }}</td>
-                        <td><strong>{{ supplier.name }}</strong></td>
-                        <td>{{ supplier.tax_id or '-' }}</td>
-                        <td>{{ supplier.phone or '-' }}</td>
-                        <td>{{ supplier.email or '-' }}</td>
-                        <td class="text-center">
-                            <a href="{{ url_for('suppliers.edit_supplier', supplier_id=supplier.id) }}" 
-                               class="btn btn-sm btn-outline-primary"
-                               title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="mt-3">
-            <p class="text-muted">
-                <strong>{{ suppliers|length }}</strong> proveedor(es) registrado(s)
-            </p>
-        </div>
-        {% else %}
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            No hay proveedores registrados. 
-            <a href="{{ url_for('suppliers.new_supplier') }}" class="alert-link">Crear el primero</a>
-        </div>
-        {% endif %}
-    </div>
-</div>
+{% block topbar_actions %}
+<a href="{{ url_for('suppliers.new_supplier') }}" class="btn-custom btn-success-custom">
+    <i class="bi bi-plus-circle"></i> Nuevo Proveedor
+</a>
 {% endblock %}
 
+{% block content %}
+<div style="margin-bottom: var(--spacing-6);">
+    <p style="color: var(--color-text-secondary); margin: 0;">Gestión de proveedores y contactos</p>
+</div>
+
+<div class="card-custom">
+    {% if suppliers %}
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th>Nombre</th>
+                    <th>RFC/RUT</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                <tr>
+                    <td>{{ supplier.id }}</td>
+                    <td><strong style="color: var(--color-text-primary);">{{ supplier.name }}</strong></td>
+                    <td>
+                        {% if supplier.tax_id %}
+                        <span style="font-family: monospace;">{{ supplier.tax_id }}</span>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if supplier.phone %}
+                        <a href="tel:{{ supplier.phone }}"
+                            style="color: var(--color-text-secondary); text-decoration: none;">
+                            <i class="bi bi-telephone" style="font-size: var(--font-size-xs);"></i> {{ supplier.phone }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if supplier.email %}
+                        <a href="mailto:{{ supplier.email }}"
+                            style="color: var(--color-primary); text-decoration: none;">
+                            {{ supplier.email }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <a href="{{ url_for('suppliers.edit_supplier', supplier_id=supplier.id) }}"
+                            class="btn-custom btn-secondary-custom btn-sm" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-footer-custom">
+        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+            <strong>{{ suppliers|length }}</strong> proveedor(es) registrado(s)
+        </p>
+    </div>
+    {% else %}
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-truck"></i>
+            <div class="empty-state-title">No hay proveedores registrados</div>
+            <p class="empty-state-description">
+                Registre los proveedores para asociar boletas de compra y llevar el control de stock.
+            </p>
+            <a href="{{ url_for('suppliers.new_supplier') }}" class="btn-custom btn-success-custom">
+                <i class="bi bi-plus-circle"></i> Crear primer proveedor
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

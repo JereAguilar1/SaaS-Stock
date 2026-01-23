@@ -1,185 +1,263 @@
 <!-- Cart Partial (HTMX target) -->
-<div id="cart-container">
-    {% if cart_items %}
-    <div class="table-responsive">
-        <table class="table table-sm">
-            <thead class="table-light">
-                <tr>
-                    <th>Producto</th>
-                    <th class="text-center">UOM</th>
-                    <th class="text-end">Precio Unit.</th>
-                    <th class="text-center" style="width: 120px;">Cantidad</th>
-                    <th class="text-end">Subtotal</th>
-                    <th class="text-center" style="width: 60px;"></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in cart_items %}
-                <tr>
-                    <td>
-                        <strong>{{ item.product.name }}</strong>
-                        <br><small class="text-muted">SKU: {{ item.product.sku or '-' }}</small>
-                    </td>
-                    <td class="text-center">
-                        <span class="badge bg-info">{{ item.product.uom.symbol }}</span>
-                    </td>
-                    <td class="text-end">${{ item.unit_price|money_ar }}</td>
-                    <td>
-                        <form hx-post="{{ url_for('sales.cart_update') }}"
-                              hx-target="#cart-container"
-                              hx-swap="outerHTML"
-                              class="d-flex align-items-center">
-                            <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                            <input type="number" 
-                                   name="qty" 
-                                   value="{{ item.qty }}"
-                                   min="0.01"
-                                   step="0.01"
-                                   max="{{ item.product.on_hand_qty }}"
-                                   class="form-control form-control-sm"
-                                   style="width: 80px;"
-                                   hx-trigger="input changed delay:500ms, change"
-                                   hx-post="{{ url_for('sales.cart_update') }}"
-                                   hx-target="#cart-container"
-                                   hx-swap="outerHTML"
-                                   hx-include="[name='product_id']">
-                        </form>
-                    </td>
-                    <td class="text-end">
-                        <strong>${{ item.subtotal|money_ar }}</strong>
-                    </td>
-                    <td class="text-center">
-                        <form hx-post="{{ url_for('sales.cart_remove') }}"
-                              hx-target="#cart-container"
-                              hx-swap="outerHTML"
-                              style="display: inline;">
-                            <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                            <button type="submit" 
-                                    class="btn btn-sm btn-outline-danger"
-                                    title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr class="table-active">
-                    <td colspan="4" class="text-end"><strong>TOTAL:</strong></td>
-                    <td class="text-end">
-                        <h5 class="mb-0">${{ cart_total|money_ar }}</h5>
-                    </td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-    
-    <!-- MEJORA 12/15: Payment Method Selection + Confirm Button -->
-    <div class="card mb-3">
-        <div class="card-body">
-            <h6 class="card-title mb-3">
-                <i class="bi bi-cash-coin"></i> Método de Pago
-            </h6>
-            <div class="btn-group w-100 mb-3" role="group">
-                <input type="radio" class="btn-check" name="payment_method" id="method_cash" 
-                       value="CASH" checked autocomplete="off">
-                <label class="btn btn-outline-success" for="method_cash">
-                    <i class="bi bi-cash"></i> Efectivo
-                </label>
-                
-                <input type="radio" class="btn-check" name="payment_method" id="method_transfer" 
-                       value="TRANSFER" autocomplete="off">
-                <label class="btn btn-outline-primary" for="method_transfer">
-                    <i class="bi bi-bank"></i> Transferencia
-                </label>
+<div id="cart-container" style="display: flex; flex-direction: column; height: 100%;">
+
+    <!-- Cart Items List (Scrollable) -->
+    <div style="flex: 1; overflow-y: auto; padding: 0 1.25rem;">
+        {% if cart_items %}
+        {% for item in cart_items %}
+        <div class="cart-item">
+            <div class="cart-item-header">
+                <span class="cart-item-title">{{ item.product.name }}</span>
+                <form hx-post="{{ url_for('sales.cart_remove') }}" hx-target="#cart-container" hx-swap="outerHTML">
+                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                    <button type="submit" class="btn-trash">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
             </div>
-            
-            <!-- MEJORA 15: Open Confirmation Modal with HTMX -->
-            <div class="d-grid gap-2">
-                <button type="button" 
-                        class="btn btn-success btn-lg"
-                        hx-get="{{ url_for('sales.confirm_preview') }}"
-                        hx-target="#modal-container"
-                        hx-swap="innerHTML"
-                        hx-vals='js:{"payment_method": document.querySelector("input[name=payment_method]:checked").value}'
-                        hx-indicator="#loading-indicator">
-                    <i class="bi bi-check-circle"></i> Confirmar Venta (${{ cart_total|money_ar }})
-                </button>
-                <div id="loading-indicator" class="htmx-indicator text-center">
-                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
+
+            <div class="cart-item-meta">
+                <span class="cart-item-sku">{{ item.product.sku or 'SKU: -' }}</span>
+            </div>
+
+            <div class="cart-item-controls">
+                <!-- Qty Control -->
+                <div class="qty-control">
+                    <form hx-post="{{ url_for('sales.cart_update') }}" hx-target="#cart-container" hx-swap="outerHTML"
+                        class="d-inline">
+                        <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                        <input type="hidden" name="qty" value="{{ item.qty - 1 }}">
+                        <button class="btn-qty" type="submit" {% if item.qty <=1 %}disabled style="opacity:0.5" {% endif
+                            %}>−</button>
+                    </form>
+
+                    <input type="number" class="qty-input" value="{{ item.qty|int }}" readonly>
+
+                    <form hx-post="{{ url_for('sales.cart_update') }}" hx-target="#cart-container" hx-swap="outerHTML"
+                        class="d-inline">
+                        <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                        <input type="hidden" name="qty" value="{{ item.qty + 1 }}">
+                        <button class="btn-qty" type="submit">+</button>
+                    </form>
+                </div>
+
+                <div class="cart-item-price">
+                    ${{ "%.2f"|format(item.subtotal) }}
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- MEJORA 13/14: Save Quote Form with Customer Data -->
-    <div class="card mb-3">
-        <div class="card-body">
-            <h6 class="mb-3">
-                <i class="bi bi-person"></i> Datos del Cliente (para presupuesto)
-            </h6>
-            <form method="POST" action="{{ url_for('quotes.create_from_cart') }}">
-                    
-                    <!-- Customer Name (required) -->
-                    <div class="mb-2">
-                        <label for="customer_name" class="form-label small">
-                            Nombre del Cliente <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" 
-                               class="form-control form-control-sm" 
-                               id="customer_name" 
-                               name="customer_name"
-                               placeholder="Ej: Juan Pérez"
-                               required
-                               maxlength="255">
-                    </div>
-                    
-                    <!-- Customer Phone (optional) -->
-                    <div class="mb-3">
-                        <label for="customer_phone" class="form-label small">
-                            Teléfono (opcional)
-                        </label>
-                        <input type="text" 
-                               class="form-control form-control-sm" 
-                               id="customer_phone" 
-                               name="customer_phone"
-                               placeholder="Ej: 11-5555-1234"
-                               maxlength="50">
-                    </div>
-                    
-                    <!-- Include payment_method if selected -->
-                    <input type="hidden" name="payment_method" id="save_quote_payment_method" value="">
-                    
-                <button type="submit" class="btn btn-outline-primary w-100">
-                    <i class="bi bi-file-earmark-text"></i> Guardar como Presupuesto
-                </button>
-            </form>
-            
-            <script>
-            // Sync payment method to save quote form when radio changes
-            document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    document.getElementById('save_quote_payment_method').value = this.value;
-                });
-            });
-            // Set initial value
-            const checkedMethod = document.querySelector('input[name="payment_method"]:checked');
-            if (checkedMethod) {
-                document.getElementById('save_quote_payment_method').value = checkedMethod.value;
-            }
-            </script>
+        {% endfor %}
+        {% else %}
+        <div class="empty-cart-state">
+            <i class="bi bi-cart"></i>
+            <p>Carrito vacío</p>
+            <small>Seleccione productos</small>
         </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="alert alert-info text-center">
-        <i class="bi bi-cart-x"></i>
-        <p class="mb-0">El carrito está vacío</p>
-        <small>Busque y agregue productos para crear una venta</small>
+
+    <!-- Cart Footer (Fixed at bottom) -->
+    <div class="cart-footer">
+        {% if cart_items %}
+        <div class="totals-area">
+            {% set subtotal = cart_total / 1.21 %}
+            {% set ivatotal = cart_total - subtotal %}
+
+            <div class="total-row">
+                <span>Subtotal</span>
+                <span>${{ "%.2f"|format(subtotal) }}</span>
+            </div>
+            <div class="total-row text-muted" style="font-size: 0.85rem;">
+                <span>IVA (21%)</span>
+                <span>${{ "%.2f"|format(ivatotal) }}</span>
+            </div>
+            <div class="total-row final-total">
+                <span>Total</span>
+                <span>${{ "%.2f"|format(cart_total) }}</span>
+            </div>
+        </div>
+
+        <div class="checkout-area">
+            <!-- Payment Method Dropdown (Styled like button input from image) -->
+            <div class="payment-selector mb-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-wallet2"></i></span>
+                    <select class="form-select" id="cart_payment_method">
+                        <option value="CASH" selected>Efectivo</option>
+                        <option value="TRANSFER">Transferencia</option>
+                        <option value="DEBIT">Débito</option>
+                        <option value="CREDIT">Crédito</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="button" class="btn-checkout" hx-get="{{ url_for('sales.confirm_preview') }}"
+                hx-target="#modal-container" hx-swap="innerHTML"
+                hx-vals='js:{"payment_method": document.getElementById("cart_payment_method").value}'
+                hx-indicator="#checkout-loading">
+                Completar Venta
+            </button>
+            <div id="checkout-loading" class="htmx-indicator text-center mt-2 text-primary">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+            </div>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
+<style>
+    /* Cart Specific Styles injected here/scoped */
+    .cart-item {
+        background: white;
+        border-bottom: 1px solid #f3f4f6;
+        padding: 1rem 0;
+    }
+
+    .cart-item:last-child {
+        border-bottom: none;
+    }
+
+    .cart-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.25rem;
+    }
+
+    .cart-item-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--color-text-primary);
+        line-height: 1.2;
+    }
+
+    .btn-trash {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 0;
+        font-size: 1rem;
+        margin-left: 0.5rem;
+    }
+
+    .btn-trash:hover {
+        color: #ef4444;
+    }
+
+    .cart-item-meta {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-bottom: 0.75rem;
+    }
+
+    .cart-item-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .qty-control {
+        display: flex;
+        align-items: center;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .btn-qty {
+        background: white;
+        border: none;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #4b5563;
+        font-size: 1rem;
+    }
+
+    .btn-qty:hover {
+        background-color: #f9fafb;
+    }
+
+    .qty-input {
+        width: 32px;
+        border: none;
+        text-align: center;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        padding: 0;
+        pointer-events: none;
+        /* simple display */
+    }
+
+    .cart-item-price {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--color-text-primary);
+    }
+
+    .empty-cart-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #d1d5db;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .empty-cart-state i {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .cart-footer {
+        padding: 1.25rem;
+        background-color: white;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .totals-area {
+        margin-bottom: 1.25rem;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--color-text-secondary);
+    }
+
+    .final-total {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--color-primary);
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .btn-checkout {
+        width: 100%;
+        background-color: #6366f1;
+        /* Purple/Blue from image */
+        color: white;
+        border: none;
+        padding: 0.85rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .btn-checkout:hover {
+        background-color: #4f46e5;
+    }
+</style>

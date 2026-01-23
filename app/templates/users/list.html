@@ -2,156 +2,139 @@
 
 {% block title %}Gestión de Usuarios - Sistema Ferretería{% endblock %}
 
+{% block page_title %}Gestión de Usuarios{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('users.invite') }}" class="btn-custom btn-primary-custom">
+    <i class="bi bi-person-plus-fill"></i> Invitar Usuario
+</a>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="h3 mb-0">
-                <i class="bi bi-people-fill me-2"></i>Gestión de Usuarios
-                {% if current_tenant %}
-                <small class="text-muted">- {{ current_tenant.name }}</small>
-                {% endif %}
-            </h1>
-            <p class="text-muted mb-0">Administra los usuarios y sus roles en tu negocio</p>
-        </div>
-        <div class="col-auto">
-            <a href="{{ url_for('users.invite') }}" class="btn btn-primary">
-                <i class="bi bi-person-plus-fill me-1"></i> Invitar Usuario
-            </a>
-        </div>
+<!-- Users Table -->
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
+    <div class="card-header-custom">
+        <h2 class="card-title">
+            <i class="bi bi-list-ul"></i> Usuarios del Negocio
+        </h2>
     </div>
-
-    <!-- Users Table -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-white border-bottom">
-            <h5 class="card-title mb-0">
-                <i class="bi bi-list-ul me-2"></i>Usuarios del Negocio
-            </h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Usuario</th>
-                            <th>Email</th>
-                            <th>Rol</th>
-                            <th>Fecha de Alta</th>
-                            <th class="text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user_tenant, user in user_tenants %}
-                        <tr>
-                            <td>
-                                <strong>{{ user.full_name or 'Sin nombre' }}</strong>
-                                {% if user.id == g.user.id %}
-                                <span class="badge bg-info ms-2">Tú</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ user.email }}</td>
-                            <td>
-                                {% if user_tenant.role == 'OWNER' %}
-                                <span class="badge bg-danger">
-                                    <i class="bi bi-shield-fill-check"></i> OWNER
-                                </span>
-                                {% elif user_tenant.role == 'ADMIN' %}
-                                <span class="badge bg-warning text-dark">
-                                    <i class="bi bi-shield-fill"></i> ADMIN
-                                </span>
-                                {% elif user_tenant.role == 'STAFF' %}
-                                <span class="badge bg-secondary">
-                                    <i class="bi bi-person-badge"></i> STAFF
-                                </span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ user_tenant.role }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <small class="text-muted">
-                                    <i class="bi bi-calendar3"></i>
-                                    {{ user_tenant.created_at|datetime_ar }}
-                                </small>
-                            </td>
-                            <td class="text-center">
-                                {% if user.id != g.user.id and user_tenant.role != 'OWNER' %}
-                                <a href="{{ url_for('users.edit_user', id=user_tenant.id) }}" 
-                                   class="btn btn-sm btn-outline-primary" 
-                                   title="Editar rol">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form action="{{ url_for('users.remove_user', id=user_tenant.id) }}" 
-                                      method="POST" 
-                                      class="d-inline"
-                                      onsubmit="return confirm('¿Seguro que deseas remover a {{ user.email }} del negocio?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover">
-                                        <i class="bi bi-person-x"></i>
-                                    </button>
-                                </form>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card-footer bg-white border-top">
-            <div class="row align-items-center">
-                <div class="col">
-                    <small class="text-muted">
-                        Total: {{ user_tenants|length }} usuario(s)
-                    </small>
-                </div>
-            </div>
-        </div>
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Fecha de Alta</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_tenant, user in user_tenants %}
+                <tr>
+                    <td>
+                        <strong style="color: var(--color-text-primary);">{{ user.full_name or 'Sin nombre' }}</strong>
+                        {% if user.id == g.user.id %}
+                        <span class="badge-custom badge-info" style="margin-left: var(--spacing-2);">Tú</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--color-text-secondary);">{{ user.email }}</td>
+                    <td>
+                        {% if user_tenant.role == 'OWNER' %}
+                        <span class="badge-custom badge-danger">
+                            <i class="bi bi-shield-fill-check"></i> OWNER
+                        </span>
+                        {% elif user_tenant.role == 'ADMIN' %}
+                        <span class="badge-custom badge-warning">
+                            <i class="bi bi-shield-fill"></i> ADMIN
+                        </span>
+                        {% elif user_tenant.role == 'STAFF' %}
+                        <span class="badge-custom badge-secondary">
+                            <i class="bi bi-person-badge"></i> STAFF
+                        </span>
+                        {% else %}
+                        <span class="badge-custom badge-secondary">{{ user_tenant.role }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--color-text-muted);">
+                        <i class="bi bi-calendar3"></i>
+                        {{ user_tenant.created_at|datetime_ar }}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if user.id != g.user.id and user_tenant.role != 'OWNER' %}
+                        <div class="table-actions" style="justify-content: center;">
+                            <a href="{{ url_for('users.edit_user', id=user_tenant.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Editar rol">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form action="{{ url_for('users.remove_user', id=user_tenant.id) }}" method="POST"
+                                style="display: inline;"
+                                onsubmit="return confirm('¿Seguro que deseas remover a {{ user.email }} del negocio?');">
+                                <button type="submit" class="btn-custom btn-danger-custom btn-sm" title="Remover">
+                                    <i class="bi bi-person-x"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+    <div class="card-footer-custom">
+        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+            Total: <strong>{{ user_tenants|length }}</strong> usuario(s)
+        </p>
+    </div>
+</div>
 
-    <!-- Roles Guide -->
-    <div class="card shadow-sm mt-4">
-        <div class="card-header bg-white border-bottom">
-            <h5 class="card-title mb-0">
-                <i class="bi bi-info-circle me-2"></i>Guía de Roles
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <h6>
-                        <span class="badge bg-danger me-2">OWNER</span>Propietario
-                    </h6>
-                    <ul class="small">
-                        <li>Acceso total</li>
-                        <li>Gestionar usuarios</li>
-                        <li>Ver finanzas</li>
-                        <li>Configuración del negocio</li>
-                    </ul>
-                </div>
-                <div class="col-md-4">
-                    <h6>
-                        <span class="badge bg-warning text-dark me-2">ADMIN</span>Administrador
-                    </h6>
-                    <ul class="small">
-                        <li>Gestionar productos</li>
-                        <li>Ventas y presupuestos</li>
-                        <li>Proveedores y facturas</li>
-                        <li>Ver finanzas</li>
-                    </ul>
-                </div>
-                <div class="col-md-4">
-                    <h6>
-                        <span class="badge bg-secondary me-2">STAFF</span>Personal
-                    </h6>
-                    <ul class="small">
-                        <li>Ver catálogo</li>
-                        <li>Registrar ventas (POS)</li>
-                        <li>Crear presupuestos</li>
-                        <li>Sin acceso a finanzas</li>
-                    </ul>
-                </div>
+<!-- Roles Guide -->
+<div class="card-custom">
+    <div class="card-header-custom" style="background-color: var(--color-bg-muted);">
+        <h2 class="card-title" style="font-size: var(--font-size-sm);">
+            <i class="bi bi-info-circle"></i> Guía de Roles
+        </h2>
+    </div>
+    <div class="card-body-custom">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-6);">
+            <div>
+                <h6 style="margin-bottom: var(--spacing-2); display: flex; align-items: center; gap: var(--spacing-2);">
+                    <span class="badge-custom badge-danger">OWNER</span> Propietario
+                </h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin: 0;">
+                    <li>Acceso total a todas las funciones</li>
+                    <li>Gestionar usuarios y permisos</li>
+                    <li>Ver todos los reportes financieros</li>
+                    <li>Configuración avanzada del negocio</li>
+                </ul>
+            </div>
+            <div>
+                <h6 style="margin-bottom: var(--spacing-2); display: flex; align-items: center; gap: var(--spacing-2);">
+                    <span class="badge-custom badge-warning">ADMIN</span> Administrador
+                </h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin: 0;">
+                    <li>Gestionar catálogo de productos completo</li>
+                    <li>Gestión de ventas y presupuestos</li>
+                    <li>Administrar proveedores y facturas</li>
+                    <li>Acceso a reportes financieros</li>
+                </ul>
+            </div>
+            <div>
+                <h6 style="margin-bottom: var(--spacing-2); display: flex; align-items: center; gap: var(--spacing-2);">
+                    <span class="badge-custom badge-secondary">STAFF</span> Personal
+                </h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin: 0;">
+                    <li>Ver catálogo de productos</li>
+                    <li>Registrar nuevas ventas (POS)</li>
+                    <li>Crear presupuestos</li>
+                    <li>Sin acceso a reportes financieros</li>
+                </ul>
             </div>
         </div>
     </div>

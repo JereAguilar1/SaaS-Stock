@@ -2,257 +2,383 @@
 
 {% block title %}Nueva Venta - POS{% endblock %}
 
-{% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-cart-plus"></i> Punto de Venta (POS)
-        </h1>
-    </div>
-</div>
+{% block page_title %}Punto de Venta{% endblock %}
 
-<div class="row">
-    <!-- Products Search Section -->
-    <div class="col-lg-7">
-        <div class="card mb-3">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-search"></i> Buscar Productos
-                </h5>
-            </div>
-            <div class="card-body">
-                <form method="GET" action="{{ url_for('sales.new_sale') }}" class="mb-3">
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+<!-- Main POS Container -->
+<div class="pos-container">
+
+    <!-- LEFT PANEL: CART -->
+    <div class="pos-cart-panel">
+        <div class="cart-header">
+            <h5 class="m-0"><i class="bi bi-cart3 me-2"></i> Nueva Venta</h5>
+        </div>
+
+        <!-- Cart Content (HTMX Target) -->
+        <div id="cart-container" class="cart-body">
+            {% include 'sales/_cart.html' %}
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL: CATALOG -->
+    <div class="pos-catalog-panel">
+
+        <!-- Top Bar: Search & Info -->
+        <div class="catalog-topbar">
+            <!-- Search -->
+            <div class="search-container">
+                <form method="GET" action="{{ url_for('sales.new_sale') }}" id="search-form" class="w-100">
                     <div class="input-group">
-                        <span class="input-group-text">
-                            <i class="bi bi-search"></i>
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="bi bi-search text-muted"></i>
                         </span>
-                        <input type="text" 
-                               class="form-control" 
-                               name="q" 
-                               placeholder="Buscar por nombre, SKU o código de barras..."
-                               value="{{ search_query or '' }}"
-                               autofocus>
-                        <button class="btn btn-primary" type="submit">Buscar</button>
+                        <input type="text" class="form-control border-start-0 ps-0" name="q"
+                            value="{{ search_query or '' }}" placeholder="Buscar producto por nombre o SKU..." autofocus
+                            onfocus="this.select()">
                         {% if search_query %}
-                        <a href="{{ url_for('sales.new_sale') }}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i>
+                        <a href="{{ url_for('sales.new_sale') }}"
+                            class="input-group-text bg-white border-start-0 text-muted text-decoration-none">
+                            <i class="bi bi-x-lg"></i>
                         </a>
                         {% endif %}
                     </div>
                 </form>
-                
-                <!-- Top Selling Products -->
-                {% if not search_query %}
-                <div class="top-products mb-3">
-                    <h6 class="mb-2">
-                        <i class="bi bi-star-fill text-warning"></i> Más Vendidos
-                    </h6>
-                    
-                    {% if top_products %}
-                    <div class="row g-2">
-                        {% for product in top_products %}
-                        <div class="col-md-6">
-                            <div class="card {% if not product.has_stock %}border-secondary{% else %}border-primary{% endif %} h-100">
-                                <div class="card-body p-2">
-                                    <div class="d-flex align-items-start gap-2">
-                                        <!-- Product Image -->
-                                        <div class="flex-shrink-0">
-                                            {% if product.image_path %}
-                                            <img src="{{ product.image_path }}" alt="{{ product.name }}"
-                                                 alt="{{ product.name }}"
-                                                 class="img-thumbnail"
-                                                 style="width: 50px; height: 50px; object-fit: cover;">
-                                            {% else %}
-                                            <img src="{{ url_for('static', filename='img/no-image.svg') }}" 
-                                                 alt="Sin imagen"
-                                                 class="img-thumbnail"
-                                                 style="width: 50px; height: 50px; object-fit: cover;">
-                                            {% endif %}
-                                        </div>
-                                        
-                                        <!-- Product Info -->
-                                        <div class="flex-grow-1" style="min-width: 0;">
-                                            <h6 class="mb-0 text-truncate" style="font-size: 0.85rem;">
-                                                {{ product.name }}
-                                            </h6>
-                                            <div class="d-flex justify-content-between align-items-center mt-1">
-                                                <span class="text-primary fw-bold" style="font-size: 0.9rem;">
-                                                    ${{ "%.2f"|format(product.sale_price) }}
-                                                </span>
-                                                {% if product.has_stock %}
-                                                <span class="badge bg-success" style="font-size: 0.7rem;">
-                                                    Stock: {{ "%.0f"|format(product.stock) }}
-                                                </span>
-                                                {% else %}
-                                                <span class="badge bg-danger" style="font-size: 0.7rem;">
-                                                    Sin stock
-                                                </span>
-                                                {% endif %}
-                                            </div>
-                                            <small class="text-muted" style="font-size: 0.7rem;">
-                                                Vendidos: {{ "%.0f"|format(product.total_sold) }}
-                                            </small>
-                                        </div>
-                                        
-                                        <!-- Add Button -->
-                                        <div class="flex-shrink-0">
-                                            {% if product.has_stock %}
-                                            <form hx-post="{{ url_for('sales.cart_add') }}"
-                                                  hx-target="#cart-container"
-                                                  hx-swap="outerHTML"
-                                                  class="m-0">
-                                                <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                                                <input type="hidden" name="qty" value="1">
-                                                <button type="submit" class="btn btn-sm btn-primary">
-                                                    <i class="bi bi-plus-circle"></i>
-                                                </button>
-                                            </form>
-                                            {% else %}
-                                            <button class="btn btn-sm btn-secondary" disabled>
-                                                <i class="bi bi-x-circle"></i>
-                                            </button>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info" role="alert">
-                        <small>
-                            <i class="bi bi-info-circle"></i>
-                            Aún no hay productos más vendidos. Realiza algunas ventas para ver estadísticas.
-                        </small>
-                    </div>
-                    {% endif %}
+            </div>
+
+            <!-- Client & Invoice Type Inputs (Visual/functional for now) -->
+            <div class="client-info-row">
+                <div class="form-group flex-grow-1">
+                    <label class="form-label-sm text-muted mb-1">Cliente</label>
+                    <input type="text" class="form-control form-control-sm" id="global_customer_name"
+                        placeholder="Nombre del cliente">
                 </div>
-                {% endif %}
-                
-                <!-- Search Results -->
-                {% if search_query %}
-                <div class="search-results">
-                    {% if products %}
-                    <p class="text-muted mb-2">
-                        <small>{{ products|length }} producto(s) encontrado(s)</small>
-                    </p>
-                    <div class="list-group">
-                        {% for product in products %}
-                        <div class="list-group-item {% if product.on_hand_qty == 0 %}list-group-item-secondary{% endif %}">
-                            <div class="row align-items-center">
-                                <div class="col-md-6">
-                                    <h6 class="mb-1">{{ product.name }}</h6>
-                                    <small class="text-muted">
-                                        SKU: {{ product.sku or '-' }} | 
-                                        {{ product.uom.symbol }}
-                                    </small>
-                                </div>
-                                <div class="col-md-2 text-center">
-                                    <strong>${{ "%.2f"|format(product.sale_price) }}</strong>
-                                </div>
-                                <div class="col-md-2 text-center">
-                                    {% if product.on_hand_qty == 0 %}
-                                    <span class="badge bg-danger">Sin stock</span>
-                                    {% elif product.on_hand_qty < 10 %}
-                                    <span class="badge bg-warning text-dark">{{ "%.0f"|format(product.on_hand_qty) }}</span>
-                                    {% else %}
-                                    <span class="badge bg-success">{{ "%.0f"|format(product.on_hand_qty) }}</span>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-2">
-                                    {% if product.on_hand_qty > 0 %}
-                                    <form hx-post="{{ url_for('sales.cart_add') }}"
-                                          hx-target="#cart-container"
-                                          hx-swap="outerHTML"
-                                          class="d-flex gap-1">
-                                        <input type="hidden" name="product_id" value="{{ product.id }}">
-                                        <input type="number" 
-                                               name="qty" 
-                                               value="1"
-                                               min="0.01"
-                                               step="0.01"
-                                               max="{{ product.on_hand_qty }}"
-                                               class="form-control form-control-sm"
-                                               style="width: 60px;">
-                                        <button type="submit" class="btn btn-sm btn-primary">
-                                            <i class="bi bi-plus"></i>
-                                        </button>
-                                    </form>
-                                    {% else %}
-                                    <button class="btn btn-sm btn-secondary" disabled>
-                                        Sin stock
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i>
-                        No se encontraron productos para: <strong>"{{ search_query }}"</strong>
-                    </div>
-                    {% endif %}
+                <div class="form-group" style="width: 150px;">
+                    <label class="form-label-sm text-muted mb-1">Tipo de Factura</label>
+                    <select class="form-select form-select-sm" id="global_invoice_type">
+                        <option value="B">Factura B</option>
+                        <option value="A">Factura A</option>
+                        <option value="C">Factura C</option>
+                    </select>
                 </div>
-                {% else %}
-                <div class="alert alert-light text-center">
-                    <i class="bi bi-search" style="font-size: 3rem; opacity: 0.3;"></i>
-                    <p class="mb-0 text-muted">Ingrese un término de búsqueda para encontrar productos</p>
-                </div>
-                {% endif %}
             </div>
         </div>
-    </div>
-    
-    <!-- Cart Section -->
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header bg-success text-white">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-cart"></i> Carrito
-                </h5>
+
+        <!-- Product Grid -->
+        <div class="catalog-grid-container">
+            {% if products or top_products %}
+            {% set display_products = products if search_query else top_products %}
+
+            {% if not display_products and search_query %}
+            <div class="empty-search">
+                <i class="bi bi-search"></i>
+                <p>No se encontraron productos para "{{ search_query }}"</p>
             </div>
-            <div class="card-body">
-                {% include 'sales/_cart.html' %}
+            {% else %}
+            <div class="product-grid">
+                {% for product in display_products %}
+                {% set is_in_cart = false %}
+                <!-- Logic to check if in cart would go here if we had cart_items IDs easily available -->
+                {% set current_qty = 0 %}
+                {% for item in cart_items %}
+                {% if item.product_id == product.id %}
+                {% set is_in_cart = true %}
+                {% set current_qty = item.qty %}
+                {% endif %}
+                {% endfor %}
+
+                <div class="product-card {% if is_in_cart %}selected{% endif %}"
+                    onclick="addItemToCart({{ product.id }})">
+
+                    {% if is_in_cart %}
+                    <div class="selected-badge">{{ current_qty|int }}</div>
+                    {% endif %}
+
+                    <div class="product-image-area">
+                        {% if product.image_path %}
+                        <img src="{{ product.image_path }}" alt="{{ product.name }}">
+                        {% else %}
+                        <i class="bi bi-box-seam"></i>
+                        {% endif %}
+                    </div>
+
+                    <div class="product-info">
+                        <h6 class="product-title" title="{{ product.name }}">{{ product.name }}</h6>
+                        {% if product.sku %}
+                        <div class="product-sku">{{ product.sku }}</div>
+                        {% endif %}
+
+                        <div class="product-meta">
+                            <div class="product-price">${{ "%.2f"|format(product.sale_price) }}</div>
+                            <div class="product-stock text-muted">
+                                {% if product.on_hand_qty > 0 %}
+                                {{ product.on_hand_qty|int }} disp.
+                                {% else %}
+                                <span class="text-danger">Sin stock</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden form for HTMX -->
+                    <form hx-post="{{ url_for('sales.cart_add') }}" hx-target="#cart-container" hx-swap="outerHTML"
+                        id="form-add-{{ product.id }}" style="display: none;">
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <input type="hidden" name="qty" value="1">
+                    </form>
+                </div>
+                {% endfor %}
             </div>
-        </div>
-        
-        <!-- Quick Help -->
-        <div class="card mt-3">
-            <div class="card-header bg-light">
-                <h6 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> Ayuda Rápida
-                </h6>
+            {% endif %}
+            {% else %}
+            <div class="empty-catalog">
+                <i class="bi bi-basket"></i>
+                <p>No hay productos para mostrar</p>
             </div>
-            <div class="card-body">
-                <ul class="small mb-0">
-                    <li>Busque productos por nombre, SKU o código de barras</li>
-                    <li>Agregue productos al carrito especificando la cantidad</li>
-                    <li>Modifique cantidades directamente en el carrito</li>
-                    <li>El stock se valida automáticamente</li>
-                    <li>Confirme la venta para actualizar stock y registrar ingreso</li>
-                </ul>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- MEJORA 15: Modal Container for Sale Confirmation -->
+<!-- Modal Container -->
 <div id="modal-container"></div>
 
+<script>
+    function addItemToCart(productId) {
+        const form = document.getElementById('form-add-' + productId);
+        if (form) {
+            htmx.trigger(form, 'submit');
+        }
+    }
+
+    // Sync Client Inputs to hidden fields in cart (if needed) or just keep them for "Confirm" step
+    // We will listen to changes and update potentially hidden fields forms if we implement "Save Quote" logic
+    // For now, these are just UI inputs as requested.
+</script>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    .list-group-item {
-        padding: 0.75rem;
+    /* Full Page Layout Reset for POS */
+    .app-content {
+        padding: 0 !important;
+        /* Remove default padding to maximize space */
+        height: calc(100vh - var(--topbar-height));
+        overflow: hidden;
     }
-    .search-results {
-        max-height: 60vh;
+
+    .pos-container {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        height: 100%;
+        background-color: #f3f4f6;
+    }
+
+    /* --- LEFT CART PANEL --- */
+    .pos-cart-panel {
+        background-color: #ffffff;
+        border-right: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        z-index: 10;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .cart-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid #f3f4f6;
+        color: var(--color-primary);
+    }
+
+    .cart-body {
+        flex: 1;
         overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* --- RIGHT CATALOG PANEL --- */
+    .pos-catalog-panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding: 1.5rem;
+        overflow: hidden;
+    }
+
+    .catalog-topbar {
+        margin-bottom: 1.5rem;
+    }
+
+    .search-container {
+        margin-bottom: 1rem;
+    }
+
+    .search-container .form-control {
+        padding: 0.75rem;
+        background-color: white;
+        border-color: #e5e7eb;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-container .input-group-text {
+        border-color: #e5e7eb;
+    }
+
+    .client-info-row {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .client-info-row .form-control,
+    .client-info-row .form-select {
+        background-color: white;
+        border-color: #e5e7eb;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .catalog-grid-container {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 2rem;
+        /* Custom scrollbar */
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db transparent;
+    }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    /* --- PRODUCT CARD --- */
+    .product-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border-color: var(--color-primary-light);
+    }
+
+    .product-card.selected {
+        border: 1.5px solid var(--color-primary);
+        background-color: #eff6ff;
+    }
+
+    .selected-badge {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        background-color: var(--color-primary);
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: bold;
+        z-index: 2;
+    }
+
+    .product-image-area {
+        height: 100px;
+        background-color: #f9fafb;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+    .product-image-area img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .product-image-area i {
+        font-size: 2rem;
+        color: #d1d5db;
+    }
+
+    .product-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .product-sku {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        margin-bottom: 0.5rem;
+    }
+
+    .product-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: auto;
+    }
+
+    .product-price {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+
+    .product-stock {
+        font-size: 0.75rem;
+    }
+
+    /* --- RESPONSIVE POS --- */
+    @media (max-width: 900px) {
+        .pos-container {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr auto;
+            /* Stack: Catalog top, Cart bottom or reversed? Usually Cart hidden or tabbed. */
+            /* For simplicity in this resizing task: stack them */
+            display: block;
+            overflow: auto;
+        }
+
+        .pos-cart-panel {
+            height: auto;
+            max-height: 400px;
+            border-right: none;
+            border-bottom: 1px solid #e5e7eb;
+            order: 2;
+            /* Cart below on mobile? Or maybe Tab? */
+        }
+
+        .pos-catalog-panel {
+            height: auto;
+            overflow: visible;
+            order: 1;
+        }
+
+        .app-content {
+            height: auto;
+            overflow: auto;
+        }
     }
 </style>
 {% endblock %}
-

@@ -1,166 +1,175 @@
 <!-- Active Filters Info -->
 {% if search_query or selected_category_id or selected_stock_filter %}
-<div class="row mb-2">
-    <div class="col-12">
-        <div class="alert alert-info alert-dismissible fade show py-2" role="alert">
-            <small>
-                <strong><i class="bi bi-info-circle"></i> Filtros activos:</strong>
-                {% if selected_category_id %}
-                <span class="badge bg-primary">
-                    Categoría: 
-                    {% for cat in categories %}
-                        {% if cat.id|string == selected_category_id|string %}{{ cat.name }}{% endif %}
-                    {% endfor %}
-                </span>
+<div style="margin-bottom: var(--spacing-4);">
+    <div class="alert-custom alert-info">
+        <i class="alert-custom-icon bi bi-info-circle"></i>
+        <div class="alert-custom-content">
+            <strong>Filtros activos:</strong>
+            {% if selected_category_id %}
+            <span class="badge-custom badge-info">
+                Categoría:
+                {% for cat in categories %}
+                {% if cat.id|string == selected_category_id|string %}{{ cat.name }}{% endif %}
+                {% endfor %}
+            </span>
+            {% endif %}
+            {% if selected_stock_filter %}
+            <span class="badge-custom badge-warning">
+                Stock:
+                {% if selected_stock_filter == 'out' %}Sin stock
+                {% elif selected_stock_filter == 'low' %}Poco stock (≤ mínimo)
                 {% endif %}
-                {% if selected_stock_filter %}
-                <span class="badge bg-warning text-dark">
-                    Stock: 
-                    {% if selected_stock_filter == 'out' %}Sin stock
-                    {% elif selected_stock_filter == 'low' %}Poco stock (≤ mínimo)
-                    {% endif %}
-                </span>
-                {% endif %}
-                {% if search_query %}
-                <span class="badge bg-primary">Búsqueda: "{{ search_query }}"</span>
-                {% endif %}
-                - Mostrando {{ products|length }} producto(s)
-            </small>
-            <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+            </span>
+            {% endif %}
+            {% if search_query %}
+            <span class="badge-custom badge-info">Búsqueda: "{{ search_query }}"</span>
+            {% endif %}
+            - Mostrando {{ products|length }} producto(s)
         </div>
+        <button type="button" class="alert-custom-close" onclick="this.parentElement.remove()">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
 </div>
 {% endif %}
 
 <!-- Products Table -->
-<div class="row">
-    <div class="col-12">
-        {% if products %}
-        <div class="table-responsive">
-            <table class="table table-hover table-striped">
-                <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th style="width: 80px;">Imagen</th>
-                        <th>Nombre</th>
-                        <th>SKU</th>
-                        <th>Código Barras</th>
-                        <th>Categoría</th>
-                        <th>Unidad</th>
-                        <th class="text-end">Precio Venta</th>
-                        <th class="text-center">Stock</th>
-                        <th class="text-center">Stock Mín.</th>
-                        <th class="text-center">Estado</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for product in products %}
-                    <tr class="{% if product.on_hand_qty == 0 %}out-of-stock{% endif %}">
-                        <td>{{ product.id }}</td>
-                        <td>
-                            {% if product.image_path %}
-                            <img src="{{ product.image_path }}" alt="{{ product.name }}" 
-                                 alt="{{ product.name }}"
-                                 class="img-thumbnail"
-                                 style="width: 60px; height: 60px; object-fit: cover;">
+<div class="card-custom">
+    {% if products %}
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 80px;">Imagen</th>
+                    <th>Nombre</th>
+                    <th>SKU</th>
+                    <th>Código Barras</th>
+                    <th>Categoría</th>
+                    <th>Unidad</th>
+                    <th style="text-align: right;">Precio Venta</th>
+                    <th style="text-align: center; width: 100px;">Stock</th>
+                    <th style="text-align: center; width: 100px;">Stock Mín.</th>
+                    <th style="text-align: center; width: 100px;">Estado</th>
+                    <th style="text-align: center; width: 180px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr
+                    style="{% if product.on_hand_qty == 0 %}background-color: var(--color-bg-muted); opacity: 0.7;{% endif %}">
+                    <td>{{ product.id }}</td>
+                    <td>
+                        {% if product.image_path %}
+                        <img src="{{ product.image_path }}" alt="{{ product.name }}"
+                            style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border-light);">
+                        {% else %}
+                        <img src="{{ url_for('static', filename='img/no-image.svg') }}" alt="Sin imagen"
+                            style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border-light);">
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ product.name }}</strong>
+                        {% if product.on_hand_qty == 0 %}
+                        <br><span class="badge-custom badge-secondary">Sin stock</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ product.sku or '-' }}</td>
+                    <td>{{ product.barcode or '-' }}</td>
+                    <td>{{ product.category.name if product.category else '-' }}</td>
+                    <td>
+                        <span class="badge-custom badge-info">{{ product.uom.symbol }}</span>
+                        {{ product.uom.name }}
+                    </td>
+                    <td style="text-align: right; font-weight: var(--font-weight-semibold);">
+                        ${{ product.sale_price|money_ar }}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if product.on_hand_qty == 0 %}
+                        <span class="badge-custom badge-danger">0</span>
+                        {% elif product.min_stock_qty > 0 and product.on_hand_qty <= product.min_stock_qty %} <span
+                            class="badge-custom badge-warning">{{ product.on_hand_qty|num_ar }}</span>
                             {% else %}
-                            <img src="{{ url_for('static', filename='img/no-image.svg') }}" 
-                                 alt="Sin imagen"
-                                 class="img-thumbnail"
-                                 style="width: 60px; height: 60px; object-fit: cover;">
+                            <span class="badge-custom badge-success">{{ product.on_hand_qty|num_ar }}</span>
                             {% endif %}
-                        </td>
-                        <td>
-                            <strong>{{ product.name }}</strong>
-                            {% if product.on_hand_qty == 0 %}
-                            <br><span class="badge bg-secondary">Sin stock</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ product.sku or '-' }}</td>
-                        <td>{{ product.barcode or '-' }}</td>
-                        <td>{{ product.category.name if product.category else '-' }}</td>
-                        <td>
-                            <span class="badge bg-info">{{ product.uom.symbol }}</span>
-                            {{ product.uom.name }}
-                        </td>
-                        <td class="text-end">${{ product.sale_price|money_ar }}</td>
-                        <td class="text-center">
-                            {% if product.on_hand_qty == 0 %}
-                            <span class="badge bg-danger">0</span>
-                            {% elif product.min_stock_qty > 0 and product.on_hand_qty <= product.min_stock_qty %}
-                            <span class="badge bg-warning text-dark">{{ product.on_hand_qty|num_ar }}</span>
-                            {% else %}
-                            <span class="badge bg-success">{{ product.on_hand_qty|num_ar }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            {% if product.min_stock_qty > 0 %}
-                            {{ product.min_stock_qty|num_ar }}
-                            {% else %}
-                            <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            {% if product.active %}
-                            <span class="badge bg-success">Activo</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Inactivo</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <a href="{{ url_for('catalog.edit_product', product_id=product.id) }}" 
-                                   class="btn btn-outline-primary"
-                                   title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" 
-                                      action="{{ url_for('catalog.toggle_active', product_id=product.id) }}"
-                                      style="display: inline;">
-                                    <button type="submit" 
-                                            class="btn btn-outline-{% if product.active %}secondary{% else %}success{% endif %}"
-                                            title="{% if product.active %}Desactivar{% else %}Activar{% endif %}"
-                                            onclick="return confirm('¿Está seguro de {% if product.active %}desactivar{% else %}activar{% endif %} este producto?')">
-                                        <i class="bi bi-{% if product.active %}toggle-off{% else %}toggle-on{% endif %}"></i>
-                                    </button>
-                                </form>
-                                <button type="button"
-                                        class="btn btn-outline-danger"
-                                        title="Eliminar"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#deleteProductModal"
-                                        data-product-id="{{ product.id }}"
-                                        data-product-name="{{ product.name }}"
-                                        data-product-sku="{{ product.sku or 'N/A' }}">
-                                    <i class="bi bi-trash"></i>
+                    </td>
+                    <td style="text-align: center;">
+                        {% if product.min_stock_qty > 0 %}
+                        {{ product.min_stock_qty|num_ar }}
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if product.active %}
+                        <span class="badge-custom badge-success">Activo</span>
+                        {% else %}
+                        <span class="badge-custom badge-secondary">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="{{ url_for('catalog.edit_product', product_id=product.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="POST" action="{{ url_for('catalog.toggle_active', product_id=product.id) }}"
+                                style="display: inline;">
+                                <button type="submit"
+                                    class="btn-custom {% if product.active %}btn-secondary-custom{% else %}btn-success-custom{% endif %} btn-sm"
+                                    title="{% if product.active %}Desactivar{% else %}Activar{% endif %}"
+                                    onclick="return confirm('¿Está seguro de {% if product.active %}desactivar{% else %}activar{% endif %} este producto?')">
+                                    <i
+                                        class="bi bi-{% if product.active %}toggle-off{% else %}toggle-on{% endif %}"></i>
                                 </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="mt-3">
-            <p class="text-muted">
-                <strong>{{ products|length }}</strong> producto(s) encontrado(s)
+                            </form>
+                            <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
+                                data-bs-toggle="modal" data-bs-target="#deleteProductModal"
+                                data-product-id="{{ product.id }}" data-product-name="{{ product.name }}"
+                                data-product-sku="{{ product.sku or 'N/A' }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-footer-custom">
+        <p style="margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm);">
+            <strong>{{ products|length }}</strong> producto(s) encontrado(s)
+            {% if search_query %}
+            para la búsqueda: <strong>"{{ search_query }}"</strong>
+            {% endif %}
+        </p>
+    </div>
+    {% else %}
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-box-seam"></i>
+            <div class="empty-state-title">
                 {% if search_query %}
-                para la búsqueda: <strong>"{{ search_query }}"</strong>
+                No se encontraron productos
+                {% else %}
+                No hay productos registrados
+                {% endif %}
+            </div>
+            <p class="empty-state-description">
+                {% if search_query %}
+                No se encontraron productos que coincidan con: <strong>"{{ search_query }}"</strong>
+                {% else %}
+                Comienza agregando tu primer producto al catálogo.
                 {% endif %}
             </p>
-        </div>
-        {% else %}
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            {% if search_query %}
-            No se encontraron productos que coincidan con: <strong>"{{ search_query }}"</strong>
-            {% else %}
-            No hay productos registrados. 
-            <a href="{{ url_for('catalog.new_product') }}" class="alert-link">Crear el primero</a>
+            {% if not search_query %}
+            <a href="{{ url_for('catalog.new_product') }}" class="btn-custom btn-primary-custom">
+                <i class="bi bi-plus-circle"></i>
+                Crear Primer Producto
+            </a>
             {% endif %}
         </div>
-        {% endif %}
     </div>
+    {% endif %}
 </div>

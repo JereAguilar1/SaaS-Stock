@@ -2,118 +2,131 @@
 
 {% block title %}Gestión de Ventas{% endblock %}
 
-{% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-receipt"></i> Gestión de Ventas
-        </h1>
-    </div>
-    <div class="col-auto">
-        <a href="{{ url_for('sales.new_sale') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Nueva Venta
-        </a>
-    </div>
-</div>
+{% block page_title %}Gestión de Ventas{% endblock %}
 
+{% block topbar_actions %}
+<a href="{{ url_for('sales.new_sale') }}" class="btn-custom btn-primary-custom">
+    <i class="bi bi-plus-circle"></i> Nueva Venta
+</a>
+{% endblock %}
+
+{% block content %}
 <!-- Search Form -->
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="GET" action="{{ url_for('sales.list_sales') }}" class="row g-3">
-            <div class="col-md-8">
-                <label for="id" class="form-label">Buscar por ID de Venta</label>
-                <input type="number" 
-                       class="form-control" 
-                       id="id" 
-                       name="id" 
-                       value="{{ sale_id_search or '' }}"
-                       placeholder="Ej: 123"
-                       min="1">
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">
-                    <i class="bi bi-search"></i> Buscar
-                </button>
-                {% if sale_id_search %}
-                <a href="{{ url_for('sales.list_sales') }}" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Limpiar
-                </a>
-                {% endif %}
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
+    <div class="card-body-custom">
+        <form method="GET" action="{{ url_for('sales.list_sales') }}" class="form-row">
+            <div style="flex: 1; display: flex; gap: var(--spacing-4); align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label for="id" class="form-label-custom">Buscar por ID de Venta</label>
+                    <div style="position: relative;">
+                        <i class="bi bi-search"
+                            style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
+                        <input type="number" class="form-input-custom" id="id" name="id"
+                            value="{{ sale_id_search or '' }}" placeholder="Ej: 123" min="1"
+                            style="padding-left: 36px;">
+                    </div>
+                </div>
+                <div style="display: flex; gap: var(--spacing-2);">
+                    <button type="submit" class="btn-custom btn-primary-custom">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                    {% if sale_id_search %}
+                    <a href="{{ url_for('sales.list_sales') }}" class="btn-custom btn-secondary-custom">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Sales Table -->
-<div class="card">
-    <div class="card-header bg-success text-white">
-        <h5 class="card-title mb-0">
-            <i class="bi bi-list"></i> Ventas Confirmadas
-        </h5>
+<div class="card-custom">
+    <div class="card-header-custom">
+        <h2 class="card-title">
+            <i class="bi bi-receipt" style="color: var(--color-success);"></i> Ventas Confirmadas
+        </h2>
     </div>
-    <div class="card-body">
-        {% if sales %}
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>Fecha y Hora</th>
-                        <th class="text-end">Total</th>
-                        <th>Estado</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sale in sales %}
-                    <tr>
-                        <td>
-                            <strong>#{{ sale.id }}</strong>
-                        </td>
-                        <td>{{ sale.datetime|datetime_ar }}</td>
-                        <td class="text-end">
-                            <strong>${{ "%.2f"|format(sale.total) }}</strong>
-                        </td>
-                        <td>
-                            {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
-                                <span class="badge bg-success">Confirmada</span>
-                            {% elif sale.status.value == 'CANCELLED' or sale.status == 'CANCELLED' %}
-                                <span class="badge bg-danger">Cancelada</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ sale.status.value if sale.status.value else sale.status }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}" 
-                               class="btn btn-sm btn-info"
-                               title="Ver Detalle">
+
+    {% if sales %}
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">ID</th>
+                    <th>Fecha y Hora</th>
+                    <th style="text-align: right;">Total</th>
+                    <th>Estado</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td>
+                        <span class="badge-custom badge-secondary">#{{ sale.id }}</span>
+                    </td>
+                    <td>
+                        <i class="bi bi-calendar3" style="color: var(--color-text-muted);"></i>
+                        {{ sale.datetime|datetime_ar }}
+                    </td>
+                    <td style="text-align: right;">
+                        <strong style="color: var(--color-success); font-weight: var(--font-weight-semibold);">${{
+                            "%.2f"|format(sale.total) }}</strong>
+                    </td>
+                    <td>
+                        {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
+                        <span class="badge-custom badge-success">Confirmada</span>
+                        {% elif sale.status.value == 'CANCELLED' or sale.status == 'CANCELLED' %}
+                        <span class="badge-custom badge-danger">Cancelada</span>
+                        {% else %}
+                        <span class="badge-custom badge-secondary">{{ sale.status.value if sale.status.value else
+                            sale.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="table-actions" style="justify-content: center;">
+                            <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Ver Detalle">
                                 <i class="bi bi-eye"></i>
                             </a>
                             {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
-                            <a href="{{ url_for('sales.edit_sale_form', sale_id=sale.id) }}" 
-                               class="btn btn-sm btn-warning"
-                               title="Editar/Ajustar esta venta">
-                                <i class="bi bi-pencil"></i> Editar
+                            <a href="{{ url_for('sales.edit_sale_form', sale_id=sale.id) }}"
+                                class="btn-custom btn-warning-custom btn-sm" title="Editar/Ajustar esta venta"
+                                style="background-color: var(--color-warning-light); color: var(--color-warning-dark); border-color: var(--color-warning);">
+                                <i class="bi bi-pencil"></i>
                             </a>
                             {% else %}
-                            <span class="text-muted small">No editable</span>
+                            <span class="badge-custom badge-secondary" style="opacity: 0.7;">No editable</span>
                             {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="alert alert-info text-center">
-            <i class="bi bi-info-circle"></i>
-            {% if sale_id_search %}
-                No se encontraron ventas con ID: <strong>{{ sale_id_search }}</strong>
-            {% else %}
-                No hay ventas confirmadas aún.
-            {% endif %}
-        </div>
-        {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+    {% else %}
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-receipt"></i>
+            <div class="empty-state-title">
+                {% if sale_id_search %}
+                No se encontraron ventas
+                {% else %}
+                Sin ventas registradas
+                {% endif %}
+            </div>
+            <p class="empty-state-description">
+                {% if sale_id_search %}
+                No hay ventas con ID: <strong>{{ sale_id_search }}</strong>
+                {% else %}
+                Aún no hay ventas confirmadas en el sistema.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

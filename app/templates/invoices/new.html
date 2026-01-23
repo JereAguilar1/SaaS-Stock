@@ -2,214 +2,202 @@
 
 {% block title %}Nueva Boleta de Compra - Sistema Ferretería{% endblock %}
 
+{% block page_title %}Nueva Boleta de Compra{% endblock %}
+
 {% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-file-earmark-plus"></i> Nueva Boleta de Compra
-        </h1>
-    </div>
-</div>
-
 <form method="POST" action="{{ url_for('invoices.create_invoice') }}">
-    <div class="row">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
         <!-- Header Section -->
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Datos de la Boleta</h5>
+        <div class="card-custom">
+            <div class="card-header-custom" style="background-color: var(--color-primary); color: white;">
+                <h5 class="card-title" style="color: white; margin: 0;">
+                    <i class="bi bi-file-earmark-text"></i> Datos de la Boleta
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <!-- Supplier -->
+                <div class="form-group">
+                    <label for="supplier_id" class="form-label-custom">
+                        Proveedor <span style="color: var(--color-danger);">*</span>
+                    </label>
+                    <select class="form-select-custom" id="supplier_id" name="supplier_id" required
+                        hx-post="{{ url_for('invoices.update_draft_header') }}" hx-trigger="change">
+                        <option value="">Seleccione proveedor...</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier.id }}" {% if draft.supplier_id==supplier.id %}selected{% endif %}>
+                            {{ supplier.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <div class="card-body">
-                    <!-- Supplier -->
-                    <div class="mb-3">
-                        <label for="supplier_id" class="form-label">
-                            Proveedor <span class="text-danger">*</span>
-                        </label>
-                        <select class="form-select" id="supplier_id" name="supplier_id" required
-                                hx-post="{{ url_for('invoices.update_draft_header') }}"
-                                hx-trigger="change">
-                            <option value="">Seleccione proveedor...</option>
-                            {% for supplier in suppliers %}
-                            <option value="{{ supplier.id }}" {% if draft.supplier_id == supplier.id %}selected{% endif %}>
-                                {{ supplier.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
 
-                    <!-- Invoice Number -->
-                    <div class="mb-3">
-                        <label for="invoice_number" class="form-label">
-                            Número de Boleta <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" class="form-control" id="invoice_number" name="invoice_number"
-                               value="{{ draft.invoice_number }}" required
-                               hx-post="{{ url_for('invoices.update_draft_header') }}"
-                               hx-trigger="blur">
-                    </div>
+                <!-- Invoice Number -->
+                <div class="form-group">
+                    <label for="invoice_number" class="form-label-custom">
+                        Número de Boleta <span style="color: var(--color-danger);">*</span>
+                    </label>
+                    <input type="text" class="form-input-custom" id="invoice_number" name="invoice_number"
+                        value="{{ draft.invoice_number }}" required placeholder="000-00000000"
+                        hx-post="{{ url_for('invoices.update_draft_header') }}" hx-trigger="blur">
+                </div>
 
-                    <!-- Dates -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="invoice_date" class="form-label">
-                                    Fecha Boleta <span class="text-danger">*</span>
-                                </label>
-                                <input type="date" class="form-control" id="invoice_date" name="invoice_date"
-                                       value="{{ draft.invoice_date }}" required
-                                       hx-post="{{ url_for('invoices.update_draft_header') }}"
-                                       hx-trigger="blur">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="due_date" class="form-label">Vencimiento</label>
-                                <input type="date" class="form-control" id="due_date" name="due_date"
-                                       value="{{ draft.due_date }}"
-                                       hx-post="{{ url_for('invoices.update_draft_header') }}"
-                                       hx-trigger="blur">
-                            </div>
-                        </div>
+                <!-- Dates -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                    <div class="form-group">
+                        <label for="invoice_date" class="form-label-custom">
+                            Fecha Boleta <span style="color: var(--color-danger);">*</span>
+                        </label>
+                        <input type="date" class="form-input-custom" id="invoice_date" name="invoice_date"
+                            value="{{ draft.invoice_date }}" required
+                            hx-post="{{ url_for('invoices.update_draft_header') }}" hx-trigger="blur">
+                    </div>
+                    <div class="form-group">
+                        <label for="due_date" class="form-label-custom">Vencimiento</label>
+                        <input type="date" class="form-input-custom" id="due_date" name="due_date"
+                            value="{{ draft.due_date }}" hx-post="{{ url_for('invoices.update_draft_header') }}"
+                            hx-trigger="blur">
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Add Item Section -->
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header bg-success text-white">
-                    <h5 class="card-title mb-0">Agregar Ítem</h5>
+        <div class="card-custom">
+            <div class="card-header-custom" style="background-color: var(--color-secondary); color: white;">
+                <h5 class="card-title" style="color: white; margin: 0;">
+                    <i class="bi bi-plus-circle"></i> Agregar Ítem
+                </h5>
+            </div>
+            <div class="card-body-custom">
+                <div class="form-group">
+                    <label for="product_id" class="form-label-custom">Producto</label>
+                    <select class="form-select-custom" id="product_id" name="product_id">
+                        <option value="">Seleccione producto...</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}">
+                            {{ product.name }} ({{ product.sku or 'Sin SKU' }}) - {{ product.uom.symbol }}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="product_id" class="form-label">Producto</label>
-                        <select class="form-select" id="product_id" name="product_id">
-                            <option value="">Seleccione producto...</option>
-                            {% for product in products %}
-                            <option value="{{ product.id }}">
-                                {{ product.name }} ({{ product.sku or 'Sin SKU' }}) - {{ product.uom.symbol }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="qty" class="form-label">Cantidad</label>
-                                <input type="number" class="form-control" id="qty" name="qty"
-                                       min="0.001" step="0.001" value="1">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="unit_cost" class="form-label">Costo Unitario</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="unit_cost" name="unit_cost"
-                                           min="0" step="1" value="0" inputmode="numeric"
-                                           title="Solo números enteros sin decimales">
-                                </div>
-                                <small class="text-muted">Solo números enteros (sin decimales)</small>
-                            </div>
-                        </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                    <div class="form-group">
+                        <label for="qty" class="form-label-custom">Cantidad</label>
+                        <input type="number" class="form-input-custom" id="qty" name="qty" min="0.001" step="0.001"
+                            value="1">
                     </div>
-
-                    <button type="submit" class="btn btn-success w-100"
-                            formaction="{{ url_for('invoices.add_draft_line') }}">
-                        <i class="bi bi-plus-circle"></i> Agregar Ítem
-                    </button>
+                    <div class="form-group">
+                        <label for="unit_cost" class="form-label-custom">Costo Unitario</label>
+                        <div style="position: relative;">
+                            <span
+                                style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);">$</span>
+                            <input type="number" class="form-input-custom" id="unit_cost" name="unit_cost" min="0"
+                                step="1" value="0" inputmode="numeric" title="Solo números enteros sin decimales"
+                                style="padding-left: 28px;">
+                        </div>
+                        <small style="font-size: var(--font-size-xs); color: var(--color-text-muted);">Solo números
+                            enteros</small>
+                    </div>
                 </div>
+
+                <button type="submit" class="btn-custom btn-secondary-custom"
+                    style="width: 100%; justify-content: center; height: 42px; margin-top: var(--spacing-2); background-color: var(--color-secondary); color: white; border: none;"
+                    formaction="{{ url_for('invoices.add_draft_line') }}">
+                    <i class="bi bi-plus-circle"></i> Agregar a la Lista
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Lines Section -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="card-title mb-0">Ítems de la Boleta</h5>
-                </div>
-                <div class="card-body">
-                    {% if draft.lines %}
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>UOM</th>
-                                    <th class="text-end">Cantidad</th>
-                                    <th class="text-end">Costo Unit.</th>
-                                    <th class="text-end">Subtotal</th>
-                                    <th class="text-center" style="width: 60px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for line in draft.lines %}
-                                {% set product = products | selectattr('id', 'equalto', line.product_id) | first %}
-                                {% set line_total = line.qty * line.unit_cost %}
-                                <tr>
-                                    <td><strong>{{ product.name if product else 'Producto no encontrado' }}</strong></td>
-                                    <td>{{ product.uom.symbol if product else '-' }}</td>
-                                    <td class="text-end">{{ line.qty|num_ar }}</td>
-                                    <td class="text-end">${{ line.unit_cost|money_ar }}</td>
-                                    <td class="text-end"><strong>${{ line_total|money_ar }}</strong></td>
-                                    <td class="text-center">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                formaction="{{ url_for('invoices.remove_draft_line', product_id=line.product_id) }}"
-                                                title="Eliminar">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-active">
-                                    <td colspan="4" class="text-end"><strong>TOTAL:</strong></td>
-                                    <td class="text-end">
-                                        <h5 class="mb-0">${{ total_amount|money_ar }}</h5>
-                                    </td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+    <div class="card-custom" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header-custom">
+            <h5 class="card-title">Ítems de la Boleta</h5>
+        </div>
+        {% if draft.lines %}
+        <div class="table-container">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>UOM</th>
+                        <th style="text-align: right;">Cantidad</th>
+                        <th style="text-align: right;">Costo Unit.</th>
+                        <th style="text-align: right;">Subtotal</th>
+                        <th style="text-align: center; width: 60px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in draft.lines %}
+                    {% set product = products | selectattr('id', 'equalto', line.product_id) | first %}
+                    {% set line_total = line.qty * line.unit_cost %}
+                    <tr>
+                        <td><strong style="color: var(--color-text-primary);">{{ product.name if product else 'Producto
+                                no encontrado' }}</strong></td>
+                        <td>{{ product.uom.symbol if product else '-' }}</td>
+                        <td style="text-align: right;">{{ line.qty|num_ar }}</td>
+                        <td style="text-align: right;">${{ line.unit_cost|money_ar }}</td>
+                        <td style="text-align: right;"><strong style="color: var(--color-text-primary);">${{
+                                line_total|money_ar }}</strong></td>
+                        <td style="text-align: center;">
+                            <button type="submit" class="btn-custom btn-danger-custom btn-sm"
+                                formaction="{{ url_for('invoices.remove_draft_line', product_id=line.product_id) }}"
+                                title="Eliminar"
+                                style="display: inline-flex; justify-content: center; align-items: center; width: 32px; height: 32px; padding: 0;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot style="background-color: var(--color-bg-muted);">
+                    <tr>
+                        <td colspan="4"
+                            style="text-align: right; padding: var(--spacing-4); font-weight: var(--font-weight-bold);">
+                            TOTAL:</td>
+                        <td style="text-align: right; padding: var(--spacing-4);">
+                            <span
+                                style="font-size: var(--font-size-xl); color: var(--color-primary); font-weight: var(--font-weight-bold);">${{
+                                total_amount|money_ar }}</span>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
 
-                    <div class="d-flex justify-content-between mt-3">
-                        <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary">
-                            <i class="bi bi-x-circle"></i> Cancelar
-                        </a>
-                        <button type="button" 
-                                class="btn btn-primary btn-lg"
-                                hx-get="{{ url_for('invoices.confirm_create_preview') }}"
-                                hx-target="#invoice-create-modal-container"
-                                hx-swap="innerHTML"
-                                hx-indicator="#preview-loading">
-                            <i class="bi bi-eye"></i> Revisar y Confirmar
-                        </button>
-                        <div id="preview-loading" class="htmx-indicator ms-2">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                        </div>
+        <div class="card-footer-custom" style="display: flex; justify-content: space-between;">
+            <a href="{{ url_for('invoices.list_invoices') }}" class="btn-custom btn-secondary-custom">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </a>
+            <div style="display: flex; align-items: center; gap: var(--spacing-4);">
+                <div id="preview-loading" class="htmx-indicator" style="display: none; color: var(--color-primary);">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Cargando...</span>
                     </div>
-                    {% else %}
-                    <div class="alert alert-info text-center">
-                        <i class="bi bi-info-circle"></i>
-                        <p class="mb-0">No hay ítems agregados</p>
-                        <small>Agregue al menos un ítem para crear la boleta</small>
-                    </div>
-                    {% endif %}
                 </div>
+                <button type="button" class="btn-custom btn-primary-custom"
+                    style="padding: var(--spacing-2) var(--spacing-6); font-size: var(--font-size-lg);"
+                    hx-get="{{ url_for('invoices.confirm_create_preview') }}"
+                    hx-target="#invoice-create-modal-container" hx-swap="innerHTML" hx-indicator="#preview-loading">
+                    <i class="bi bi-eye"></i> Revisar y Confirmar
+                </button>
             </div>
         </div>
+        {% else %}
+        <div class="card-body-custom">
+            <div class="empty-state">
+                <i class="empty-state-icon bi bi-cart-x"></i>
+                <div class="empty-state-title">No hay ítems agregados</div>
+                <p class="empty-state-description">Agregue productos desde el panel de la derecha para crear la boleta.
+                </p>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </form>
 
 <!-- Modal Container for HTMX -->
 <div id="invoice-create-modal-container"></div>
 {% endblock %}
-
