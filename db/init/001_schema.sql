@@ -35,15 +35,27 @@ CREATE INDEX IF NOT EXISTS idx_tenant_slug ON tenant(slug);
 CREATE TABLE IF NOT EXISTS app_user (
     id BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255), -- Nullable for OAuth users
     full_name VARCHAR(200),
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    -- OAuth fields
+    google_sub VARCHAR(255),
+    auth_provider VARCHAR(20) NOT NULL DEFAULT 'local',
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT chk_auth_provider CHECK (auth_provider IN ('local', 'google')),
+    CONSTRAINT chk_local_has_password CHECK (
+        (auth_provider = 'local' AND password_hash IS NOT NULL) OR
+        (auth_provider != 'local')
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_app_user_email ON app_user(email);
 CREATE INDEX IF NOT EXISTS idx_app_user_active ON app_user(active);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_google_sub ON app_user(google_sub) WHERE google_sub IS NOT NULL;
 
 -- User-Tenant: many-to-many relationship with role
 CREATE TABLE IF NOT EXISTS user_tenant (
@@ -61,6 +73,27 @@ CREATE TABLE IF NOT EXISTS user_tenant (
 CREATE INDEX IF NOT EXISTS idx_user_tenant_user ON user_tenant(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant ON user_tenant(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_user_tenant_role ON user_tenant(role);
+
+-- Audit Log: tracks critical user actions
+CREATE TABLE IF NOT EXISTS audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON UPDATE RESTRICT ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES app_user(id) ON UPDATE RESTRICT ON DELETE CASCADE,
+    action VARCHAR(50) NOT NULL,
+    resource_type VARCHAR(50),
+    resource_id BIGINT,
+    details TEXT,  -- JSON or text
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_tenant ON audit_log(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_tenant_created ON audit_log(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON audit_log(resource_type, resource_id);
 
 -- =========================
 -- ENUM TYPES
@@ -311,8 +344,13 @@ CREATE TABLE IF NOT EXISTS finance_ledger (
   category       VARCHAR(80),
   reference_type ledger_ref_type NOT NULL,
   reference_id   BIGINT,
-  notes          TEXT
+  notes          TEXT,
+  payment_method VARCHAR(20) NOT NULL DEFAULT 'CASH',
+  
+  CONSTRAINT chk_finance_ledger_payment_method CHECK (payment_method IN ('CASH', 'TRANSFER'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_finance_ledger_payment_method ON finance_ledger(payment_method);
 
 CREATE INDEX IF NOT EXISTS idx_ledger_tenant_id ON finance_ledger(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_tenant_datetime ON finance_ledger(tenant_id, datetime DESC);
@@ -623,3 +661,14 @@ CREATE TRIGGER app_user_set_updated_at
     EXECUTE FUNCTION trg_saas_set_updated_at();
 
 COMMIT;
+
+-- =============================================================================
+-- DATA MIGRATIONS / SEEDS (NOT INCLUDED IN BASE SCHEMA)
+-- =============================================================================
+-- The following migrations contain data operations or complex updates that cannot 
+-- be represented in a DDL schema file. They MUST be run manually or via migration tool
+-- if migrating from an older version, but are not needed for a fresh install 
+-- (assuming application handles data initialization).
+--
+-- 1. PASO7_migrate_image_paths.sql (Migrates local filenames to S3 URLs in `product.image_path`)
+-- =============================================================================
