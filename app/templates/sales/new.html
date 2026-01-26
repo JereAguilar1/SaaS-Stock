@@ -29,22 +29,20 @@
         <div class="catalog-topbar">
             <!-- Search -->
             <div class="search-container">
-                <form method="GET" action="{{ url_for('sales.new_sale') }}" id="search-form" class="w-100">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0">
-                            <i class="bi bi-search text-muted"></i>
-                        </span>
-                        <input type="text" class="form-control border-start-0 ps-0" name="q"
-                            value="{{ search_query or '' }}" placeholder="Buscar producto por nombre o SKU..." autofocus
-                            onfocus="this.select()">
-                        {% if search_query %}
-                        <a href="{{ url_for('sales.new_sale') }}"
-                            class="input-group-text bg-white border-start-0 text-muted text-decoration-none">
-                            <i class="bi bi-x-lg"></i>
-                        </a>
-                        {% endif %}
-                    </div>
-                </form>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" class="form-control border-start-0 border-end-0 ps-0" name="q"
+                        id="sales-search-input" value="{{ search_query or '' }}"
+                        placeholder="Buscar producto por nombre, SKU o código de barras..." autofocus
+                        onfocus="this.select()" hx-get="{{ url_for('sales.product_search') }}"
+                        hx-trigger="keyup changed delay:400ms, search" hx-target="#sales-product-results"
+                        hx-indicator="#sales-search-indicator">
+                    <span class="input-group-text bg-white border-start-0" id="sales-search-indicator">
+                        <div class="htmx-indicator spinner-border spinner-border-sm text-primary" role="status"></div>
+                    </span>
+                </div>
             </div>
 
             <!-- Client & Invoice Type Inputs (Visual/functional for now) -->
@@ -67,76 +65,9 @@
 
         <!-- Product Grid -->
         <div class="catalog-grid-container">
-            {% if products or top_products %}
-            {% set display_products = products if search_query else top_products %}
-
-            {% if not display_products and search_query %}
-            <div class="empty-search">
-                <i class="bi bi-search"></i>
-                <p>No se encontraron productos para "{{ search_query }}"</p>
+            <div id="sales-product-results">
+                {% include 'sales/_product_results.html' %}
             </div>
-            {% else %}
-            <div class="product-grid">
-                {% for product in display_products %}
-                {% set is_in_cart = false %}
-                <!-- Logic to check if in cart would go here if we had cart_items IDs easily available -->
-                {% set current_qty = 0 %}
-                {% for item in cart_items %}
-                {% if item.product_id == product.id %}
-                {% set is_in_cart = true %}
-                {% set current_qty = item.qty %}
-                {% endif %}
-                {% endfor %}
-
-                <div class="product-card {% if is_in_cart %}selected{% endif %}"
-                    onclick="addItemToCart({{ product.id }})">
-
-                    {% if is_in_cart %}
-                    <div class="selected-badge">{{ current_qty|int }}</div>
-                    {% endif %}
-
-                    <div class="product-image-area">
-                        {% if product.image_path %}
-                        <img src="{{ product.image_path }}" alt="{{ product.name }}">
-                        {% else %}
-                        <i class="bi bi-box-seam"></i>
-                        {% endif %}
-                    </div>
-
-                    <div class="product-info">
-                        <h6 class="product-title" title="{{ product.name }}">{{ product.name }}</h6>
-                        {% if product.sku %}
-                        <div class="product-sku">{{ product.sku }}</div>
-                        {% endif %}
-
-                        <div class="product-meta">
-                            <div class="product-price">${{ "%.2f"|format(product.sale_price) }}</div>
-                            <div class="product-stock text-muted">
-                                {% if product.on_hand_qty > 0 %}
-                                {{ product.on_hand_qty|int }} disp.
-                                {% else %}
-                                <span class="text-danger">Sin stock</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Hidden form for HTMX -->
-                    <form hx-post="{{ url_for('sales.cart_add') }}" hx-target="#cart-container" hx-swap="outerHTML"
-                        id="form-add-{{ product.id }}" style="display: none;">
-                        <input type="hidden" name="product_id" value="{{ product.id }}">
-                        <input type="hidden" name="qty" value="1">
-                    </form>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-            {% else %}
-            <div class="empty-catalog">
-                <i class="bi bi-basket"></i>
-                <p>No hay productos para mostrar</p>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>

@@ -1,0 +1,101 @@
+<!-- Product Results Partial (usado por HTMX para búsqueda) -->
+{% if products or top_products %}
+{% set display_products = products if products else top_products %}
+
+{% if not display_products and search_query %}
+<div class="empty-search">
+    <i class="bi bi-search"></i>
+    <p>No se encontraron productos para "{{ search_query }}"</p>
+</div>
+{% else %}
+<div class="product-grid">
+    {% for product in display_products %}
+    {% set is_in_cart = false %}
+    {% set current_qty = 0 %}
+    {% for item in cart_items %}
+    {% if item.product_id == product.id %}
+    {% set is_in_cart = true %}
+    {% set current_qty = item.qty %}
+    {% endif %}
+    {% endfor %}
+
+    <div class="product-card {% if is_in_cart %}selected{% endif %}" onclick="addItemToCart({{ product.id }})">
+
+        {% if is_in_cart %}
+        <div class="selected-badge">{{ current_qty|int }}</div>
+        {% endif %}
+
+        <div class="product-image-area">
+            {% if product.image_path %}
+            <img src="{{ product.image_path }}" alt="{{ product.name }}">
+            {% else %}
+            <i class="bi bi-box-seam"></i>
+            {% endif %}
+        </div>
+
+        <div class="product-info">
+            <h6 class="product-title" title="{{ product.name }}">{{ product.name }}</h6>
+            {% if product.sku %}
+            <div class="product-sku">{{ product.sku }}</div>
+            {% endif %}
+
+            <div class="product-meta">
+                <div class="product-price">${{ "%.2f"|format(product.sale_price) }}</div>
+                <div class="product-stock text-muted">
+                    {% if product.on_hand_qty > 0 %}
+                    {{ product.on_hand_qty|int }} disp.
+                    {% else %}
+                    <span class="text-danger">Sin stock</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden form for HTMX -->
+        <form hx-post="{{ url_for('sales.cart_add') }}" hx-target="#cart-container" hx-swap="innerHTML"
+            id="form-add-{{ product.id }}" style="display: none;">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="qty" value="1">
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% else %}
+<div class="empty-catalog">
+    <i class="bi bi-basket"></i>
+    <p>No hay productos para mostrar</p>
+</div>
+{% endif %}
+
+<style>
+    .empty-search {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        color: #9ca3af;
+        text-align: center;
+    }
+
+    .empty-search i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .empty-catalog {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        color: #9ca3af;
+        text-align: center;
+    }
+
+    .empty-catalog i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+</style>

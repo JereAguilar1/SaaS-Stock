@@ -109,6 +109,60 @@ def new_sale():
                              top_products=[])
 
 
+@sales_bp.route('/products/search', methods=['GET'])
+@require_login
+@require_tenant
+def product_search():
+    """Search products for POS (HTMX endpoint, tenant-scoped)."""
+    db_session = get_session()
+    
+    try:
+        # Get search query
+        search_query = request.args.get('q', '').strip()
+        
+        # Get cart for highlighting selected products
+        cart_items, _ = get_cart_with_products(db_session, g.tenant_id)
+        
+        products = []
+        if search_query:
+            # Sanitize input (limit length)
+            search_query = search_query[:100]
+            
+            # Build search filter
+            search_filter = or_(
+                func.lower(Product.name).like(f'%{search_query.lower()}%'),
+                func.lower(Product.sku).like(f'%{search_query.lower()}%'),
+                func.lower(Product.barcode).like(f'%{search_query.lower()}%')
+            )
+            
+            products = (db_session.query(Product)
+                       .outerjoin(ProductStock)
+                       .filter(
+                           Product.tenant_id == g.tenant_id,
+                           Product.active == True
+                       )
+                       .filter(search_filter)
+                       .order_by(Product.name)
+                       .limit(20)
+                       .all())
+        else:
+            # Si búsqueda vacía, mostrar top productos
+            try:
+                products = get_top_selling_products(db_session, g.tenant_id, limit=10)
+            except:
+                products = []
+        
+        return render_template('sales/_product_results.html',
+                             products=products,
+                             search_query=search_query,
+                             cart_items=cart_items,
+                             top_products=products if not search_query else [])
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in product_search: {str(e)}", exc_info=True)
+        return '<div class="alert alert-warning">Error al buscar productos</div>', 500
+
+
 @sales_bp.route('/cart/add', methods=['POST'])
 @require_login
 @require_tenant
@@ -117,51 +171,107 @@ def cart_add():
     db_session = get_session()
     
     try:
-        product_id = int(request.form.get('product_id'))
-        qty = Decimal(request.form.get('qty', '1'))
+        # 1. Determinar content type y extraer payload
+        is_htmx = request.headers.get('HX-Request') == 'true'
         
-        if qty <= 0:
-            flash('La cantidad debe ser mayor a 0', 'danger')
+        # Intentar leer payload de múltiples fuentes
+        if request.is_json:
+            payload = request.get_json(silent=True) or {}
+        else:
+            payload = request.form.to_dict()
+        
+        # Log para debugging
+        current_app.logger.info(
+            f"[cart_add] tenant_id={g.tenant_id}, "
+            f"is_htmx={is_htmx}, content_type={request.content_type}, "
+            f"payload_keys={list(payload.keys())}"
+        )
+        
+        # 2. Validar payload
+        product_id_str = payload.get('product_id')
+        qty_str = payload.get('qty', '1')
+        
+        if not product_id_str:
+            msg = 'Falta el ID del producto'
+            current_app.logger.warning(f"[cart_add] {msg}")
+            if is_htmx:
+                return f'<div class="alert alert-danger">{msg}</div>', 400
+            flash(msg, 'danger')
             return redirect(url_for('sales.new_sale'))
         
-        # Get product and verify it belongs to tenant
+        # 3. Convertir con manejo de errores
+        try:
+            product_id = int(product_id_str)
+            qty = Decimal(str(qty_str))
+        except (ValueError, TypeError) as e:
+            msg = f'Datos inválidos: product_id o qty no son numéricos'
+            current_app.logger.warning(f"[cart_add] {msg}: product_id={product_id_str}, qty={qty_str}")
+            if is_htmx:
+                return f'<div class="alert alert-danger">{msg}</div>', 400
+            flash(msg, 'danger')
+            return redirect(url_for('sales.new_sale'))
+        
+        if qty <= 0:
+            msg = 'La cantidad debe ser mayor a 0'
+            if is_htmx:
+                return f'<div class="alert alert-warning">{msg}</div>', 400
+            flash(msg, 'danger')
+            return redirect(url_for('sales.new_sale'))
+        
+        # 4. Get product and verify it belongs to tenant
         product = db_session.query(Product).filter(
             Product.id == product_id,
             Product.tenant_id == g.tenant_id
         ).first()
         
         if not product:
-            flash('Producto no encontrado o no pertenece a su negocio', 'danger')
+            msg = 'Producto no encontrado o no pertenece a su negocio'
+            current_app.logger.warning(f"[cart_add] {msg}: product_id={product_id}")
+            if is_htmx:
+                return f'<div class="alert alert-danger">{msg}</div>', 404
+            flash(msg, 'danger')
             return redirect(url_for('sales.new_sale'))
         
         if not product.active:
-            flash(f'El producto "{product.name}" no está activo', 'warning')
+            msg = f'El producto "{product.name}" no está activo'
+            if is_htmx:
+                return f'<div class="alert alert-warning">{msg}</div>', 400
+            flash(msg, 'warning')
             return redirect(url_for('sales.new_sale'))
         
-        # Check stock
+        # 5. Check stock
         if product.on_hand_qty <= 0:
-            flash(f'El producto "{product.name}" no tiene stock disponible', 'danger')
+            msg = f'El producto "{product.name}" no tiene stock disponible'
+            if is_htmx:
+                return f'<div class="alert alert-danger">{msg}</div>', 400
+            flash(msg, 'danger')
             return redirect(url_for('sales.new_sale'))
         
-        # Get cart
+        # 6. Get cart
         cart = get_cart()
         product_id_str = str(product_id)
         
-        # Add or update qty
+        # 7. Add or update qty
         if product_id_str in cart['items']:
             current_qty = Decimal(str(cart['items'][product_id_str]['qty']))
             new_qty = current_qty + qty
             
             # Check if new qty exceeds stock
             if new_qty > product.on_hand_qty:
-                flash(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}', 'warning')
+                msg = f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}'
+                if is_htmx:
+                    return f'<div class="alert alert-warning">{msg}</div>', 400
+                flash(msg, 'warning')
                 return redirect(url_for('sales.new_sale'))
             
             cart['items'][product_id_str]['qty'] = float(new_qty)
         else:
             # Check if qty exceeds stock
             if qty > product.on_hand_qty:
-                flash(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}', 'warning')
+                msg = f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}'
+                if is_htmx:
+                    return f'<div class="alert alert-warning">{msg}</div>', 400
+                flash(msg, 'warning')
                 return redirect(url_for('sales.new_sale'))
             
             cart['items'][product_id_str] = {'qty': float(qty)}
@@ -169,17 +279,34 @@ def cart_add():
         save_cart(cart)
         flash(f'"{product.name}" agregado al carrito', 'success')
         
-        # If HTMX request, return partial
-        if request.headers.get('HX-Request'):
+        # 8. If HTMX request, return partial content
+        if is_htmx:
+            current_app.logger.info(
+                f"[HTMX] cart_add SUCCESS: product_id={product_id}, "
+                f"qty={qty}, cart_size={len(cart['items'])}"
+            )
             cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            return render_template('sales/_cart.html',
+            
+            # Calcular subtotal e IVA en backend (Fix Bug B)
+            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+            iva_total = cart_total - subtotal
+            
+            return render_template('sales/_cart_content.html',
                                  cart_items=cart_items,
-                                 cart_total=cart_total)
+                                 cart_total=cart_total,
+                                 subtotal=subtotal,
+                                 iva_total=iva_total)
         
         return redirect(url_for('sales.new_sale'))
         
     except Exception as e:
         db_session.rollback()
+        current_app.logger.error(f"Error in cart_add: {str(e)}", exc_info=True)
+        
+        # Si es HTMX, retornar error parcial
+        if request.headers.get('HX-Request') == 'true':
+            return f'<div class="alert alert-danger">Error al agregar producto: {str(e)}</div>', 500
+        
         flash(f'Error al agregar producto: {str(e)}', 'danger')
         return redirect(url_for('sales.new_sale'))
 
@@ -198,18 +325,26 @@ def cart_update():
         # Handle empty qty
         if not qty_str:
             cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            return render_template('sales/_cart.html',
+            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+            iva_total = cart_total - subtotal
+            return render_template('sales/_cart_content.html',
                                  cart_items=cart_items,
-                                 cart_total=cart_total)
+                                 cart_total=cart_total,
+                                 subtotal=subtotal,
+                                 iva_total=iva_total)
         
         try:
             qty = Decimal(qty_str)
         except:
             flash('Cantidad inválida', 'warning')
             cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            return render_template('sales/_cart.html',
+            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+            iva_total = cart_total - subtotal
+            return render_template('sales/_cart_content.html',
                                  cart_items=cart_items,
-                                 cart_total=cart_total)
+                                 cart_total=cart_total,
+                                 subtotal=subtotal,
+                                 iva_total=iva_total)
         
         # If qty <= 0, remove item automatically
         if qty <= 0:
@@ -220,9 +355,13 @@ def cart_update():
                 session.modified = True
                 flash('Producto eliminado del carrito', 'info')
             cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            return render_template('sales/_cart.html',
+            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+            iva_total = cart_total - subtotal
+            return render_template('sales/_cart_content.html',
                                  cart_items=cart_items,
-                                 cart_total=cart_total)
+                                 cart_total=cart_total,
+                                 subtotal=subtotal,
+                                 iva_total=iva_total)
         
         # Get product and verify tenant
         product = db_session.query(Product).filter(
@@ -238,9 +377,13 @@ def cart_update():
         if qty > product.on_hand_qty:
             flash(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}', 'warning')
             cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            return render_template('sales/_cart.html',
+            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+            iva_total = cart_total - subtotal
+            return render_template('sales/_cart_content.html',
                                  cart_items=cart_items,
-                                 cart_total=cart_total)
+                                 cart_total=cart_total,
+                                 subtotal=subtotal,
+                                 iva_total=iva_total)
         
         # Update cart
         cart = get_cart()
@@ -251,17 +394,30 @@ def cart_update():
             save_cart(cart)
         
         # Return updated cart partial
+        current_app.logger.info(
+            f"[HTMX] cart_update: tenant_id={g.tenant_id}, "
+            f"product_id={product_id}, qty={qty}"
+        )
         cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        return render_template('sales/_cart.html',
+        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+        iva_total = cart_total - subtotal
+        return render_template('sales/_cart_content.html',
                              cart_items=cart_items,
-                             cart_total=cart_total)
+                             cart_total=cart_total,
+                             subtotal=subtotal,
+                             iva_total=iva_total)
         
     except Exception as e:
+        current_app.logger.error(f"Error in cart_update: {str(e)}", exc_info=True)
         flash(f'Error al actualizar carrito: {str(e)}', 'danger')
         cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        return render_template('sales/_cart.html',
+        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+        iva_total = cart_total - subtotal
+        return render_template('sales/_cart_content.html',
                              cart_items=cart_items,
-                             cart_total=cart_total)
+                             cart_total=cart_total,
+                             subtotal=subtotal,
+                             iva_total=iva_total)
 
 
 @sales_bp.route('/cart/remove', methods=['POST'])
@@ -284,17 +440,30 @@ def cart_remove():
             flash('Producto removido del carrito', 'info')
         
         # Return updated cart partial
+        current_app.logger.info(
+            f"[HTMX] cart_remove: tenant_id={g.tenant_id}, "
+            f"product_id={product_id}"
+        )
         cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        return render_template('sales/_cart.html',
+        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+        iva_total = cart_total - subtotal
+        return render_template('sales/_cart_content.html',
                              cart_items=cart_items,
-                             cart_total=cart_total)
+                             cart_total=cart_total,
+                             subtotal=subtotal,
+                             iva_total=iva_total)
         
     except Exception as e:
+        current_app.logger.error(f"Error in cart_remove: {str(e)}", exc_info=True)
         flash(f'Error al remover producto: {str(e)}', 'danger')
         cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        return render_template('sales/_cart.html',
+        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+        iva_total = cart_total - subtotal
+        return render_template('sales/_cart_content.html',
                              cart_items=cart_items,
-                             cart_total=cart_total)
+                             cart_total=cart_total,
+                             subtotal=subtotal,
+                             iva_total=iva_total)
 
 
 @sales_bp.route('/confirm/preview', methods=['GET'])
