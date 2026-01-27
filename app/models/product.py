@@ -40,3 +40,32 @@ class Product(Base):
             return self.stock.on_hand_qty
         return 0
 
+    @property
+    def image_url(self):
+        """
+        Get dynamic public URL for product image.
+        
+        Handles:
+        1. Legacy full URLs (starts with http) - returns as is
+        2. New relative paths (object keys) - joins with S3_PUBLIC_URL
+        3. No image - returns None
+        """
+        if not self.image_path:
+            return None
+            
+        # If it's already a full URL (legacy), return it
+        if self.image_path.startswith(('http://', 'https://')):
+            return self.image_path
+            
+        # It's a relative object key
+        from flask import current_app
+        public_url = current_app.config.get('S3_PUBLIC_URL', 'http://localhost:9000')
+        bucket = current_app.config.get('S3_BUCKET', 'uploads')
+        
+        # Ensure no double slashes when joining
+        base = public_url.rstrip('/')
+        collection = bucket.strip('/')
+        path = self.image_path.lstrip('/')
+        
+        return f"{base}/{collection}/{path}"
+

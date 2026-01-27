@@ -604,18 +604,11 @@ def delete_product(product_id):
             session.delete(product)
             session.commit()
             
-            # Delete image file if exists
+            # Delete image file from storage if exists
             if image_path:
                 try:
-                    image_full_path = os.path.join(
-                        current_app.root_path, 
-                        'static', 
-                        'uploads', 
-                        'products', 
-                        image_path
-                    )
-                    if os.path.exists(image_full_path):
-                        os.remove(image_full_path)
+                    # Use the helper function which handles S3/MinIO deletion
+                    delete_product_image(image_path)
                 except Exception as img_err:
                     current_app.logger.warning(f"Failed to delete image {image_path}: {img_err}")
             

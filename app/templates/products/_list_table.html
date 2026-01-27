@@ -60,8 +60,8 @@
                     style="{% if product.on_hand_qty == 0 %}background-color: var(--color-bg-muted); opacity: 0.7;{% endif %}">
                     <td>{{ product.id }}</td>
                     <td>
-                        {% if product.image_path %}
-                        <img src="{{ product.image_path }}" alt="{{ product.name }}"
+                        {% if product.image_url %}
+                        <img src="{{ product.image_url }}" alt="{{ product.name }}"
                             style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--color-border-light);">
                         {% else %}
                         <img src="{{ url_for('static', filename='img/no-image.svg') }}" alt="Sin imagen"

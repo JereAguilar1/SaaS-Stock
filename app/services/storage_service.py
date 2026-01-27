@@ -145,10 +145,12 @@ class StorageService:
                 ExtraArgs=extra_args
             )
             
-            # Generate public URL
-            url = self.get_public_url(object_name)
-            logger.info(f"[STORAGE] ✓ File uploaded: {url}")
-            return url
+            # Generate public URL (Legacy - now we return just the key)
+            # url = self.get_public_url(object_name)
+            
+            # Return object key for relative storage
+            logger.info(f"[STORAGE] ✓ File uploaded: {object_name}")
+            return object_name
             
         except ClientError as e:
             logger.exception(f"[STORAGE] ✗ Upload failed: {e}")
