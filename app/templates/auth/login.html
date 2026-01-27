@@ -278,10 +278,23 @@
             <h1 class="welcome-title">Bienvenido a SaaS Stock</h1>
             <p class="welcome-subtitle">Ingresa a tu cuenta para continuar</p>
 
-            <!-- Alerts -->
+            <!-- Logout message from query parameter -->
+            {% if request.args.get('logged_out') == '1' %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle-fill"></i>
+                <span>Sesión cerrada correctamente.</span>
+                <button type="button" class="alert-close" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- Other flash messages (excluding logout-related) -->
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             {% for category, message in messages %}
+            <!-- Skip logout message if it appears in flashes (shouldn't happen now) -->
+            {% if 'cerrada correctamente' not in message.lower() %}
             <div class="alert alert-{{ category }}">
                 <i class="bi bi-info-circle-fill"></i>
                 <span>{{ message }}</span>
@@ -289,6 +302,7 @@
                     <i class="bi bi-x"></i>
                 </button>
             </div>
+            {% endif %}
             {% endfor %}
             {% endif %}
             {% endwith %}

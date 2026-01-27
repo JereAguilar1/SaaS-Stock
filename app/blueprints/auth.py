@@ -282,10 +282,10 @@ def select_tenant():
 
 @auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():
-    """Logout endpoint - clear session and redirect to login."""
+    """Logout endpoint - clear session and redirect to login with query param."""
     session.clear()
-    flash('Sesión cerrada correctamente.', 'info')
-    return redirect(url_for('auth.login'))
+    # Use query parameter instead of flash to avoid persistence issues
+    return redirect(url_for('auth.login', logged_out='1'))
 
 
 @auth_bp.route('/')

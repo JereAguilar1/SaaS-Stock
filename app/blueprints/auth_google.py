@@ -144,6 +144,9 @@ def callback():
         
         # Start session
         session.clear()
+        # Clear any lingering flash messages from previous sessions
+        # This prevents logout messages or other flashes from appearing after OAuth
+        session.pop('_flashes', None)
         session['user_id'] = user.id
         session.permanent = True
         
