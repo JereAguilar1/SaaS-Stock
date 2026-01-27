@@ -1,5 +1,5 @@
-"""Service for fetching top selling products - Multi-Tenant."""
 from decimal import Decimal
+from datetime import datetime, timedelta
 from sqlalchemy import func, desc
 from app.models import Product, Sale, SaleLine, ProductStock
 
@@ -24,6 +24,9 @@ def get_top_selling_products(session, tenant_id: int, limit=10):
         - image_path
     """
     try:
+        # Calculate date threshold in Python (safer than SQL interval casting)
+        cutoff_date = datetime.now() - timedelta(days=90)
+        
         # Query for top selling products (tenant-scoped)
         query = (
             session.query(
@@ -41,6 +44,7 @@ def get_top_selling_products(session, tenant_id: int, limit=10):
             .filter(Sale.status == 'CONFIRMED')  # Only confirmed sales
             .filter(Product.tenant_id == tenant_id)  # CRITICAL: tenant filter
             .filter(Product.active == True)  # Only active products
+            .filter(Sale.datetime >= cutoff_date) # Last 90 days
             .group_by(
                 Product.id,
                 Product.name,
@@ -67,9 +71,10 @@ def get_top_selling_products(session, tenant_id: int, limit=10):
                 'image_path': row.image_path
             })
         
-        return top_products
+        return top_products, False
         
     except Exception as e:
         # Return empty list on error
-        print(f"Error getting top selling products: {e}")
-        return []
+        from flask import current_app
+        current_app.logger.error(f"Error getting top selling products: {e}", exc_info=True)
+        return [], True

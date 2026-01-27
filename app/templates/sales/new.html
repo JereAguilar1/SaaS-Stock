@@ -17,7 +17,7 @@
         </div>
 
         <!-- Cart Content (HTMX Target) -->
-        <div id="cart-container" class="cart-body">
+        <div class="cart-body">
             {% include 'sales/_cart.html' %}
         </div>
     </div>
@@ -45,271 +45,259 @@
                 </div>
             </div>
 
-            <!-- Client & Invoice Type Inputs (Visual/functional for now) -->
-            <div class="client-info-row">
-                <div class="form-group flex-grow-1">
-                    <label class="form-label-sm text-muted mb-1">Cliente</label>
-                    <input type="text" class="form-control form-control-sm" id="global_customer_name"
-                        placeholder="Nombre del cliente">
-                </div>
-                <div class="form-group" style="width: 150px;">
-                    <label class="form-label-sm text-muted mb-1">Tipo de Factura</label>
-                    <select class="form-select form-select-sm" id="global_invoice_type">
-                        <option value="B">Factura B</option>
-                        <option value="A">Factura A</option>
-                        <option value="C">Factura C</option>
-                    </select>
-                </div>
-            </div>
-        </div>
 
-        <!-- Product Grid -->
-        <div class="catalog-grid-container">
-            <div id="sales-product-results">
-                {% include 'sales/_product_results.html' %}
+            <!-- Top Products Suggestions -->
+            <div id="top-products-section">
+                {% include 'sales/_top_products.html' %}
+            </div>
+
+            <!-- Product Grid -->
+            <div class="catalog-grid-container">
+                <div id="sales-product-results">
+                    {% include 'sales/_product_results.html' %}
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Modal Container -->
-<div id="modal-container"></div>
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
 
-<script>
-    function addItemToCart(productId) {
-        const form = document.getElementById('form-add-' + productId);
-        if (form) {
-            htmx.trigger(form, 'submit');
-        }
-    }
-
-    // Sync Client Inputs to hidden fields in cart (if needed) or just keep them for "Confirm" step
-    // We will listen to changes and update potentially hidden fields forms if we implement "Save Quote" logic
-    // For now, these are just UI inputs as requested.
-</script>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    /* Full Page Layout Reset for POS */
-    .app-content {
-        padding: 0 !important;
-        /* Remove default padding to maximize space */
-        height: calc(100vh - var(--topbar-height));
-        overflow: hidden;
-    }
-
-    .pos-container {
-        display: grid;
-        grid-template-columns: 380px 1fr;
-        height: 100%;
-        background-color: #f3f4f6;
-    }
-
-    /* --- LEFT CART PANEL --- */
-    .pos-cart-panel {
-        background-color: #ffffff;
-        border-right: 1px solid #e5e7eb;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        z-index: 10;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.03);
-    }
-
-    .cart-header {
-        padding: 1.25rem;
-        border-bottom: 1px solid #f3f4f6;
-        color: var(--color-primary);
-    }
-
-    .cart-body {
-        flex: 1;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* --- RIGHT CATALOG PANEL --- */
-    .pos-catalog-panel {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        padding: 1.5rem;
-        overflow: hidden;
-    }
-
-    .catalog-topbar {
-        margin-bottom: 1.5rem;
-    }
-
-    .search-container {
-        margin-bottom: 1rem;
-    }
-
-    .search-container .form-control {
-        padding: 0.75rem;
-        background-color: white;
-        border-color: #e5e7eb;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .search-container .input-group-text {
-        border-color: #e5e7eb;
-    }
-
-    .client-info-row {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .client-info-row .form-control,
-    .client-info-row .form-select {
-        background-color: white;
-        border-color: #e5e7eb;
-        padding: 0.5rem 0.75rem;
-    }
-
-    .catalog-grid-container {
-        flex: 1;
-        overflow-y: auto;
-        padding-bottom: 2rem;
-        /* Custom scrollbar */
-        scrollbar-width: thin;
-        scrollbar-color: #d1d5db transparent;
-    }
-
-    .product-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1rem;
-    }
-
-    /* --- PRODUCT CARD --- */
-    .product-card {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.75rem;
-        padding: 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        position: relative;
-    }
-
-    .product-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        border-color: var(--color-primary-light);
-    }
-
-    .product-card.selected {
-        border: 1.5px solid var(--color-primary);
-        background-color: #eff6ff;
-    }
-
-    .selected-badge {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-        background-color: var(--color-primary);
-        color: white;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.75rem;
-        font-weight: bold;
-        z-index: 2;
-    }
-
-    .product-image-area {
-        height: 100px;
-        background-color: #f9fafb;
-        border-radius: 0.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 1rem;
-        overflow: hidden;
-    }
-
-    .product-image-area img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .product-image-area i {
-        font-size: 2rem;
-        color: #d1d5db;
-    }
-
-    .product-title {
-        font-size: 0.9rem;
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-        line-height: 1.3;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-
-    .product-sku {
-        font-size: 0.75rem;
-        color: #9ca3af;
-        margin-bottom: 0.5rem;
-    }
-
-    .product-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: auto;
-    }
-
-    .product-price {
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--color-primary);
-    }
-
-    .product-stock {
-        font-size: 0.75rem;
-    }
-
-    /* --- RESPONSIVE POS --- */
-    @media (max-width: 900px) {
-        .pos-container {
-            grid-template-columns: 1fr;
-            grid-template-rows: 1fr auto;
-            /* Stack: Catalog top, Cart bottom or reversed? Usually Cart hidden or tabbed. */
-            /* For simplicity in this resizing task: stack them */
-            display: block;
-            overflow: auto;
+    <script>
+        function addItemToCart(productId) {
+            const form = document.getElementById('form-add-' + productId);
+            if (form) {
+                htmx.trigger(form, 'submit');
+            }
         }
 
-        .pos-cart-panel {
-            height: auto;
-            max-height: 400px;
-            border-right: none;
-            border-bottom: 1px solid #e5e7eb;
-            order: 2;
-            /* Cart below on mobile? Or maybe Tab? */
-        }
+        // Sync Client Inputs to hidden fields in cart (if needed) or just keep them for "Confirm" step
+        // We will listen to changes and update potentially hidden fields forms if we implement "Save Quote" logic
+        // For now, these are just UI inputs as requested.
+    </script>
+    {% endblock %}
 
-        .pos-catalog-panel {
-            height: auto;
-            overflow: visible;
-            order: 1;
-        }
-
+    {% block extra_css %}
+    <style>
+        /* Full Page Layout Reset for POS */
         .app-content {
-            height: auto;
-            overflow: auto;
+            padding: 0 !important;
+            /* Remove default padding to maximize space */
+            height: calc(100vh - var(--topbar-height));
+            overflow: hidden;
         }
-    }
-</style>
-{% endblock %}
+
+        .pos-container {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            height: 100%;
+            background-color: #f3f4f6;
+        }
+
+        /* --- LEFT CART PANEL --- */
+        .pos-cart-panel {
+            background-color: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 10;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .cart-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid #f3f4f6;
+            color: var(--color-primary);
+        }
+
+        .cart-body {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- RIGHT CATALOG PANEL --- */
+        .pos-catalog-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+
+        .catalog-topbar {
+            margin-bottom: 1.5rem;
+        }
+
+        .search-container {
+            margin-bottom: 1rem;
+        }
+
+        .search-container .form-control {
+            padding: 0.75rem;
+            background-color: white;
+            border-color: #e5e7eb;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-container .input-group-text {
+            border-color: #e5e7eb;
+        }
+
+        .client-info-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .client-info-row .form-control,
+        .client-info-row .form-select {
+            background-color: white;
+            border-color: #e5e7eb;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .catalog-grid-container {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 2rem;
+            /* Custom scrollbar */
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        /* --- PRODUCT CARD --- */
+        .product-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: var(--color-primary-light);
+        }
+
+        .product-card.selected {
+            border: 1.5px solid var(--color-primary);
+            background-color: #eff6ff;
+        }
+
+        .selected-badge {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: var(--color-primary);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            z-index: 2;
+        }
+
+        .product-image-area {
+            height: 100px;
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .product-image-area img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .product-image-area i {
+            font-size: 2rem;
+            color: #d1d5db;
+        }
+
+        .product-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .product-sku {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .product-price {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        .product-stock {
+            font-size: 0.75rem;
+        }
+
+        /* --- RESPONSIVE POS --- */
+        @media (max-width: 900px) {
+            .pos-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+                /* Stack: Catalog top, Cart bottom or reversed? Usually Cart hidden or tabbed. */
+                /* For simplicity in this resizing task: stack them */
+                display: block;
+                overflow: auto;
+            }
+
+            .pos-cart-panel {
+                height: auto;
+                max-height: 400px;
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+                order: 2;
+                /* Cart below on mobile? Or maybe Tab? */
+            }
+
+            .pos-catalog-panel {
+                height: auto;
+                overflow: visible;
+                order: 1;
+            }
+
+            .app-content {
+                height: auto;
+                overflow: auto;
+            }
+        }
+    </style>
+    {% endblock %}

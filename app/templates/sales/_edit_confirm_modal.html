@@ -192,8 +192,9 @@
                 </div>
 
                 <!-- Financial Impact -->
-                <div class="card-custom"
-                    style="border-left: 4px solid {% if diff > 0 %}var(--color-success){% elif diff < 0 %}var(--color-danger){% else %}var(--color-gray-500){% endif %};">
+                {% set border_color = 'var(--color-success)' if diff > 0 else 'var(--color-danger)' if diff < 0
+                    else 'var(--color-gray-500)' %} <div class="card-custom"
+                    style="border-left: 4px solid {{ border_color }};">
                     <div class="card-header-custom" style="background-color: transparent;">
                         <h6 class="card-title">
                             <i class="bi bi-cash-coin"></i> Impacto Financiero
@@ -232,33 +233,32 @@
                             </div>
                         </dl>
                     </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="modal-footer"
-                style="padding: var(--spacing-4); border-top: 1px solid var(--color-border-light); background-color: var(--color-bg-muted);">
-                <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i> Cancelar
-                </button>
-
-                <!-- Confirm Form -->
-                <form method="POST" action="{{ url_for('sales.edit_sale_save', sale_id=sale_id) }}"
-                    id="finalEditConfirmForm">
-                    {% for line in new_lines %}
-                    <input type="hidden" name="lines[{{ loop.index0 }}][product_id]" value="{{ line.product_id }}">
-                    <input type="hidden" name="lines[{{ loop.index0 }}][qty]" value="{{ line.qty }}">
-                    {% endfor %}
-
-                    <button type="submit" class="btn-custom btn-warning-custom"
-                        style="{% if changes.stock_issues %}opacity: 0.5; cursor: not-allowed;{% endif %}" {% if
-                        changes.stock_issues %}disabled{% endif %} id="confirmEditBtn">
-                        <i class="bi bi-check-circle"></i> Confirmar Corrección
-                    </button>
-                </form>
             </div>
         </div>
+
+        <!-- Footer -->
+        <div class="modal-footer"
+            style="padding: var(--spacing-4); border-top: 1px solid var(--color-border-light); background-color: var(--color-bg-muted);">
+            <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+
+            <!-- Confirm Form -->
+            <form method="POST" action="{{ url_for('sales.edit_sale_save', sale_id=sale_id) }}"
+                id="finalEditConfirmForm">
+                {% for line in new_lines %}
+                <input type="hidden" name="lines[{{ loop.index0 }}][product_id]" value="{{ line.product_id }}">
+                <input type="hidden" name="lines[{{ loop.index0 }}][qty]" value="{{ line.qty }}">
+                {% endfor %}
+
+                <button type="submit" class="btn-custom btn-warning-custom" {% if changes.stock_issues %}disabled{%
+                    endif %} id="confirmEditBtn">
+                    <i class="bi bi-check-circle"></i> Confirmar Corrección
+                </button>
+            </form>
+        </div>
     </div>
+</div>
 </div>
 
 <!-- Auto-open modal script -->

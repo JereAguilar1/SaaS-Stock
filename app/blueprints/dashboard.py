@@ -3,7 +3,7 @@ Dashboard blueprint for multi-tenant SaaS.
 Shows key metrics, alerts, and recent activity for the current tenant.
 """
 
-from flask import Blueprint, render_template, g
+from flask import Blueprint, render_template, g, current_app
 from app.database import get_session
 from app.middleware import require_login, require_tenant
 from app.services.dashboard_service import get_dashboard_data, get_today_datetime_range
@@ -48,8 +48,8 @@ def index():
         )
         
     except Exception as e:
-        # Log error but don't crash - show empty dashboard
-        print(f"Error loading dashboard for tenant {tenant_id}: {e}")
+        # Log error with stack trace for debugging
+        current_app.logger.error(f"Error loading dashboard for tenant {tenant_id}: {e}", exc_info=True)
         return render_template(
             'dashboard/index.html',
             income_today=0,

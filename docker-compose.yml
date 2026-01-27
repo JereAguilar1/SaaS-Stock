@@ -76,6 +76,7 @@ services:
     ports:
       - "5000:5000"
     environment:
+      - HOME=/tmp
       - DB_HOST=${DB_HOST:-db}
       - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${DB_NAME:-stock}

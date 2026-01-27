@@ -172,7 +172,7 @@
                                     <strong style="color: var(--color-success);">$ {{ sale.total|money_ar }}</strong>
                                 </td>
                                 <td style="text-align: center;">
-                                    <a href="{{ url_for('sales.detail_sale', id=sale.id) }}"
+                                    <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}"
                                         class="btn-custom btn-secondary-custom btn-sm" title="Ver detalle">
                                         <i class="bi bi-eye"></i>
                                     </a>

@@ -19,7 +19,7 @@
     {% endif %}
     {% endfor %}
 
-    <div class="product-card {% if is_in_cart %}selected{% endif %}" onclick="addItemToCart({{ product.id }})">
+    <div class="product-card {% if is_in_cart %}selected{% endif %}" onclick="addItemToCart('{{ product.id }}')">
 
         {% if is_in_cart %}
         <div class="selected-badge">{{ current_qty|int }}</div>

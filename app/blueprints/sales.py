@@ -14,15 +14,42 @@ sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
 
 
 def get_cart():
-    """Get cart from session."""
-    if 'cart' not in session:
-        session['cart'] = {'items': {}}
-    return session['cart']
+    """Get cart from session for current tenant."""
+    if 'cart_by_tenant' not in session:
+        session['cart_by_tenant'] = {}
+    
+    tenant_id = str(g.tenant_id)
+    if tenant_id not in session['cart_by_tenant']:
+        session['cart_by_tenant'][tenant_id] = {'items': {}}
+        session.modified = True
+        
+    return session['cart_by_tenant'][tenant_id]
 
+
+def _serialize_value(val):
+    """Helper to ensure values are JSON serializable for session."""
+    if isinstance(val, Decimal):
+        return str(val)
+    if isinstance(val, dict):
+        return {k: _serialize_value(v) for k, v in val.items()}
+    return val
 
 def save_cart(cart):
-    """Save cart to session."""
-    session['cart'] = cart
+    """Save cart to session for current tenant."""
+    if 'cart_by_tenant' not in session:
+        session['cart_by_tenant'] = {}
+        
+    tenant_id = str(g.tenant_id)
+    
+    # Deep copy and serialize to avoid storing Decimals in session
+    serialized_cart = {
+        'items': {
+            k: _serialize_value(v) 
+            for k, v in cart['items'].items()
+        }
+    }
+    
+    session['cart_by_tenant'][tenant_id] = serialized_cart
     session.modified = True
 
 
@@ -86,18 +113,26 @@ def new_sale():
                        .limit(20)
                        .all())
         
-        # Get cart items with details (tenant-scoped)
         cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
+        current_app.logger.info(f"[POS DIAGNOSTIC] Rehydrated Cart: {len(cart_items)} items, Total: {cart_total}")
+        
+        # Calculate totals for initial render (Fix for 'subtotal undefined' error)
+        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
+        iva_total = cart_total - subtotal
         
         # Get top selling products (tenant-scoped)
-        top_products = get_top_selling_products(db_session, g.tenant_id, limit=10)
+        top_products, top_products_error = get_top_selling_products(db_session, g.tenant_id, limit=10)
+        current_app.logger.info(f"[POS DIAGNOSTIC] Top Products found: {len(top_products)}, Error: {top_products_error}")
         
         return render_template('sales/new.html',
                              products=products,
                              search_query=search_query,
                              cart_items=cart_items,
                              cart_total=cart_total,
-                             top_products=top_products)
+                             subtotal=subtotal,
+                             iva_total=iva_total,
+                             top_products=top_products,
+                             top_products_error=top_products_error)
         
     except Exception as e:
         flash(f'Error al cargar POS: {str(e)}', 'danger')
@@ -106,7 +141,8 @@ def new_sale():
                              search_query='',
                              cart_items=[],
                              cart_total=Decimal('0.00'),
-                             top_products=[])
+                             top_products=[],
+                             top_products_error=False)
 
 
 @sales_bp.route('/products/search', methods=['GET'])

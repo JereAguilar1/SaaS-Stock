@@ -3,7 +3,8 @@ Dashboard service for multi-tenant SaaS.
 Provides aggregated metrics and data for the dashboard view.
 """
 
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta, timezone
+from decimal import Decimal
 from sqlalchemy import func, case, and_, or_
 from app.models import (
     FinanceLedger, Sale, Product, ProductStock, 
@@ -57,8 +58,9 @@ def get_dashboard_data(session, tenant_id: int, start_dt: datetime, end_dt: date
         FinanceLedger.datetime < end_dt
     ).first()
     
-    income_today = float(financial_data.income_today) if financial_data else 0
-    expense_today = float(financial_data.expense_today) if financial_data else 0
+    # Safe conversion to Decimal (handle None)
+    income_today = Decimal(str(financial_data.income_today)) if financial_data and financial_data.income_today else Decimal('0')
+    expense_today = Decimal(str(financial_data.expense_today)) if financial_data and financial_data.expense_today else Decimal('0')
     balance_today = income_today - expense_today
     
     # 2. Get Product Count (only active products)
@@ -94,18 +96,25 @@ def get_dashboard_data(session, tenant_id: int, start_dt: datetime, end_dt: date
     ).limit(10).all()
     
     # Convert to list of dicts
-    low_stock_list = [
-        {
-            'id': row.id,
-            'name': row.name,
-            'on_hand_qty': float(row.on_hand_qty),
-            'min_stock_qty': float(row.min_stock_qty),
-            'category_name': row.category_name or 'Sin categoría',
-            'uom_symbol': row.uom_symbol or 'un',
-            'percentage': (float(row.on_hand_qty) / float(row.min_stock_qty) * 100) if row.min_stock_qty > 0 else 0
-        }
-        for row in low_stock_products
-    ]
+    # Convert to list of dicts with safe type conversion
+    low_stock_list = []
+    for row in low_stock_products:
+        try:
+            current = float(row.on_hand_qty or 0)
+            minimum = float(row.min_stock_qty or 0)
+            percentage = (current / minimum * 100) if minimum > 0 else 0
+            
+            low_stock_list.append({
+                'id': row.id,
+                'name': row.name,
+                'on_hand_qty': current,
+                'min_stock_qty': minimum,
+                'category_name': row.category_name or 'Sin categoría',
+                'uom_symbol': row.uom_symbol or 'un',
+                'percentage': percentage
+            })
+        except Exception:
+            continue
     
     # 4. Get Recent Sales (last 10 confirmed sales)
     recent_sales = session.query(Sale).filter(
@@ -133,11 +142,7 @@ def get_today_datetime_range():
         tuple: (start_dt, end_dt) where start is 00:00:00 and end is 23:59:59.999999
     """
     today = date.today()
-    start_dt = datetime.combine(today, time.min)  # 00:00:00
-    end_dt = datetime.combine(today, time.max)    # 23:59:59.999999
-    
-    # For SQL queries, we use < end_dt (exclusive), so we need tomorrow 00:00:00
-    from datetime import timedelta
+    start_dt = datetime.combine(today, time.min)
     end_dt = start_dt + timedelta(days=1)
     
     return start_dt, end_dt
