@@ -94,7 +94,7 @@
                             style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-2);">
                             <div style="flex: 1;">
                                 <h6 style="margin: 0; margin-bottom: var(--spacing-1);">
-                                    <a href="{{ url_for('catalog.edit_product', id=product.id) }}"
+                                    <a href="{{ url_for('catalog.edit_product', product_id=product.id) }}"
                                         style="color: var(--color-text-primary); text-decoration: none;">
                                         {{ product.name }}
                                     </a>
