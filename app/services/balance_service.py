@@ -110,8 +110,8 @@ def get_balance_series(view: str, start: date, end: date, session, tenant_id: in
     series = []
     for row in results:
         period = row.period
-        income = Decimal(str(row.income)) if row.income else Decimal('0.00')
-        expense = Decimal(str(row.expense)) if row.expense else Decimal('0.00')
+        income = Decimal(str(row.income)) if row.income is not None else Decimal('0.00')
+        expense = Decimal(str(row.expense)) if row.expense is not None else Decimal('0.00')
         net = income - expense
         
         # Format period label based on granularity
@@ -188,8 +188,18 @@ def get_totals(series):
     total_expense = Decimal('0.00')
     
     for item in series:
-        total_income += item['income']
-        total_expense += item['expense']
+        # Asegurar conversión a Decimal para evitar mezcla de tipos
+        income = item['income']
+        expense = item['expense']
+        
+        # Convertir a Decimal si no lo es (por ejemplo, si viene de caché)
+        if not isinstance(income, Decimal):
+            income = Decimal(str(income)) if income else Decimal('0.00')
+        if not isinstance(expense, Decimal):
+            expense = Decimal(str(expense)) if expense else Decimal('0.00')
+        
+        total_income += income
+        total_expense += expense
     
     total_net = total_income - total_expense
     
