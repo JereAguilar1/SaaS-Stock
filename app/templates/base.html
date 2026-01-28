@@ -82,19 +82,25 @@
                         </ul>
                     </li>
 
+                    <!-- MVP: Funcionalidad de Presupuestos temporalmente oculta -->
+                    <!--
                     <li class="sidebar-nav-item">
                         <a class="sidebar-nav-link" href="{{ url_for('quotes.list_quotes') }}">
                             <i class="bi bi-file-earmark-text"></i>
                             <span>Presupuestos</span>
                         </a>
                     </li>
+                    -->
 
+                    <!-- MVP: Funcionalidad de Productos Faltantes temporalmente oculta -->
+                    <!--
                     <li class="sidebar-nav-item">
                         <a class="sidebar-nav-link" href="{{ url_for('missing_products.list_missing_products') }}">
                             <i class="bi bi-exclamation-triangle"></i>
                             <span>Productos Faltantes</span>
                         </a>
                     </li>
+                    -->
 
                     <!-- Purchases Dropdown -->
                     <li class="sidebar-dropdown">
@@ -181,6 +187,8 @@
                         </ul>
                     </li>
 
+                    <!-- MVP: Funcionalidad de Usuarios temporalmente oculta -->
+                    <!--
                     {% if g.user_role == 'OWNER' %}
                     <li class="sidebar-nav-item">
                         <a class="sidebar-nav-link" href="{{ url_for('users.list_users') }}">
@@ -189,6 +197,7 @@
                         </a>
                     </li>
                     {% endif %}
+                    -->
                 </ul>
             </nav>
 
