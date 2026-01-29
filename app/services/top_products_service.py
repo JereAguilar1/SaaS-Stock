@@ -14,14 +14,8 @@ def get_top_selling_products(session, tenant_id: int, limit=10):
         limit: Maximum number of results (default 10)
     
     Returns:
-        list of dicts with:
-        - product_id
-        - name
-        - sale_price
-        - stock (on_hand_qty)
-        - total_sold
-        - has_stock (bool)
-        - image_path
+        list of objects (DTOs) compatible with Product model interface:
+        - id, name, sale_price, on_hand_qty, image_url, sku, barcode
     """
     try:
         # Calculate date threshold in Python (safer than SQL interval casting)
@@ -34,6 +28,8 @@ def get_top_selling_products(session, tenant_id: int, limit=10):
                 Product.name.label('name'),
                 Product.sale_price.label('sale_price'),
                 Product.image_path.label('image_path'),
+                Product.sku.label('sku'),
+                Product.barcode.label('barcode'),
                 func.coalesce(ProductStock.on_hand_qty, Decimal('0')).label('stock'),
                 func.sum(SaleLine.qty).label('total_sold')
             )
@@ -50,6 +46,8 @@ def get_top_selling_products(session, tenant_id: int, limit=10):
                 Product.name,
                 Product.sale_price,
                 Product.image_path,
+                Product.sku,
+                Product.barcode,
                 ProductStock.on_hand_qty
             )
             .order_by(desc('total_sold'))
@@ -58,18 +56,38 @@ def get_top_selling_products(session, tenant_id: int, limit=10):
         
         results = query.all()
         
-        # Convert to list of dicts
-        top_products = []
-        for row in results:
-            top_products.append({
-                'product_id': row.product_id,
-                'name': row.name,
-                'sale_price': row.sale_price,
-                'stock': row.stock if row.stock is not None else Decimal('0'),
-                'total_sold': row.total_sold if row.total_sold is not None else Decimal('0'),
-                'has_stock': (row.stock if row.stock is not None else Decimal('0')) > 0,
-                'image_path': row.image_path
-            })
+        # Helper class to mimic Product model interface for templates
+        class ProductDTO:
+            def __init__(self, row):
+                self.id = row.product_id
+                self.name = row.name
+                self.sale_price = row.sale_price
+                self.sku = row.sku
+                self.barcode = row.barcode
+                self.on_hand_qty = row.stock if row.stock is not None else Decimal('0')
+                self.image_path = row.image_path
+                
+            @property
+            def image_url(self):
+                if not self.image_path:
+                    return None
+                
+                # Logic copied from Product model
+                if self.image_path.startswith(('http://', 'https://')):
+                    return self.image_path
+                    
+                from flask import current_app
+                public_url = current_app.config.get('S3_PUBLIC_URL', 'http://localhost:9000')
+                bucket = current_app.config.get('S3_BUCKET', 'uploads')
+                
+                base = public_url.rstrip('/')
+                collection = bucket.strip('/')
+                path = self.image_path.lstrip('/')
+                
+                return f"{base}/{collection}/{path}"
+
+        # Convert to list of DTOs
+        top_products = [ProductDTO(row) for row in results]
         
         return top_products, False
         

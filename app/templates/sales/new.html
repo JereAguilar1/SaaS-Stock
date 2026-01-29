@@ -6,19 +6,23 @@
 
 {% block topbar_actions %}{% endblock %}
 
+
 {% block content %}
 <!-- Main POS Container -->
 <div class="pos-container">
+    <!-- Load POS Logic System -->
+    <script src="{{ url_for('static', filename='js/pos.js') }}"></script>
 
-    <!-- LEFT PANEL: CART -->
+
+    <!-- LEFT PANEL: CART (Draft-based) -->
     <div class="pos-cart-panel">
         <div class="cart-header">
             <h5 class="m-0"><i class="bi bi-cart3 me-2"></i> Nueva Venta</h5>
         </div>
 
-        <!-- Cart Content (HTMX Target) -->
-        <div class="cart-body">
-            {% include 'sales/_cart.html' %}
+        <!-- Cart Content (HTMX Target) - Now using draft -->
+        <div class="cart-body" id="cart-container">
+            {% include 'sales/_cart_content_draft.html' %}
         </div>
     </div>
 
@@ -64,16 +68,61 @@
     <div id="modal-container"></div>
 
     <script>
-        function addItemToCart(productId) {
-            const form = document.getElementById('form-add-' + productId);
-            if (form) {
-                htmx.trigger(form, 'submit');
+        // Enhanced search with Enter key support for barcodes
+        function initializeSearch() {
+            const searchInput = document.getElementById('sales-search-input');
+
+            // Guard: exit if element doesn't exist
+            if (!searchInput) {
+                // Solo warn si estamos en debug, para no llenar la consola en prod
+                // console.warn('POS search input not found, skipping initialization');
+                return;
+            }
+
+            // Remove existing listener to avoid duplicates
+            searchInput.removeEventListener('keyup', handleSearchKeyup);
+            searchInput.addEventListener('keyup', handleSearchKeyup);
+        }
+
+        function handleSearchKeyup(e) {
+            if (e.key === 'Enter') {
+                const query = this.value.trim();
+
+                if (query) {
+                    // Check if there's an exact barcode match in results
+                    const exactMatch = document.querySelector('[data-exact-barcode="true"]');
+
+                    if (exactMatch) {
+                        // Auto-add product with exact barcode match
+                        const productId = exactMatch.dataset.productId;
+                        addProductToCart(productId);
+
+                        // Clear search
+                        this.value = '';
+                        htmx.trigger('#sales-search-input', 'search');
+                    }
+                }
             }
         }
 
-        // Sync Client Inputs to hidden fields in cart (if needed) or just keep them for "Confirm" step
-        // We will listen to changes and update potentially hidden fields forms if we implement "Save Quote" logic
-        // For now, these are just UI inputs as requested.
+        function addProductToCart(productId) {
+            // Create form and submit via HTMX
+            htmx.ajax('POST', '{{ url_for("sales.draft_add") }}', {
+                target: '#cart-container',
+                swap: 'innerHTML',
+                values: { product_id: productId, qty: 1 }
+            });
+        }
+
+        function addItemToCart(productId) {
+            addProductToCart(productId);
+        }
+
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', initializeSearch);
+
+        // Re-initialize if HTMX swaps content
+        document.body.addEventListener('htmx:load', initializeSearch);
     </script>
     {% endblock %}
 

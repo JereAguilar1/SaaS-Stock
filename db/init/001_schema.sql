@@ -214,8 +214,12 @@ CREATE TABLE IF NOT EXISTS sale (
   datetime    TIMESTAMPTZ NOT NULL DEFAULT now(),
   total       NUMERIC(12,2) NOT NULL CHECK (total >= 0),
   status      sale_status NOT NULL DEFAULT 'CONFIRMED',
+  idempotency_key VARCHAR(64) UNIQUE,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS idx_sale_idempotency ON sale(idempotency_key) WHERE idempotency_key IS NOT NULL;
+
 
 CREATE INDEX IF NOT EXISTS idx_sale_tenant_id ON sale(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sale_tenant_datetime ON sale(tenant_id, datetime DESC);
@@ -235,6 +239,56 @@ CREATE TABLE IF NOT EXISTS sale_line (
 
 CREATE INDEX IF NOT EXISTS idx_sale_line_sale ON sale_line(sale_id);
 CREATE INDEX IF NOT EXISTS idx_sale_line_product ON sale_line(product_id);
+
+-- Mixed payment methods per sale
+CREATE TABLE IF NOT EXISTS sale_payment (
+    id BIGSERIAL PRIMARY KEY,
+    sale_id BIGINT NOT NULL REFERENCES sale(id) ON DELETE CASCADE,
+    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('CASH', 'TRANSFER', 'CARD')),
+    amount NUMERIC(10, 2) NOT NULL CHECK (amount > 0),
+    
+    -- Only for CASH payments
+    amount_received NUMERIC(10, 2) CHECK (amount_received IS NULL OR amount_received >= amount),
+    change_amount NUMERIC(10, 2) CHECK (change_amount IS NULL OR change_amount >= 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sale_payment_sale ON sale_payment(sale_id);
+
+-- Persistent cart for POS
+CREATE TABLE IF NOT EXISTS sale_draft (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ,
+    
+    -- Global discount (applied to entire cart)
+    discount_type VARCHAR(10) CHECK (discount_type IN ('PERCENT', 'AMOUNT') OR discount_type IS NULL),
+    discount_value NUMERIC(10, 2) DEFAULT 0 CHECK (discount_value >= 0),
+    
+    UNIQUE(tenant_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sale_draft_tenant_user ON sale_draft(tenant_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_sale_draft_user ON sale_draft(user_id);
+
+-- Individual items in the persistent cart
+CREATE TABLE IF NOT EXISTS sale_draft_line (
+    id BIGSERIAL PRIMARY KEY,
+    draft_id BIGINT NOT NULL REFERENCES sale_draft(id) ON DELETE CASCADE,
+    product_id BIGINT NOT NULL REFERENCES product(id) ON DELETE CASCADE,
+    qty NUMERIC(10, 2) NOT NULL CHECK (qty > 0),
+    
+    -- Item-level discount (applied to this line only)
+    discount_type VARCHAR(10) CHECK (discount_type IN ('PERCENT', 'AMOUNT') OR discount_type IS NULL),
+    discount_value NUMERIC(10, 2) DEFAULT 0 CHECK (discount_value >= 0),
+    
+    UNIQUE(draft_id, product_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sale_draft_line_draft ON sale_draft_line(draft_id);
+CREATE INDEX IF NOT EXISTS idx_sale_draft_line_product ON sale_draft_line(product_id);
+
 
 -- =========================
 -- SUPPLIERS + INVOICES (MULTI-TENANT)
@@ -347,7 +401,7 @@ CREATE TABLE IF NOT EXISTS finance_ledger (
   notes          TEXT,
   payment_method VARCHAR(20) NOT NULL DEFAULT 'CASH',
   
-  CONSTRAINT chk_finance_ledger_payment_method CHECK (payment_method IN ('CASH', 'TRANSFER'))
+  CONSTRAINT chk_finance_ledger_payment_method CHECK (payment_method IN ('CASH', 'TRANSFER', 'CARD'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_finance_ledger_payment_method ON finance_ledger(payment_method);

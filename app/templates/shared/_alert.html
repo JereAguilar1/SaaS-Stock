@@ -1,0 +1,16 @@
+<!-- Shared Alert Partial -->
+<div class="alert alert-{{ type|default('info') }} alert-dismissible fade show m-3" role="alert">
+    {% if type == 'danger' %}
+    <i class="bi bi-exclamation-octagon-fill me-2"></i>
+    {% elif type == 'warning' %}
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    {% elif type == 'success' %}
+    <i class="bi bi-check-circle-fill me-2"></i>
+    {% else %}
+    <i class="bi bi-info-circle-fill me-2"></i>
+    {% endif %}
+
+    {{ message }}
+
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>

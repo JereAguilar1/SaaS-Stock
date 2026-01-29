@@ -1,62 +1,56 @@
-<!-- Cart Content (usado por HTMX) - SIN wrapper container -->
+<!-- Cart Content with Draft Support (HTMX target) -->
+{% if error_message %}
+<div class="alert alert-warning alert-dismissible fade show m-3" role="alert">
+    <i class="bi bi-exclamation-circle me-2"></i> {{ error_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
 
 <!-- Cart Items List (Scrollable) -->
 <div style="flex: 1; overflow-y: auto; padding: 0 1.25rem;">
-    {% if cart_items %}
-    {% for item in cart_items %}
+    {% if totals and totals['lines'] %}
+    {% for line in totals['lines'] %}
     <div class="cart-item">
         <div class="cart-item-header">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <!-- Thumbnail -->
-                <div
-                    style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 4px; overflow: hidden; border: 1px solid #e5e7eb; background: #f9fafb; display: flex; align-items: center; justify-content: center;">
-                    {% if item.product.image_url %}
-                    <img src="{{ item.product.image_url }}" alt="{{ item.product.name }}"
-                        style="width: 100%; height: 100%; object-fit: cover;">
-                    {% else %}
-                    <i class="bi bi-image text-muted" style="font-size: 0.9rem;"></i>
-                    {% endif %}
-                </div>
-                <span class="cart-item-title">{{ item.product.name }}</span>
+                <span class="cart-item-title">{{ line.product_name }}</span>
             </div>
 
-            <form hx-post="{{ url_for('sales.cart_remove') }}" hx-target="#cart-container" hx-swap="innerHTML">
-                <input type="hidden" name="product_id" value="{{ item.product_id }}">
+            <form hx-post="{{ url_for('sales.draft_remove') }}" hx-target="#cart-container" hx-swap="innerHTML">
+                <input type="hidden" name="product_id" value="{{ line.product_id }}">
                 <button type="submit" class="btn-trash">
                     <i class="bi bi-trash"></i>
                 </button>
             </form>
         </div>
 
-        <div class="cart-item-meta">
-            <span class="cart-item-sku">{{ item.product.sku or 'SKU: -' }}</span>
-        </div>
-
         <div class="cart-item-controls">
             <!-- Qty Control -->
             <div class="qty-control">
-                <form hx-post="{{ url_for('sales.cart_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
+                <form hx-post="{{ url_for('sales.draft_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
                     class="d-inline">
-                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                    <input type="hidden" name="qty" value="{{ item.qty - 1 }}">
-                    <button class="btn-qty" type="submit" {% if item.qty <=1 %}disabled style="opacity:0.5" {% endif
+                    <input type="hidden" name="product_id" value="{{ line.product_id }}">
+                    <input type="hidden" name="qty" value="{{ line.qty - 1 }}">
+                    <button class="btn-qty" type="submit" {% if line.qty <=1 %}disabled style="opacity:0.5" {% endif
                         %}>−</button>
                 </form>
 
-                <input type="number" class="qty-input" value="{{ item.qty|int }}" readonly>
+                <input type="number" class="qty-input" value="{{ line.qty|int }}" readonly>
 
-                <form hx-post="{{ url_for('sales.cart_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
+                <form hx-post="{{ url_for('sales.draft_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
                     class="d-inline">
-                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                    <input type="hidden" name="qty" value="{{ item.qty + 1 }}">
+                    <input type="hidden" name="product_id" value="{{ line.product_id }}">
+                    <input type="hidden" name="qty" value="{{ line.qty + 1 }}">
                     <button class="btn-qty" type="submit">+</button>
                 </form>
             </div>
 
             <div class="cart-item-price">
-                ${{ "%.2f"|format(item.subtotal) }}
+                ${{ "%.2f"|format(line.line_total) }}
             </div>
         </div>
+
+        <!-- Discount Controls REMOVED -->
     </div>
     {% endfor %}
     {% else %}
@@ -70,52 +64,63 @@
 
 <!-- Cart Footer (Fixed at bottom) -->
 <div class="cart-footer">
-     {% if cart_items %}
+    {% if totals and totals['lines'] %}
     <div class="totals-area">
-        <!--<div class="total-row">
-            <span>Subtotal</span>
-            <span>${{ "%.2f"|format(subtotal) }}</span>
-        </div>
-        <div class="total-row text-muted" style="font-size: 0.85rem;">
-            <span>IVA (21%)</span>
-            <span>${{ "%.2f"|format(iva_total) }}</span>
-        </div>-->
         <div class="total-row final-total">
             <span>Total</span>
-            <span>${{ "%.2f"|format(cart_total) }}</span>
+            <span>${{ "%.2f"|format(totals.total) }}</span>
         </div>
     </div>
 
-    <div class="checkout-area">
-        <!-- Payment Method Dropdown (Styled like button input from image) -->
+    <!-- Global Discount REMOVED -->
+
+    <!-- Payment Section -->
+    <div id="payment-section">
+        <!-- This will be populated by JavaScript for mixed payments -->
+        <!-- For now, simple single payment -->
         <div class="payment-selector mb-3">
             <div class="input-group">
                 <span class="input-group-text bg-white"><i class="bi bi-wallet2"></i></span>
                 <select class="form-select" id="cart_payment_method">
                     <option value="CASH" selected>Efectivo</option>
                     <option value="TRANSFER">Transferencia</option>
-                    <option value="DEBIT">Débito</option>
-                    <option value="CREDIT">Crédito</option>
+                    <option value="CARD">Tarjeta</option>
                 </select>
             </div>
         </div>
 
-        <button type="button" class="btn-checkout" hx-get="{{ url_for('sales.confirm_preview') }}"
-            hx-target="#modal-container" hx-swap="innerHTML"
-            hx-vals='js:{"payment_method": document.getElementById("cart_payment_method").value}'
-            hx-indicator="#checkout-loading">
-            Completar Venta
-        </button>
-        <div id="checkout-loading" class="htmx-indicator text-center mt-2 text-primary">
-            <div class="spinner-border spinner-border-sm" role="status"></div>
+        <!-- Cash Amount Received (shown only for CASH) -->
+        <div id="cash-received-section" class="mb-3" style="display: none;">
+            <div class="input-group">
+                <span class="input-group-text">Recibido</span>
+                <input type="number" id="amount_received" class="form-control" step="0.01" min="0"
+                    value="{{ totals.total }}" placeholder="Monto recibido">
+            </div>
+            <div id="change-display" class="text-end mt-1 text-success fw-bold" style="display: none;">
+                Vuelto: $<span id="change-amount">0.00</span>
+            </div>
         </div>
+
+        <form id="confirm-form" method="POST" action="{{ url_for('sales.confirm_draft') }}">
+            <input type="hidden" name="idempotency_key" id="idempotency-key" value="">
+            <input type="hidden" name="payments[0][method]" id="payment-method-input" value="CASH">
+            <input type="hidden" name="payments[0][amount]" id="payment-amount-input" value="{{ totals.total }}">
+            <input type="hidden" name="payments[0][amount_received]" id="payment-received-input"
+                value="{{ totals.total }}">
+            <input type="hidden" name="payments[0][change_amount]" id="payment-change-input" value="0">
+
+            <button type="submit" class="btn-checkout">
+                Confirmar Venta
+            </button>
+        </form>
     </div>
     {% endif %}
 </div>
 
 
+
 <style>
-    /* Cart Specific Styles injected here/scoped */
+    /* Reuse existing cart styles */
     .cart-item {
         background: white;
         border-bottom: 1px solid #f3f4f6;
@@ -130,14 +135,13 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.5rem;
     }
 
     .cart-item-title {
         font-weight: 600;
         font-size: 0.9rem;
         color: var(--color-text-primary);
-        line-height: 1.2;
     }
 
     .btn-trash {
@@ -147,23 +151,17 @@
         cursor: pointer;
         padding: 0;
         font-size: 1rem;
-        margin-left: 0.5rem;
     }
 
     .btn-trash:hover {
         color: #ef4444;
     }
 
-    .cart-item-meta {
-        font-size: 0.75rem;
-        color: #9ca3af;
-        margin-bottom: 0.75rem;
-    }
-
     .cart-item-controls {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 0.5rem;
     }
 
     .qty-control {
@@ -200,13 +198,16 @@
         color: var(--color-text-primary);
         padding: 0;
         pointer-events: none;
-        /* simple display */
     }
 
     .cart-item-price {
         font-weight: 700;
         font-size: 0.95rem;
         color: var(--color-text-primary);
+    }
+
+    .discount-controls {
+        font-size: 0.85rem;
     }
 
     .empty-cart-state {
@@ -232,7 +233,7 @@
     }
 
     .totals-area {
-        margin-bottom: 1.25rem;
+        margin-bottom: 1rem;
     }
 
     .total-row {
@@ -255,7 +256,6 @@
     .btn-checkout {
         width: 100%;
         background-color: #6366f1;
-        /* Purple/Blue from image */
         color: white;
         border: none;
         padding: 0.85rem;

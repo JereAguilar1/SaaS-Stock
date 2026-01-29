@@ -23,6 +23,7 @@ class PaymentMethod(enum.Enum):
     """Payment method enum (MEJORA 12)."""
     CASH = "CASH"
     TRANSFER = "TRANSFER"
+    CARD = "CARD"
 
 
 def normalize_payment_method(value) -> str:
@@ -33,7 +34,7 @@ def normalize_payment_method(value) -> str:
         value: Can be None, PaymentMethod enum, or string
     
     Returns:
-        str: 'CASH' or 'TRANSFER'
+        str: 'CASH', 'TRANSFER' or 'CARD'
     
     Raises:
         ValueError: If value is invalid
@@ -49,13 +50,13 @@ def normalize_payment_method(value) -> str:
     # If it's a string, normalize and validate
     if isinstance(value, str):
         normalized = value.upper().strip()
-        if normalized in ['CASH', 'TRANSFER']:
+        if normalized in ['CASH', 'TRANSFER', 'CARD']:
             return normalized
-        raise ValueError(f"Invalid payment method: {value}. Must be 'CASH' or 'TRANSFER'.")
+        raise ValueError(f"Invalid payment method: {value}. Must be 'CASH', 'TRANSFER' or 'CARD'.")
     
     # Fallback: try to convert to string and validate
     str_value = str(value).upper()
-    if str_value in ['CASH', 'TRANSFER']:
+    if str_value in ['CASH', 'TRANSFER', 'CARD']:
         return str_value
     
     raise ValueError(f"Cannot normalize payment method: {value} (type: {type(value).__name__})")

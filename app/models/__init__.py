@@ -11,6 +11,9 @@ from app.models.product import Product
 from app.models.product_stock import ProductStock
 from app.models.sale import Sale, SaleStatus
 from app.models.sale_line import SaleLine
+from app.models.sale_draft import SaleDraft
+from app.models.sale_draft_line import SaleDraftLine
+from app.models.sale_payment import SalePayment
 from app.models.stock_move import StockMove, StockMoveType, StockReferenceType
 from app.models.stock_move_line import StockMoveLine
 from app.models.finance_ledger import FinanceLedger, LedgerType, LedgerReferenceType, PaymentMethod, normalize_payment_method
@@ -27,7 +30,7 @@ __all__ = [
     'Tenant', 'AppUser', 'UserTenant', 'UserRole',
     # Business
     'UOM', 'Category', 'Product', 'ProductStock',
-    'Sale', 'SaleStatus', 'SaleLine',
+    'Sale', 'SaleStatus', 'SaleLine', 'SaleDraft', 'SaleDraftLine', 'SalePayment',
     'StockMove', 'StockMoveType', 'StockReferenceType', 'StockMoveLine',
     'FinanceLedger', 'LedgerType', 'LedgerReferenceType', 'PaymentMethod', 'normalize_payment_method',
     'Supplier', 'PurchaseInvoice', 'InvoiceStatus', 'PurchaseInvoiceLine',

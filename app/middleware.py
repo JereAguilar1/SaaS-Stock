@@ -21,6 +21,7 @@ def load_user_and_tenant():
         user = db_session.query(AppUser).filter_by(id=user_id, active=True).first()
         if user:
             g.user = user
+            g.user_id = user.id # Expose user_id directly for convenience
             
             # Load tenant_id from session
             tenant_id = session.get('tenant_id')
@@ -46,10 +47,20 @@ def require_login(f):
     
     Redirects to login page if not authenticated.
     Sets next parameter to return to original page after login.
+    Handles HTMX requests by returning 401 and an alert/redirect header.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if g.user is None:
+            if request.headers.get('HX-Request'):
+                # HTMX Response
+                from flask import render_template
+                # Check if we have a shared alert template, otherwise inline simplistic HTML
+                # Using HX-Redirect is the cleanest way to force a full page reload to login
+                response = redirect(url_for('auth.login', next=request.referrer or request.url))
+                response.headers['HX-Redirect'] = url_for('auth.login', next=request.referrer or request.url)
+                return response
+            
             flash('Debes iniciar sesión para acceder a esta página.', 'warning')
             return redirect(url_for('auth.login', next=request.url))
         return f(*args, **kwargs)

@@ -12,14 +12,19 @@
     {% for product in display_products %}
     {% set is_in_cart = false %}
     {% set current_qty = 0 %}
-    {% for item in cart_items %}
-    {% if item.product_id == product.id %}
+    {% if totals and totals['lines'] %}
+    {% for line in totals['lines'] %}
+    {% if line.product_id == product.id %}
     {% set is_in_cart = true %}
-    {% set current_qty = item.qty %}
+    {% set current_qty = line.qty %}
     {% endif %}
     {% endfor %}
+    {% endif %}
 
-    <div class="product-card {% if is_in_cart %}selected{% endif %}" onclick="addItemToCart('{{ product.id }}')">
+    <div class="product-card {% if is_in_cart %}selected{% endif %}" hx-post="{{ url_for('sales.draft_add') }}"
+        hx-trigger="click" hx-target="#cart-container" hx-swap="innerHTML"
+        hx-vals='{"product_id": "{{ product.id }}", "qty": 1}' {% if exact_barcode_match==product.id
+        %}data-exact-barcode="true" data-product-id="{{ product.id }}" {% endif %}>
 
         {% if is_in_cart %}
         <div class="selected-badge">{{ current_qty|int }}</div>
@@ -51,12 +56,7 @@
             </div>
         </div>
 
-        <!-- Hidden form for HTMX -->
-        <form hx-post="{{ url_for('sales.cart_add') }}" hx-target="#cart-container" hx-swap="innerHTML"
-            id="form-add-{{ product.id }}" style="display: none;">
-            <input type="hidden" name="product_id" value="{{ product.id }}">
-            <input type="hidden" name="qty" value="1">
-        </form>
+        <!-- No hidden form needed with hx-vals -->
     </div>
     {% endfor %}
 </div>

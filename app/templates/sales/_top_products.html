@@ -5,7 +5,7 @@
         <div class="flex-grow-1 border-bottom"></div>
     </div>
 
-    <div class="top-products-scroll d-flex gap-2 pb-2" style="overflow-x: auto;">
+    <!--<div class="top-products-scroll d-flex gap-2 pb-2" style="overflow-x: auto;">
         {% for product in top_products %}
         <div class="top-product-card border rounded p-2"
             style="min-width: 160px; max-width: 160px; background-color: #f8f9fa;">
@@ -16,25 +16,26 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-success fw-bold" style="font-size: 0.85rem;">${{ product.sale_price }}</span>
-                {% if product.stock > 0 %}
-                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">Only {{ product.stock|int
+                <span class="text-success fw-bold" style="font-size: 0.85rem;">${{ "%.2f"|format(product.sale_price)
+                    }}</span>
+                {% if product.on_hand_qty > 0 %}
+                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">Only {{ product.on_hand_qty|int
                     }}</span>
                 {% else %}
                 <span class="badge bg-danger" style="font-size: 0.7rem;">Sin Stock</span>
                 {% endif %}
             </div>
 
-            <form hx-post="{{ url_for('sales.cart_add') }}" hx-target="#cart-container" hx-swap="innerHTML">
-                <input type="hidden" name="product_id" value="{{ product.product_id }}">
-                <input type="hidden" name="qty" value="1">
-                <button type="submit" class="btn btn-sm btn-outline-primary w-100" {% if product.stock <=0 %}disabled{%
-                    endif %}>
+            <div class="product-card" hx-post="{{ url_for('sales.draft_add') }}" hx-target="#cart-container"
+                hx-swap="innerHTML" hx-trigger="click" hx-vals='{"product_id": "{{ product.id }}", "qty": 1}'
+                style="cursor: pointer;">
+                <button type="button" class="btn btn-sm btn-outline-primary w-100" {% if product.on_hand_qty <=0
+                    %}disabled{% endif %}>
                     <i class="bi bi-plus-lg"></i> Agregar
                 </button>
-            </form>
+            </div>
         </div>
         {% endfor %}
-    </div>
+    </div>-->
 </div>
 {% endif %}

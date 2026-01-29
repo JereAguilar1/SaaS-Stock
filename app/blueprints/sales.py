@@ -1,11 +1,12 @@
 """Sales blueprint for POS and cart management - Multi-Tenant."""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file, current_app, g, abort
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, and_
 from decimal import Decimal
 from datetime import datetime
 from app.database import get_session
-from app.models import Product, ProductStock, Sale, SaleLine, SaleStatus
-from app.services.sales_service import confirm_sale
+from app.models import Product, ProductStock, Sale, SaleLine, SaleStatus, SaleDraft
+from app.services.sales_service import confirm_sale, confirm_sale_from_draft
+from app.services import sale_draft_service
 from app.services.top_products_service import get_top_selling_products
 from app.services.quote_service import generate_quote_pdf
 from app.middleware import require_login, require_tenant
@@ -156,47 +157,75 @@ def product_search():
         # Get search query
         search_query = request.args.get('q', '').strip()
         
-        # Get cart for highlighting selected products
-        cart_items, _ = get_cart_with_products(db_session, g.tenant_id)
+        # Get draft for highlighting selected products
+        try:
+            draft, totals = sale_draft_service.get_draft_with_totals(
+                db_session, g.tenant_id, g.user_id
+            )
+        except Exception as e:
+            current_app.logger.warning(f"Could not load draft in product_search: {e}")
+            draft, totals = None, None
         
         products = []
+        exact_barcode_match = None
+        
         if search_query:
             # Sanitize input (limit length)
             search_query = search_query[:100]
             
-            # Build search filter
-            search_filter = or_(
-                func.lower(Product.name).like(f'%{search_query.lower()}%'),
-                func.lower(Product.sku).like(f'%{search_query.lower()}%'),
-                func.lower(Product.barcode).like(f'%{search_query.lower()}%')
-            )
+            # Check for exact barcode match first (priority)
+            # IMPORTANT: Only check products with non-null barcode
+            exact_match = db_session.query(Product).filter(
+                Product.tenant_id == g.tenant_id,
+                Product.active == True,
+                Product.barcode.isnot(None),
+                func.lower(Product.barcode) == search_query.lower()
+            ).first()
             
-            products = (db_session.query(Product)
-                       .outerjoin(ProductStock)
-                       .filter(
-                           Product.tenant_id == g.tenant_id,
-                           Product.active == True
-                       )
-                       .filter(search_filter)
-                       .order_by(Product.name)
-                       .limit(20)
-                       .all())
+            if exact_match:
+                exact_barcode_match = exact_match.id
+                products = [exact_match]
+            else:
+                # Build search filter for fuzzy search
+                search_filter = or_(
+                    func.lower(Product.name).like(f'%{search_query.lower()}%'),
+                    and_(Product.sku.isnot(None), func.lower(Product.sku).like(f'%{search_query.lower()}%')),
+                    and_(Product.barcode.isnot(None), func.lower(Product.barcode).like(f'%{search_query.lower()}%'))
+                )
+                
+                products = (db_session.query(Product)
+                           .outerjoin(ProductStock)
+                           .filter(
+                               Product.tenant_id == g.tenant_id,
+                               Product.active == True
+                           )
+                           .filter(search_filter)
+                           .order_by(Product.name)
+                           .limit(20)
+                           .all())
         else:
             # Si búsqueda vacía, mostrar top productos
             try:
-                products = get_top_selling_products(db_session, g.tenant_id, limit=10)
-            except:
+                # FIX: unpack tuple returned by get_top_selling_products ((products, error))
+                products, _ = get_top_selling_products(db_session, g.tenant_id, limit=10)
+            except Exception as e:
+                current_app.logger.warning(f"Could not load top products: {e}")
                 products = []
         
         return render_template('sales/_product_results.html',
                              products=products,
                              search_query=search_query,
-                             cart_items=cart_items,
+                             totals=totals,
+                             exact_barcode_match=exact_barcode_match,
                              top_products=products if not search_query else [])
         
     except Exception as e:
-        current_app.logger.error(f"Error in product_search: {str(e)}", exc_info=True)
-        return '<div class="alert alert-warning">Error al buscar productos</div>', 500
+        current_app.logger.error(
+            f"Error in product_search for tenant {g.tenant_id}, user {g.user_id}, query='{request.args.get('q', '')}': {str(e)}", 
+            exc_info=True
+        )
+        # Return 200 with error HTML (HTMX-friendly, doesn't break UI)
+        return render_template('sales/_search_error.html', error_message="Error al buscar productos"), 200
 
 
 @sales_bp.route('/cart/add', methods=['POST'])
@@ -959,3 +988,381 @@ def edit_sale_save(sale_id):
         db_session.rollback()
         flash(f'Error al guardar ajustes: {str(e)}', 'danger')
         return redirect(url_for('sales.edit_sale_form', sale_id=sale_id))
+from app.services import sale_draft_service
+from app.services.sales_service import confirm_sale_from_draft
+from app.middleware import require_login, require_tenant
+import uuid
+
+
+# ============================================================================
+# DRAFT CART ENDPOINTS (Persistent Cart)
+# ============================================================================
+
+@sales_bp.route('/draft/add', methods=['POST'])
+@require_login
+@require_tenant
+def draft_add():
+    """Add product to persistent draft cart (HTMX endpoint)."""
+    db_session = get_session()
+    
+    try:
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        
+        # Get payload
+        if request.is_json:
+            payload = request.get_json(silent=True) or {}
+        else:
+            payload = request.form.to_dict()
+        
+        # Validate product_id
+        if not payload.get('product_id'):
+             raise ValueError("Falta ID de producto")
+             
+        try:
+            product_id = int(payload.get('product_id'))
+        except (ValueError, TypeError):
+             raise ValueError("ID de producto inválido")
+
+        # Parse quantity
+        qty_val = payload.get('qty', '1')
+        try:
+            qty = Decimal(str(qty_val))
+        except:
+            qty = Decimal('1')
+
+        if qty <= 0:
+            raise ValueError('La cantidad debe ser mayor a 0')
+        
+        # Validate user_id availability
+        if not hasattr(g, 'user_id') or not g.user_id:
+            current_app.logger.error("draft_add called without g.user_id")
+            raise Exception("Error de sesión de usuario")
+
+        # Get or create draft
+        draft = sale_draft_service.get_or_create_draft(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        # Add product to draft
+        # This service method handles availability checks and raises ValueError if needed
+        sale_draft_service.add_product_to_draft(
+            db_session, draft.id, product_id, qty, g.tenant_id
+        )
+        
+        db_session.commit()
+        
+        # Get updated draft with totals
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        if is_htmx:
+            return render_template('sales/_cart_content_draft.html',
+                                 draft=draft,
+                                 totals=totals)
+        
+        flash('Producto agregado al carrito', 'success')
+        return redirect(url_for('sales.new_sale'))
+        
+    except ValueError as e:
+        db_session.rollback()
+        current_app.logger.warning(f"Validation error in draft_add: {str(e)}")
+        if is_htmx:
+            # Return current cart with error message at top (or as alert)
+            # Fetch current state to not leave cart empty
+            try:
+                 draft, totals = sale_draft_service.get_draft_with_totals(db_session, g.tenant_id, g.user_id)
+            except:
+                 draft, totals = None, None
+            
+            # We can use a custom header to trigger a toast, but simplest is to return valid HTML with an alert
+            # Using 200 status so HTMX swaps content normally
+            return render_template('sales/_cart_content_draft.html', 
+                                 draft=draft, 
+                                 totals=totals, 
+                                 error_message=str(e)) # Pass error to template
+            
+            # Alternative: return alert only if target handles it, but here we swap #cart-container
+        
+        flash(str(e), 'warning')
+        return redirect(url_for('sales.new_sale'))
+        
+    except Exception as e:
+        db_session.rollback()
+        current_app.logger.error(f"Error in draft_add: {str(e)}", exc_info=True)
+        
+        if is_htmx:
+             try:
+                 draft, totals = sale_draft_service.get_draft_with_totals(db_session, g.tenant_id, g.user_id)
+             except:
+                 draft, totals = None, None
+                 
+             return render_template('sales/_cart_content_draft.html', 
+                                  draft=draft, 
+                                  totals=totals, 
+                                  error_message=f"Error: {str(e)}") # Exposing error for diagnosis
+
+        flash('Error al agregar producto', 'danger')
+        return redirect(url_for('sales.new_sale'))
+
+
+@sales_bp.route('/draft/update', methods=['POST'])
+@require_login
+@require_tenant
+def draft_update():
+    """Update draft line quantity or discount (HTMX endpoint)."""
+    db_session = get_session()
+    
+    try:
+        product_id = int(request.form.get('product_id'))
+        qty_str = request.form.get('qty', '').strip()
+        discount_type = request.form.get('discount_type')
+        discount_value_str = request.form.get('discount_value', '0').strip()
+        
+        # Get draft
+        draft = sale_draft_service.get_or_create_draft(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        # Parse values
+        qty = Decimal(qty_str) if qty_str else None
+        discount_value = Decimal(discount_value_str) if discount_value_str else Decimal('0')
+        
+        # Update line
+        sale_draft_service.update_draft_line(
+            db_session, draft.id, product_id,
+            qty=qty,
+            discount_type=discount_type if discount_type else None,
+            discount_value=discount_value,
+            tenant_id=g.tenant_id
+        )
+        
+        db_session.commit()
+        
+        # Get updated totals
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+        
+    except ValueError as e:
+        db_session.rollback()
+        flash(str(e), 'warning')
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+        
+    except Exception as e:
+        db_session.rollback()
+        current_app.logger.error(f"Error in draft_update: {str(e)}", exc_info=True)
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+
+
+@sales_bp.route('/draft/remove', methods=['POST'])
+@require_login
+@require_tenant
+def draft_remove():
+    """Remove line from draft (HTMX endpoint)."""
+    db_session = get_session()
+    
+    try:
+        product_id = int(request.form.get('product_id'))
+        
+        # Get draft
+        draft = sale_draft_service.get_or_create_draft(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        # Remove line
+        sale_draft_service.remove_draft_line(
+            db_session, draft.id, product_id, g.tenant_id
+        )
+        
+        db_session.commit()
+        flash('Producto eliminado del carrito', 'info')
+        
+        # Get updated totals
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+        
+    except Exception as e:
+        db_session.rollback()
+        current_app.logger.error(f"Error in draft_remove: {str(e)}", exc_info=True)
+        flash('Error al eliminar producto', 'danger')
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+
+
+@sales_bp.route('/draft/clear', methods=['POST'])
+@require_login
+@require_tenant
+def draft_clear():
+    """Clear all lines from draft (HTMX endpoint)."""
+    db_session = get_session()
+    
+    try:
+        # Get draft
+        draft = sale_draft_service.get_or_create_draft(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        # Clear draft
+        sale_draft_service.clear_draft(
+            db_session, draft.id, g.tenant_id
+        )
+        
+        db_session.commit()
+        flash('Carrito vaciado', 'info')
+        
+        # Get updated totals (should be empty)
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+        
+    except Exception as e:
+        db_session.rollback()
+        current_app.logger.error(f"Error in draft_clear: {str(e)}", exc_info=True)
+        flash('Error al vaciar carrito', 'danger')
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+
+
+
+        
+    except Exception as e:
+        db_session.rollback()
+        current_app.logger.error(f"Error in draft_apply_discount: {str(e)}", exc_info=True)
+        flash('Error al aplicar descuento', 'danger')
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        return render_template('sales/_cart_content_draft.html',
+                             draft=draft,
+                             totals=totals)
+
+
+# ============================================================================
+# CONFIRM SALE WITH IDEMPOTENCY AND MIXED PAYMENTS
+# ============================================================================
+
+@sales_bp.route('/confirm_draft', methods=['POST'])
+@require_login
+@require_tenant
+def confirm_draft():
+    """Confirm sale from draft with idempotency and mixed payments."""
+    db_session = get_session()
+    
+    try:
+        # Get idempotency key
+        idempotency_key = request.form.get('idempotency_key', '').strip()
+        
+        if not idempotency_key:
+            raise ValueError('Clave de idempotencia requerida')
+        
+        # Get draft
+        draft = sale_draft_service.get_or_create_draft(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        if not draft.lines:
+            raise ValueError('El carrito estÃ¡ vacÃ­o')
+        
+        # Parse payments from form
+        # Expected format: payments[0][method], payments[0][amount], etc.
+        payments = []
+        payment_index = 0
+        
+        while True:
+            method_key = f'payments[{payment_index}][method]'
+            amount_key = f'payments[{payment_index}][amount]'
+            
+            if method_key not in request.form:
+                break
+            
+            method = request.form.get(method_key)
+            amount = request.form.get(amount_key)
+            
+            if method and amount:
+                payment = {
+                    'method': method.upper(),
+                    'amount': Decimal(str(amount))
+                }
+                
+                # For CASH, get received amount and change
+                if method.upper() == 'CASH':
+                    received_key = f'payments[{payment_index}][amount_received]'
+                    change_key = f'payments[{payment_index}][change_amount]'
+                    
+                    payment['amount_received'] = Decimal(str(request.form.get(received_key, amount)))
+                    payment['change_amount'] = Decimal(str(request.form.get(change_key, '0')))
+                
+                payments.append(payment)
+            
+            payment_index += 1
+        
+        if not payments:
+            raise ValueError('Debe especificar al menos un mÃ©todo de pago')
+        
+        # Confirm sale
+        sale_id = confirm_sale_from_draft(
+            draft_id=draft.id,
+            payments=payments,
+            idempotency_key=idempotency_key,
+            session=db_session,
+            tenant_id=g.tenant_id,
+            user_id=g.user_id
+        )
+        
+        # Clear draft after successful confirmation
+        sale_draft_service.clear_draft(
+            session=db_session,
+            draft_id=draft.id,
+            tenant_id=g.tenant_id
+        )
+        
+        db_session.commit()
+        
+        flash(f'Venta #{sale_id} confirmada exitosamente', 'success')
+        
+        # Redirect back to New Sale (POS) with clean slate
+        # Logic: User wants to continue selling
+        return redirect(url_for('sales.new_sale'))
+        
+    except ValueError as e:
+        db_session.rollback()
+        flash(str(e), 'danger')
+        return redirect(url_for('sales.new_sale'))
+        
+    except Exception as e:
+        db_session.rollback()
+        current_app.logger.error(f"Error in confirm_draft: {str(e)}", exc_info=True)
+        flash(f'Error al confirmar venta: {str(e)}', 'danger')
+        return redirect(url_for('sales.new_sale'))
