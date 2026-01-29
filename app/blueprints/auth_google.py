@@ -163,9 +163,9 @@ def callback():
                 'Ahora crea tu primer negocio para comenzar.',
                 'success'
             )
-            # Redirect to register page which has tenant creation
-            # User is already authenticated, so they'll go through tenant creation
-            return redirect(url_for('auth.register'))
+            # Redirect to create_business page
+            # User is already authenticated, so they'll create their first tenant
+            return redirect(url_for('auth.create_business'))
         
         elif len(user_tenants) == 1:
             # Auto-select the only tenant
