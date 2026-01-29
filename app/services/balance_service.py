@@ -8,12 +8,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def _build_balance_cache_key(view: str, start: date, end: date, method: str) -> str:
+def _build_balance_cache_key(view: str, start: date, end: date, method: str, mode: str = 'grouped') -> str:
     """Build cache key for balance queries (PASO 8)."""
-    return f"series:{view}:{start.isoformat()}:{end.isoformat()}:{method}"
+    return f"series:{view}:{start.isoformat()}:{end.isoformat()}:{method}:{mode}"
 
 
-def get_balance_series(view: str, start: date, end: date, session, tenant_id: int, method: str = 'all'):
+def get_balance_series(view: str, start: date, end: date, session, tenant_id: int, method: str = 'all', mode: str = 'grouped'):
     """
     Get balance series (income, expense, net) grouped by period (tenant-scoped).
     
@@ -27,6 +27,7 @@ def get_balance_series(view: str, start: date, end: date, session, tenant_id: in
         session: SQLAlchemy session
         tenant_id: Tenant ID (REQUIRED for multi-tenant filtering)
         method: 'all', 'cash', or 'transfer' - filter by payment method
+        mode: 'individual' or 'grouped' - view mode for hierarchical navigation
         
     Returns:
         List of dicts with keys:
@@ -43,7 +44,7 @@ def get_balance_series(view: str, start: date, end: date, session, tenant_id: in
         from app.services.cache_service import get_cache
         
         cache = get_cache()
-        cache_key = _build_balance_cache_key(view, start, end, method)
+        cache_key = _build_balance_cache_key(view, start, end, method, mode)
         cached_result = cache.get(tenant_id, 'balance', cache_key)
         
         if cached_result is not None:

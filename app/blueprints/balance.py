@@ -19,14 +19,13 @@ balance_bp = Blueprint('balance', __name__, url_prefix='/balance')
 @require_login
 @require_tenant
 def index():
-    """Show balance page with tabs and filters (tenant-scoped)."""
+    """Show balance page with tabs and filters (tenant-scoped) - Hierarchical Navigation."""
     db_session = get_session()
     
     try:
         # Get query params
-        view = request.args.get('view', 'monthly')  # daily, monthly, yearly
-        start_str = request.args.get('start', '').strip()
-        end_str = request.args.get('end', '').strip()
+        view = request.args.get('view', 'daily')  # daily, monthly, yearly
+        mode = request.args.get('mode', 'grouped')  # individual, grouped
         
         # Get year, month, and day params
         year_str = request.args.get('year', '').strip()
@@ -38,7 +37,11 @@ def index():
         
         # Validate view
         if view not in ['daily', 'monthly', 'yearly']:
-            view = 'monthly'
+            view = 'daily'
+        
+        # Validate mode
+        if mode not in ['individual', 'grouped']:
+            mode = 'grouped'
         
         # Validate method
         if method not in ['all', 'cash', 'transfer']:
@@ -54,112 +57,162 @@ def index():
         selected_day = None
         available_months = []
         
-        if view == 'daily':
-            # Opción 1: Día específico (prioridad)
-            if day_str:
-                try:
-                    selected_day = datetime.strptime(day_str, '%Y-%m-%d').date()
-                    start = selected_day
-                    end = selected_day
-                except ValueError:
-                    flash('Formato de fecha inválido. Use YYYY-MM-DD', 'warning')
-                    selected_day = None
-            
-            # Opción 2: Año/Mes (muestra todos los días del mes)
-            if not selected_day and year_str and month_str:
-                try:
-                    selected_year = int(year_str)
-                    selected_month = int(month_str)
-                    
-                    if selected_month < 1 or selected_month > 12:
-                        flash('Mes inválido. Debe estar entre 1 y 12.', 'warning')
-                        selected_year = None
-                        selected_month = None
-                    
-                    if selected_year and (selected_year < 1900 or selected_year > 2100):
-                        flash('Año inválido.', 'warning')
-                        selected_year = None
-                        selected_month = None
-                    
-                    if selected_year and selected_month:
-                        start, end = get_month_date_range(selected_year, selected_month)
-                        available_months = get_available_months(selected_year, db_session, g.tenant_id)
-                        
-                except (ValueError, TypeError):
-                    flash('Año o mes inválido.', 'warning')
-                    selected_year = None
-                    selected_month = None
-            
-            # Valor por defecto: día actual
-            if not selected_day and not (selected_year and selected_month):
-                today = date.today()
-                selected_day = today
-                start = today
-                end = today
+        # Default to current date if no years available
+        today = date.today()
         
-        elif view == 'monthly':
-            # Selector de Año y Mes específico
-            if year_str and month_str:
-                try:
-                    selected_year = int(year_str)
-                    selected_month = int(month_str)
-                    
-                    if selected_month < 1 or selected_month > 12:
-                        flash('Mes inválido. Debe estar entre 1 y 12.', 'warning')
-                        selected_year = None
-                        selected_month = None
-                    
-                    if selected_year and (selected_year < 1900 or selected_year > 2100):
-                        flash('Año inválido.', 'warning')
-                        selected_year = None
-                        selected_month = None
-                    
-                    if selected_year and selected_month:
-                        # FIX: Usar get_month_date_range en lugar de get_year_date_range
-                        start, end = get_month_date_range(selected_year, selected_month)
-                        available_months = get_available_months(selected_year, db_session, g.tenant_id)
-                        
-                except (ValueError, TypeError):
-                    flash('Año o mes inválido.', 'warning')
-                    selected_year = None
-                    selected_month = None
+        # ========================================
+        # HIERARCHICAL NAVIGATION LOGIC
+        # ========================================
+        
+        if view == 'daily':
+            # NIVEL DIARIO: Ver un día específico O todos los días de un mes
             
-            # Valor por defecto: mes y año actual
-            if not (selected_year and selected_month):
-                today = date.today()
-                selected_year = today.year
-                selected_month = today.month
-                start, end = get_month_date_range(selected_year, selected_month)
+            if mode == 'individual':
+                # MODO INDIVIDUAL: Ver un día específico
+                if day_str:
+                    try:
+                        selected_day = datetime.strptime(day_str, '%Y-%m-%d').date()
+                        selected_year = selected_day.year
+                        selected_month = selected_day.month
+                        start = selected_day
+                        end = selected_day
+                    except ValueError:
+                        flash('Formato de fecha inválido. Use YYYY-MM-DD', 'warning')
+                        # Fallback a modo grouped del mes actual
+                        mode = 'grouped'
+                        selected_year = today.year
+                        selected_month = today.month
+                        start, end = get_month_date_range(selected_year, selected_month)
+                else:
+                    # Sin día específico, fallback a grouped
+                    flash('Modo individual requiere seleccionar un día específico', 'info')
+                    mode = 'grouped'
+                    selected_year = today.year
+                    selected_month = today.month
+                    start, end = get_month_date_range(selected_year, selected_month)
+            
+            else:  # mode == 'grouped'
+                # MODO AGRUPADA: Ver todos los días de un mes
+                if year_str and month_str:
+                    try:
+                        selected_year = int(year_str)
+                        selected_month = int(month_str)
+                        
+                        if selected_month < 1 or selected_month > 12:
+                            raise ValueError('Mes inválido')
+                        
+                        if selected_year < 1900 or selected_year > 2100:
+                            raise ValueError('Año inválido')
+                        
+                        start, end = get_month_date_range(selected_year, selected_month)
+                        
+                    except (ValueError, TypeError) as e:
+                        flash(f'Parámetros inválidos: {str(e)}. Mostrando mes actual.', 'warning')
+                        selected_year = today.year
+                        selected_month = today.month
+                        start, end = get_month_date_range(selected_year, selected_month)
+                else:
+                    # Valor por defecto: todos los días del mes actual
+                    selected_year = today.year
+                    selected_month = today.month
+                    start, end = get_month_date_range(selected_year, selected_month)
                 
-                if available_years and selected_year in available_years:
+                # Obtener meses disponibles para el año seleccionado
+                if selected_year and selected_year in available_years:
                     available_months = get_available_months(selected_year, db_session, g.tenant_id)
         
-        else:  # yearly
-            # Selector de Año específico
-            if year_str:
-                try:
-                    selected_year = int(year_str)
-                    
-                    if selected_year < 1900 or selected_year > 2100:
-                        flash('Año inválido.', 'warning')
-                        selected_year = None
-                    
-                    if selected_year:
-                        # FIX: Usar get_year_date_range para obtener todo el año
+        elif view == 'monthly':
+            # NIVEL MENSUAL: Ver un mes específico O todos los meses de un año
+            
+            if mode == 'individual':
+                # MODO INDIVIDUAL: Ver un mes específico
+                if year_str and month_str:
+                    try:
+                        selected_year = int(year_str)
+                        selected_month = int(month_str)
+                        
+                        if selected_month < 1 or selected_month > 12:
+                            raise ValueError('Mes inválido')
+                        
+                        if selected_year < 1900 or selected_year > 2100:
+                            raise ValueError('Año inválido')
+                        
+                        start, end = get_month_date_range(selected_year, selected_month)
+                        
+                    except (ValueError, TypeError) as e:
+                        flash(f'Parámetros inválidos: {str(e)}. Mostrando mes actual.', 'warning')
+                        selected_year = today.year
+                        selected_month = today.month
+                        start, end = get_month_date_range(selected_year, selected_month)
+                else:
+                    # Sin mes específico, fallback a grouped
+                    flash('Modo individual requiere seleccionar año y mes', 'info')
+                    mode = 'grouped'
+                    selected_year = today.year
+                    start, end = get_year_date_range(selected_year)
+            
+            else:  # mode == 'grouped'
+                # MODO AGRUPADA: Ver todos los meses de un año
+                if year_str:
+                    try:
+                        selected_year = int(year_str)
+                        
+                        if selected_year < 1900 or selected_year > 2100:
+                            raise ValueError('Año inválido')
+                        
                         start, end = get_year_date_range(selected_year)
                         
-                except (ValueError, TypeError):
-                    flash('Año inválido.', 'warning')
-                    selected_year = None
-            
-            # Valor por defecto: año actual
-            if not selected_year:
-                today = date.today()
-                selected_year = today.year
-                start, end = get_year_date_range(selected_year)
+                    except (ValueError, TypeError) as e:
+                        flash(f'Año inválido: {str(e)}. Mostrando año actual.', 'warning')
+                        selected_year = today.year
+                        start, end = get_year_date_range(selected_year)
+                else:
+                    # Valor por defecto: todos los meses del año actual
+                    selected_year = today.year
+                    start, end = get_year_date_range(selected_year)
+                
+                # Obtener meses disponibles para el año seleccionado
+                if selected_year and selected_year in available_years:
+                    available_months = get_available_months(selected_year, db_session, g.tenant_id)
         
-        # Get balance series (tenant-scoped)
-        series = get_balance_series(view, start, end, db_session, g.tenant_id, method=method)
+        else:  # view == 'yearly'
+            # NIVEL ANUAL: Ver un año específico O todos los años disponibles
+            
+            if mode == 'individual':
+                # MODO INDIVIDUAL: Ver un año específico
+                if year_str:
+                    try:
+                        selected_year = int(year_str)
+                        
+                        if selected_year < 1900 or selected_year > 2100:
+                            raise ValueError('Año inválido')
+                        
+                        start, end = get_year_date_range(selected_year)
+                        
+                    except (ValueError, TypeError) as e:
+                        flash(f'Año inválido: {str(e)}. Mostrando año actual.', 'warning')
+                        selected_year = today.year
+                        start, end = get_year_date_range(selected_year)
+                else:
+                    # Sin año específico, usar año actual
+                    selected_year = today.year
+                    start, end = get_year_date_range(selected_year)
+            
+            else:  # mode == 'grouped'
+                # MODO AGRUPADA: Ver todos los años disponibles
+                if available_years:
+                    # Obtener rango completo desde el primer año hasta el último
+                    min_year = min(available_years)
+                    max_year = max(available_years)
+                    start = date(min_year, 1, 1)
+                    end = date(max_year, 12, 31)
+                else:
+                    # Sin datos, mostrar año actual
+                    selected_year = today.year
+                    start, end = get_year_date_range(selected_year)
+        
+        # Get balance series (tenant-scoped) with mode parameter
+        series = get_balance_series(view, start, end, db_session, g.tenant_id, method=method, mode=mode)
         
         # Calculate totals
         totals = get_totals(series)
@@ -171,6 +224,7 @@ def index():
         return render_template(
             'balance/index.html',
             view=view,
+            mode=mode,
             series=series,
             totals=totals,
             start=start_str,
