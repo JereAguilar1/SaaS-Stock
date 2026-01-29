@@ -114,24 +114,23 @@ def new_sale():
                        .limit(20)
                        .all())
         
-        cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        current_app.logger.info(f"[POS DIAGNOSTIC] Rehydrated Cart: {len(cart_items)} items, Total: {cart_total}")
-        
-        # Calculate totals for initial render (Fix for 'subtotal undefined' error)
-        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-        iva_total = cart_total - subtotal
-        
+        # Get persisted draft for this user (rehydration)
+        try:
+             draft, totals = sale_draft_service.get_draft_with_totals(
+                 db_session, g.tenant_id, g.user_id
+             )
+        except Exception as e:
+             current_app.logger.warning(f"Error loading draft in new_sale: {e}")
+             draft, totals = None, None
+
         # Get top selling products (tenant-scoped)
         top_products, top_products_error = get_top_selling_products(db_session, g.tenant_id, limit=10)
-        current_app.logger.info(f"[POS DIAGNOSTIC] Top Products found: {len(top_products)}, Error: {top_products_error}")
         
         return render_template('sales/new.html',
                              products=products,
                              search_query=search_query,
-                             cart_items=cart_items,
-                             cart_total=cart_total,
-                             subtotal=subtotal,
-                             iva_total=iva_total,
+                             draft=draft,
+                             totals=totals,
                              top_products=top_products,
                              top_products_error=top_products_error)
         
@@ -140,8 +139,8 @@ def new_sale():
         return render_template('sales/new.html',
                              products=[],
                              search_query='',
-                             cart_items=[],
-                             cart_total=Decimal('0.00'),
+                             draft=None,
+                             totals=None,
                              top_products=[],
                              top_products_error=False)
 
