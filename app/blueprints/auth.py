@@ -254,8 +254,10 @@ def select_tenant():
     ).all()
     
     if len(user_tenants) == 0:
-        flash('No tienes negocios disponibles. Contacta soporte.', 'danger')
-        return redirect(url_for('auth.logout'))
+        # Redirect new users to create business instead of logout
+        logger = __import__('logging').getLogger(__name__)
+        logger.info(f"User {g.user.id} has no tenants, redirecting to create_business")
+        return redirect(url_for('auth.create_business'))
     
     if request.method == 'POST':
         tenant_id = request.form.get('tenant_id', type=int)
@@ -288,6 +290,73 @@ def logout():
     return redirect(url_for('auth.login', logged_out='1'))
 
 
+@auth_bp.route('/create-business', methods=['GET', 'POST'])
+def create_business():
+    """
+    Create first business page for logged-in users.
+    
+    Only accessible if user is logged in.
+    Replaces the need to go to register for new OAuth users.
+    """
+    if not g.user:
+        flash('Debes iniciar sesión primero.', 'warning')
+        return redirect(url_for('auth.login'))
+        
+    if request.method == 'POST':
+        business_name = request.form.get('business_name', '').strip()
+        
+        if not business_name:
+            flash('El nombre del negocio es requerido.', 'danger')
+            return render_template('auth/create_business.html'), 400
+            
+        try:
+            # Create Tenant
+            slug = generate_slug(business_name)
+            
+            # Ensure slug is unique
+            base_slug = slug
+            counter = 1
+            while db_session.query(Tenant).filter_by(slug=slug).first():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            
+            tenant = Tenant(
+                slug=slug,
+                name=business_name,
+                active=True
+            )
+            db_session.add(tenant)
+            db_session.flush()
+            
+            # Create UserTenant
+            user_tenant = UserTenant(
+                user_id=g.user.id,
+                tenant_id=tenant.id,
+                role='OWNER',
+                active=True
+            )
+            db_session.add(user_tenant)
+            db_session.commit()
+            
+            # Set tenant in session
+            session['tenant_id'] = tenant.id
+            session.permanent = True
+            
+            flash(f'¡Negocio "{business_name}" creado exitosamente!', 'success')
+            return redirect(url_for('dashboard.index'))
+            
+        except IntegrityError:
+            db_session.rollback()
+            flash('Error al crear el negocio. Intenta nuevamente.', 'danger')
+            return render_template('auth/create_business.html'), 400
+        except Exception as e:
+            db_session.rollback()
+            flash(f'Error inesperado: {str(e)}', 'danger')
+            return render_template('auth/create_business.html'), 500
+
+    return render_template('auth/create_business.html')
+
+
 @auth_bp.route('/')
 def root():
     """Root route - redirect based on authentication status."""
@@ -295,6 +364,15 @@ def root():
         if g.tenant_id:
             return redirect(url_for('dashboard.index'))
         else:
+            # Check if user has any tenants
+            user_tenants_count = db_session.query(UserTenant).filter_by(
+                user_id=g.user.id,
+                active=True
+            ).count()
+            
+            if user_tenants_count == 0:
+                return redirect(url_for('auth.create_business'))
+            
             return redirect(url_for('auth.select_tenant'))
     else:
         return redirect(url_for('auth.login'))
