@@ -33,8 +33,111 @@
 <div class="card-custom" style="margin-bottom: var(--spacing-6);">
     <div class="card-body-custom">
         {% if view == 'daily' %}
-        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-3">
+        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-4">
             <input type="hidden" name="view" value="daily">
+
+            <div class="form-group">
+                <label for="day" class="form-label-custom">
+                    <i class="bi bi-calendar-day"></i> Día Específico
+                </label>
+                <input type="date" class="form-input-custom" id="day" name="day" value="{{ selected_day }}">
+                <small style="color: var(--color-text-muted); font-size: var(--font-size-xs);">
+                    Deje vacío para ver todo el mes
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="year" class="form-label-custom">
+                    <i class="bi bi-calendar"></i> Año
+                </label>
+                <select class="form-select-custom" id="year" name="year">
+                    {% if available_years %}
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if selected_year==year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                    {% endfor %}
+                    {% else %}
+                    <option value="{{ selected_year or '' }}">{{ selected_year or 'Sin datos' }}</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="month" class="form-label-custom">
+                    <i class="bi bi-calendar-month"></i> Mes
+                </label>
+                <select class="form-select-custom" id="month" name="month">
+                    <option value="1" {% if selected_month==1 %}selected{% endif %}>Enero</option>
+                    <option value="2" {% if selected_month==2 %}selected{% endif %}>Febrero</option>
+                    <option value="3" {% if selected_month==3 %}selected{% endif %}>Marzo</option>
+                    <option value="4" {% if selected_month==4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if selected_month==5 %}selected{% endif %}>Mayo</option>
+                    <option value="6" {% if selected_month==6 %}selected{% endif %}>Junio</option>
+                    <option value="7" {% if selected_month==7 %}selected{% endif %}>Julio</option>
+                    <option value="8" {% if selected_month==8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if selected_month==9 %}selected{% endif %}>Septiembre</option>
+                    <option value="10" {% if selected_month==10 %}selected{% endif %}>Octubre</option>
+                    <option value="11" {% if selected_month==11 %}selected{% endif %}>Noviembre</option>
+                    <option value="12" {% if selected_month==12 %}selected{% endif %}>Diciembre</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="method_daily" class="form-label-custom">
+                    <i class="bi bi-cash-coin"></i> Método
+                </label>
+                <div style="display: flex; gap: var(--spacing-2);">
+                    <select class="form-select-custom" id="method_daily" name="method">
+                        <option value="all" {% if selected_method=='all' %}selected{% endif %}>Todos</option>
+                        <option value="cash" {% if selected_method=='cash' %}selected{% endif %}>Efectivo</option>
+                        <option value="transfer" {% if selected_method=='transfer' %}selected{% endif %}>Transferencia
+                        </option>
+                    </select>
+
+                    <button type="submit" class="btn-custom btn-primary-custom">
+                        <i class="bi bi-funnel"></i>
+                    </button>
+                    <a href="{{ url_for('balance.index', view='daily') }}" class="btn-custom btn-secondary-custom">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                </div>
+            </div>
+
+            {% if selected_day %}
+            <div style="grid-column: 1 / -1;">
+                <div class="alert-custom alert-info" style="margin-bottom: 0;">
+                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
+                    <div class="alert-custom-content">
+                        Mostrando balance para el día <strong>{{ selected_day }}</strong>
+                        {% if selected_method != 'all' %}
+                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
+                            %}</strong>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% elif selected_year and selected_month %}
+            <div style="grid-column: 1 / -1;">
+                <div class="alert-custom alert-info" style="margin-bottom: 0;">
+                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
+                    <div class="alert-custom-content">
+                        Mostrando balance diario para <strong>{{ ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo',
+                            'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre',
+                            'Diciembre'][selected_month] }} {{ selected_year }}</strong>
+                        {% if selected_method != 'all' %}
+                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
+                            %}</strong>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </form>
+
+        {% elif view == 'monthly' %}
+        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-3">
+            <input type="hidden" name="view" value="monthly">
 
             <div class="form-group">
                 <label for="year" class="form-label-custom">
@@ -74,66 +177,6 @@
             </div>
 
             <div class="form-group">
-                <label for="method_daily" class="form-label-custom">
-                    <i class="bi bi-cash-coin"></i> Método
-                </label>
-                <div style="display: flex; gap: var(--spacing-2);">
-                    <select class="form-select-custom" id="method_daily" name="method">
-                        <option value="all" {% if selected_method=='all' %}selected{% endif %}>Todos</option>
-                        <option value="cash" {% if selected_method=='cash' %}selected{% endif %}>Efectivo</option>
-                        <option value="transfer" {% if selected_method=='transfer' %}selected{% endif %}>Transferencia
-                        </option>
-                    </select>
-
-                    <button type="submit" class="btn-custom btn-primary-custom">
-                        <i class="bi bi-funnel"></i>
-                    </button>
-                    <a href="{{ url_for('balance.index', view='daily') }}" class="btn-custom btn-secondary-custom">
-                        <i class="bi bi-x-circle"></i>
-                    </a>
-                </div>
-            </div>
-
-            {% if selected_year and selected_month %}
-            <div style="grid-column: 1 / -1;">
-                <div class="alert-custom alert-info" style="margin-bottom: 0;">
-                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
-                    <div class="alert-custom-content">
-                        Mostrando balance diario para <strong>{{ ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo',
-                            'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre',
-                            'Diciembre'][selected_month] }} {{ selected_year }}</strong>
-                        {% if selected_method != 'all' %}
-                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
-                            %}</strong>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </form>
-
-        {% elif view == 'monthly' %}
-        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-2">
-            <input type="hidden" name="view" value="monthly">
-
-            <div class="form-group">
-                <label for="year" class="form-label-custom">
-                    <i class="bi bi-calendar"></i> Año
-                </label>
-                <select class="form-select-custom" id="year" name="year" required>
-                    {% if available_years %}
-                    {% for year in available_years %}
-                    <option value="{{ year }}" {% if selected_year==year %}selected{% endif %}>
-                        {{ year }}
-                    </option>
-                    {% endfor %}
-                    {% else %}
-                    <option value="{{ selected_year or '' }}">{{ selected_year or 'Sin datos' }}</option>
-                    {% endif %}
-                </select>
-            </div>
-
-            <div class="form-group">
                 <label for="method_monthly" class="form-label-custom">
                     <i class="bi bi-cash-coin"></i> Método
                 </label>
@@ -154,12 +197,14 @@
                 </div>
             </div>
 
-            {% if selected_year %}
+            {% if selected_year and selected_month %}
             <div style="grid-column: 1 / -1;">
                 <div class="alert-custom alert-info" style="margin-bottom: 0;">
                     <i class="alert-custom-icon bi bi-info-circle-fill"></i>
                     <div class="alert-custom-content">
-                        Mostrando balance mensual para el año <strong>{{ selected_year }}</strong>
+                        Mostrando balance mensual para <strong>{{ ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo',
+                            'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre',
+                            'Diciembre'][selected_month] }} {{ selected_year }}</strong>
                         {% if selected_method != 'all' %}
                         - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
                             %}</strong>
@@ -172,21 +217,30 @@
 
         {% else %}
         <!-- Yearly view -->
-        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-3">
-            <input type="hidden" name="view" value="{{ view }}">
+        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-2">
+            <input type="hidden" name="view" value="yearly">
 
             <div class="form-group">
-                <label for="start" class="form-label-custom">Fecha Inicio</label>
-                <input type="date" class="form-input-custom" id="start" name="start" value="{{ start }}">
+                <label for="year" class="form-label-custom">
+                    <i class="bi bi-calendar"></i> Año
+                </label>
+                <select class="form-select-custom" id="year" name="year" required>
+                    {% if available_years %}
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if selected_year==year %}selected{% endif %}>
+                        {{ year }}
+                    </option>
+                    {% endfor %}
+                    {% else %}
+                    <option value="{{ selected_year or '' }}">{{ selected_year or 'Sin datos' }}</option>
+                    {% endif %}
+                </select>
             </div>
 
             <div class="form-group">
-                <label for="end" class="form-label-custom">Fecha Fin</label>
-                <input type="date" class="form-input-custom" id="end" name="end" value="{{ end }}">
-            </div>
-
-            <div class="form-group">
-                <label for="method_yearly" class="form-label-custom">Método</label>
+                <label for="method_yearly" class="form-label-custom">
+                    <i class="bi bi-cash-coin"></i> Método
+                </label>
                 <div style="display: flex; gap: var(--spacing-2);">
                     <select class="form-select-custom" id="method_yearly" name="method">
                         <option value="all" {% if selected_method=='all' %}selected{% endif %}>Todos</option>
@@ -198,11 +252,26 @@
                     <button type="submit" class="btn-custom btn-primary-custom">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="{{ url_for('balance.index', view=view) }}" class="btn-custom btn-secondary-custom">
+                    <a href="{{ url_for('balance.index', view='yearly') }}" class="btn-custom btn-secondary-custom">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
             </div>
+
+            {% if selected_year %}
+            <div style="grid-column: 1 / -1;">
+                <div class="alert-custom alert-info" style="margin-bottom: 0;">
+                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
+                    <div class="alert-custom-content">
+                        Mostrando balance anual para el año <strong>{{ selected_year }}</strong>
+                        {% if selected_method != 'all' %}
+                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
+                            %}</strong>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </form>
         {% endif %}
     </div>

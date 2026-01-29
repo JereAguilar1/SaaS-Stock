@@ -28,9 +28,10 @@ def index():
         start_str = request.args.get('start', '').strip()
         end_str = request.args.get('end', '').strip()
         
-        # Get year and month params for daily view
+        # Get year, month, and day params
         year_str = request.args.get('year', '').strip()
         month_str = request.args.get('month', '').strip()
+        day_str = request.args.get('day', '').strip()
         
         # Get payment method filter
         method = request.args.get('method', 'all').lower().strip()
@@ -47,13 +48,25 @@ def index():
         # Get available years for filters (tenant-scoped)
         available_years = get_available_years(db_session, g.tenant_id)
         
-        # Handle year/month filters for daily view
+        # Initialize filter variables
         selected_year = None
         selected_month = None
+        selected_day = None
         available_months = []
         
         if view == 'daily':
-            if year_str and month_str:
+            # Opción 1: Día específico (prioridad)
+            if day_str:
+                try:
+                    selected_day = datetime.strptime(day_str, '%Y-%m-%d').date()
+                    start = selected_day
+                    end = selected_day
+                except ValueError:
+                    flash('Formato de fecha inválido. Use YYYY-MM-DD', 'warning')
+                    selected_day = None
+            
+            # Opción 2: Año/Mes (muestra todos los días del mes)
+            if not selected_day and year_str and month_str:
                 try:
                     selected_year = int(year_str)
                     selected_month = int(month_str)
@@ -77,48 +90,52 @@ def index():
                     selected_year = None
                     selected_month = None
             
-            if not (selected_year and selected_month):
-                if start_str and end_str:
-                    try:
-                        start = datetime.strptime(start_str, '%Y-%m-%d').date()
-                        end = datetime.strptime(end_str, '%Y-%m-%d').date()
-                        
-                        if start > end:
-                            flash('La fecha de inicio debe ser menor o igual a la fecha de fin', 'warning')
-                            start, end = get_default_date_range(view)
-                    except ValueError:
-                        flash('Formato de fecha inválido. Use YYYY-MM-DD', 'warning')
-                        start, end = get_default_date_range(view)
-                else:
-                    today = date.today()
-                    if available_years:
-                        current_year = today.year
-                        current_month = today.month
-                        
-                        if current_year in available_years:
-                            available_months = get_available_months(current_year, db_session, g.tenant_id)
-                            if current_month in available_months:
-                                selected_year = current_year
-                                selected_month = current_month
-                            elif available_months:
-                                selected_year = current_year
-                                selected_month = available_months[-1]
-                            else:
-                                selected_year = available_years[0]
-                                available_months = get_available_months(selected_year, db_session, g.tenant_id)
-                                selected_month = available_months[-1] if available_months else 12
-                        else:
-                            selected_year = available_years[0]
-                            available_months = get_available_months(selected_year, db_session, g.tenant_id)
-                            selected_month = available_months[-1] if available_months else 12
-                        
-                        start, end = get_month_date_range(selected_year, selected_month)
-                    else:
-                        selected_year = today.year
-                        selected_month = today.month
-                        start, end = get_month_date_range(selected_year, selected_month)
+            # Valor por defecto: día actual
+            if not selected_day and not (selected_year and selected_month):
+                today = date.today()
+                selected_day = today
+                start = today
+                end = today
         
         elif view == 'monthly':
+            # Selector de Año y Mes específico
+            if year_str and month_str:
+                try:
+                    selected_year = int(year_str)
+                    selected_month = int(month_str)
+                    
+                    if selected_month < 1 or selected_month > 12:
+                        flash('Mes inválido. Debe estar entre 1 y 12.', 'warning')
+                        selected_year = None
+                        selected_month = None
+                    
+                    if selected_year and (selected_year < 1900 or selected_year > 2100):
+                        flash('Año inválido.', 'warning')
+                        selected_year = None
+                        selected_month = None
+                    
+                    if selected_year and selected_month:
+                        # FIX: Usar get_month_date_range en lugar de get_year_date_range
+                        start, end = get_month_date_range(selected_year, selected_month)
+                        available_months = get_available_months(selected_year, db_session, g.tenant_id)
+                        
+                except (ValueError, TypeError):
+                    flash('Año o mes inválido.', 'warning')
+                    selected_year = None
+                    selected_month = None
+            
+            # Valor por defecto: mes y año actual
+            if not (selected_year and selected_month):
+                today = date.today()
+                selected_year = today.year
+                selected_month = today.month
+                start, end = get_month_date_range(selected_year, selected_month)
+                
+                if available_years and selected_year in available_years:
+                    available_months = get_available_months(selected_year, db_session, g.tenant_id)
+        
+        else:  # yearly
+            # Selector de Año específico
             if year_str:
                 try:
                     selected_year = int(year_str)
@@ -128,53 +145,18 @@ def index():
                         selected_year = None
                     
                     if selected_year:
+                        # FIX: Usar get_year_date_range para obtener todo el año
                         start, end = get_year_date_range(selected_year)
                         
                 except (ValueError, TypeError):
                     flash('Año inválido.', 'warning')
                     selected_year = None
             
+            # Valor por defecto: año actual
             if not selected_year:
-                if start_str and end_str:
-                    try:
-                        start = datetime.strptime(start_str, '%Y-%m-%d').date()
-                        end = datetime.strptime(end_str, '%Y-%m-%d').date()
-                        
-                        if start > end:
-                            flash('La fecha de inicio debe ser menor o igual a la fecha de fin', 'warning')
-                            start, end = get_default_date_range(view)
-                    except ValueError:
-                        flash('Formato de fecha inválido. Use YYYY-MM-DD', 'warning')
-                        start, end = get_default_date_range(view)
-                else:
-                    today = date.today()
-                    if available_years:
-                        current_year = today.year
-                        
-                        if current_year in available_years:
-                            selected_year = current_year
-                        else:
-                            selected_year = available_years[0]
-                        
-                        start, end = get_year_date_range(selected_year)
-                    else:
-                        selected_year = today.year
-                        start, end = get_year_date_range(selected_year)
-        
-        else:
-            if start_str and end_str:
-                try:
-                    start = datetime.strptime(start_str, '%Y-%m-%d').date()
-                    end = datetime.strptime(end_str, '%Y-%m-%d').date()
-                    
-                    if start > end:
-                        flash('La fecha de inicio debe ser menor o igual a la fecha de fin', 'warning')
-                        start, end = get_default_date_range(view)
-                except ValueError:
-                    flash('Formato de fecha inválido. Use YYYY-MM-DD', 'warning')
-                    start, end = get_default_date_range(view)
-            else:
-                start, end = get_default_date_range(view)
+                today = date.today()
+                selected_year = today.year
+                start, end = get_year_date_range(selected_year)
         
         # Get balance series (tenant-scoped)
         series = get_balance_series(view, start, end, db_session, g.tenant_id, method=method)
@@ -196,6 +178,7 @@ def index():
             available_years=available_years,
             selected_year=selected_year,
             selected_month=selected_month,
+            selected_day=selected_day.strftime('%Y-%m-%d') if selected_day else None,
             available_months=available_months,
             selected_method=method
         )
