@@ -29,68 +29,28 @@
     </div>
 </div>
 
-<!-- Mode Toggle -->
-<div class="card-custom" style="margin-bottom: var(--spacing-4);">
-    <div class="card-body-custom" style="padding: var(--spacing-3);">
-        <div
-            style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-3);">
-            <div>
-                <h3
-                    style="margin: 0; font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); color: var(--color-text);">
-                    <i class="bi bi-eye"></i> Modo de Visualización
-                </h3>
-                <p
-                    style="margin: var(--spacing-1) 0 0 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
-                    {% if view == 'daily' %}
-                    Individual: Ver un día específico | Agrupada: Ver todos los días del mes
-                    {% elif view == 'monthly' %}
-                    Individual: Ver un mes específico | Agrupada: Ver todos los meses del año
-                    {% else %}
-                    Individual: Ver un año específico | Agrupada: Ver todos los años disponibles
-                    {% endif %}
-                </p>
-            </div>
-            <div class="btn-group" role="group"
-                style="display: flex; gap: 0; border-radius: var(--border-radius); overflow: hidden; box-shadow: var(--shadow-sm);">
-                <a href="{{ url_for('balance.index', view=view, mode='individual', year=selected_year, month=selected_month, day=selected_day, method=selected_method) }}"
-                    class="btn-custom {% if mode == 'individual' %}btn-primary-custom{% else %}btn-secondary-custom{% endif %}"
-                    style="border-radius: 0; {% if mode == 'individual' %}font-weight: var(--font-weight-semibold);{% endif %}">
-                    <i class="bi bi-file-earmark-text"></i> Individual
-                </a>
-                <a href="{{ url_for('balance.index', view=view, mode='grouped', year=selected_year, month=selected_month, method=selected_method) }}"
-                    class="btn-custom {% if mode == 'grouped' %}btn-primary-custom{% else %}btn-secondary-custom{% endif %}"
-                    style="border-radius: 0; {% if mode == 'grouped' %}font-weight: var(--font-weight-semibold);{% endif %}">
-                    <i class="bi bi-list-ul"></i> Agrupada
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Filters Card -->
 <div class="card-custom" style="margin-bottom: var(--spacing-6);">
     <div class="card-body-custom">
         {% if view == 'daily' %}
-        <form method="GET" action="{{ url_for('balance.index') }}"
-            class="form-row {% if mode == 'individual' %}form-row-4{% else %}form-row-3{% endif %}">
+        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-4">
             <input type="hidden" name="view" value="daily">
-            <input type="hidden" name="mode" value="{{ mode }}">
 
-            {% if mode == 'individual' %}
-            <!-- MODO INDIVIDUAL: Selector de día específico -->
             <div class="form-group">
                 <label for="day" class="form-label-custom">
                     <i class="bi bi-calendar-day"></i> Día Específico
                 </label>
-                <input type="date" class="form-input-custom" id="day" name="day" value="{{ selected_day }}" required>
+                <input type="date" class="form-input-custom" id="day" name="day" value="{{ selected_day }}">
+                <small style="color: var(--color-text-muted); font-size: var(--font-size-xs);">
+                    Deje vacío para ver todo el mes
+                </small>
             </div>
-            {% else %}
-            <!-- MODO AGRUPADA: Selectores de año y mes -->
+
             <div class="form-group">
                 <label for="year" class="form-label-custom">
                     <i class="bi bi-calendar"></i> Año
                 </label>
-                <select class="form-select-custom" id="year" name="year" required>
+                <select class="form-select-custom" id="year" name="year">
                     {% if available_years %}
                     {% for year in available_years %}
                     <option value="{{ year }}" {% if selected_year==year %}selected{% endif %}>
@@ -107,7 +67,7 @@
                 <label for="month" class="form-label-custom">
                     <i class="bi bi-calendar-month"></i> Mes
                 </label>
-                <select class="form-select-custom" id="month" name="month" required>
+                <select class="form-select-custom" id="month" name="month">
                     <option value="1" {% if selected_month==1 %}selected{% endif %}>Enero</option>
                     <option value="2" {% if selected_month==2 %}selected{% endif %}>Febrero</option>
                     <option value="3" {% if selected_month==3 %}selected{% endif %}>Marzo</option>
@@ -122,7 +82,6 @@
                     <option value="12" {% if selected_month==12 %}selected{% endif %}>Diciembre</option>
                 </select>
             </div>
-            {% endif %}
 
             <div class="form-group">
                 <label for="method_daily" class="form-label-custom">
@@ -139,27 +98,13 @@
                     <button type="submit" class="btn-custom btn-primary-custom">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="{{ url_for('balance.index', view='daily', mode=mode) }}"
-                        class="btn-custom btn-secondary-custom">
+                    <a href="{{ url_for('balance.index', view='daily') }}" class="btn-custom btn-secondary-custom">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
             </div>
 
-            {% if mode == 'individual' and selected_day %}
-            <div style="grid-column: 1 / -1;">
-                <div class="alert-custom alert-info" style="margin-bottom: 0;">
-                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
-                    <div class="alert-custom-content">
-                        Mostrando balance para el día <strong>{{ selected_day }}</strong>
-                        {% if selected_method != 'all' %}
-                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
-                            %}</strong>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% elif mode == 'grouped' and selected_year and selected_month %}
+            {% if selected_day %}
             <div style="grid-column: 1 / -1;">
                 <div class="alert-custom alert-info" style="margin-bottom: 0;">
                     <i class="alert-custom-icon bi bi-info-circle-fill"></i>
@@ -191,10 +136,8 @@
         </form>
 
         {% elif view == 'monthly' %}
-        <form method="GET" action="{{ url_for('balance.index') }}"
-            class="form-row {% if mode == 'individual' %}form-row-3{% else %}form-row-2{% endif %}">
+        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-3">
             <input type="hidden" name="view" value="monthly">
-            <input type="hidden" name="mode" value="{{ mode }}">
 
             <div class="form-group">
                 <label for="year" class="form-label-custom">
@@ -203,7 +146,7 @@
                 <select class="form-select-custom" id="year" name="year" required>
                     {% if available_years %}
                     {% for year in available_years %}
-                    <option value="{{ year }}}" {% if selected_year==year %}selected{% endif %}>
+                    <option value="{{ year }}" {% if selected_year==year %}selected{% endif %}>
                         {{ year }}
                     </option>
                     {% endfor %}
@@ -213,8 +156,6 @@
                 </select>
             </div>
 
-            {% if mode == 'individual' %}
-            <!-- MODO INDIVIDUAL: Selector de mes específico -->
             <div class="form-group">
                 <label for="month" class="form-label-custom">
                     <i class="bi bi-calendar-month"></i> Mes
@@ -234,7 +175,6 @@
                     <option value="12" {% if selected_month==12 %}selected{% endif %}>Diciembre</option>
                 </select>
             </div>
-            {% endif %}
 
             <div class="form-group">
                 <label for="method_monthly" class="form-label-custom">
@@ -251,34 +191,20 @@
                     <button type="submit" class="btn-custom btn-primary-custom">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="{{ url_for('balance.index', view='monthly', mode=mode) }}"
-                        class="btn-custom btn-secondary-custom">
+                    <a href="{{ url_for('balance.index', view='monthly') }}" class="btn-custom btn-secondary-custom">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
             </div>
 
-            {% if mode == 'individual' and selected_year and selected_month %}
+            {% if selected_year and selected_month %}
             <div style="grid-column: 1 / -1;">
                 <div class="alert-custom alert-info" style="margin-bottom: 0;">
                     <i class="alert-custom-icon bi bi-info-circle-fill"></i>
                     <div class="alert-custom-content">
-                        Mostrando balance del mes <strong>{{ ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo',
+                        Mostrando balance mensual para <strong>{{ ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo',
                             'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre',
                             'Diciembre'][selected_month] }} {{ selected_year }}</strong>
-                        {% if selected_method != 'all' %}
-                        - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
-                            %}</strong>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% elif mode == 'grouped' and selected_year %}
-            <div style="grid-column: 1 / -1;">
-                <div class="alert-custom alert-info" style="margin-bottom: 0;">
-                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
-                    <div class="alert-custom-content">
-                        Mostrando balance mensual para el año <strong>{{ selected_year }}</strong>
                         {% if selected_method != 'all' %}
                         - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
                             %}</strong>
@@ -291,13 +217,9 @@
 
         {% else %}
         <!-- Yearly view -->
-        <form method="GET" action="{{ url_for('balance.index') }}"
-            class="form-row {% if mode == 'individual' %}form-row-2{% else %}form-row-1{% endif %}">
+        <form method="GET" action="{{ url_for('balance.index') }}" class="form-row form-row-2">
             <input type="hidden" name="view" value="yearly">
-            <input type="hidden" name="mode" value="{{ mode }}">
 
-            {% if mode == 'individual' %}
-            <!-- MODO INDIVIDUAL: Selector de año específico -->
             <div class="form-group">
                 <label for="year" class="form-label-custom">
                     <i class="bi bi-calendar"></i> Año
@@ -314,17 +236,6 @@
                     {% endif %}
                 </select>
             </div>
-            {% else %}
-            <!-- MODO AGRUPADA: Sin selector (muestra todos los años) -->
-            <div class="form-group" style="grid-column: 1 / -1;">
-                <div class="alert-custom alert-info" style="margin-bottom: 0;">
-                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
-                    <div class="alert-custom-content">
-                        Mostrando todos los años disponibles en el sistema
-                    </div>
-                </div>
-            </div>
-            {% endif %}
 
             <div class="form-group">
                 <label for="method_yearly" class="form-label-custom">
@@ -341,19 +252,18 @@
                     <button type="submit" class="btn-custom btn-primary-custom">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="{{ url_for('balance.index', view='yearly', mode=mode) }}"
-                        class="btn-custom btn-secondary-custom">
+                    <a href="{{ url_for('balance.index', view='yearly') }}" class="btn-custom btn-secondary-custom">
                         <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
             </div>
 
-            {% if mode == 'individual' and selected_year %}
+            {% if selected_year %}
             <div style="grid-column: 1 / -1;">
                 <div class="alert-custom alert-info" style="margin-bottom: 0;">
                     <i class="alert-custom-icon bi bi-info-circle-fill"></i>
                     <div class="alert-custom-content">
-                        Mostrando balance del año <strong>{{ selected_year }}</strong>
+                        Mostrando balance anual para el año <strong>{{ selected_year }}</strong>
                         {% if selected_method != 'all' %}
                         - Método: <strong>{% if selected_method == 'cash' %}Efectivo{% else %}Transferencia{% endif
                             %}</strong>
