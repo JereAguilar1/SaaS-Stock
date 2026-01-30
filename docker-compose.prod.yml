@@ -58,9 +58,11 @@ services:
     volumes:
       - redis_data_prod:/data
     networks:
-      - stock_network
+      stock_network:
+        aliases:
+          - redis
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping | grep PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -255,7 +257,7 @@ services:
     container_name: SaaS-Stock_grafana_prod
     restart: unless-stopped
     ports:
-      - "3001:3000"  # OPTIONAL: Comment out if using reverse proxy
+      - "3002:3000"  # OPTIONAL: Comment out if using reverse proxy
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
