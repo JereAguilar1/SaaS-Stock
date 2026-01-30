@@ -256,8 +256,6 @@ services:
     image: grafana/grafana:latest
     container_name: SaaS-Stock_grafana_prod
     restart: unless-stopped
-    ports:
-      - "3002:3000"  # OPTIONAL: Comment out if using reverse proxy
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
