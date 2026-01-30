@@ -102,8 +102,9 @@ services:
       S3_PUBLIC_URL: https://minio.tandil.site
 
       # Redis Cache (PASO 8)
-      REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      REDIS_URL: redis://default:${REDIS_PASSWORD:-}@redis:6379/0
       REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
       CACHE_ENABLED: ${CACHE_ENABLED:-true}
       CACHE_DEFAULT_TTL: ${CACHE_DEFAULT_TTL:-60}
       CACHE_PRODUCTS_TTL: ${CACHE_PRODUCTS_TTL:-60}
