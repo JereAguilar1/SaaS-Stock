@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS product (
   active      BOOLEAN NOT NULL DEFAULT TRUE,
   sale_price  NUMERIC(12,2) NOT NULL CHECK (sale_price >= 0),
   image_path  VARCHAR(255),
-  min_stock_qty NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (min_stock_qty >= 0),
+  min_stock_qty INTEGER NOT NULL DEFAULT 0 CHECK (min_stock_qty >= 0),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
