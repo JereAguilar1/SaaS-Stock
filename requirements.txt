@@ -39,8 +39,8 @@ boto3==1.35.91
 botocore==1.35.91
 
 # Redis Cache (PASO 8)
-redis==5.2.1
-hiredis==3.0.0  # C parser for better performance
+Flask-Caching==2.1.0
+redis==5.0.1
 
 # Observability - Prometheus Metrics (PASO 9)
 prometheus-client==0.21.0
