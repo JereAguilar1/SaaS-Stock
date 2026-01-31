@@ -75,15 +75,21 @@
             </div>
             <div class="card-body-custom">
                 <div class="form-group">
-                    <label for="product_id" class="form-label-custom">Producto</label>
-                    <select class="form-select-custom" id="product_id" name="product_id">
-                        <option value="">Seleccione producto...</option>
-                        {% for product in products %}
-                        <option value="{{ product.id }}">
-                            {{ product.name }} ({{ product.sku or 'Sin SKU' }}) - {{ product.uom.symbol }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                    <label for="product_search_input" class="form-label-custom">Producto</label>
+                    <div style="position: relative;">
+                        <input type="text" class="form-input-custom" id="product_search_input" list="products_datalist"
+                            placeholder="Buscar por Nombre o SKU..." autocomplete="off">
+                        <input type="hidden" id="product_id" name="product_id" required>
+
+                        <datalist id="products_datalist">
+                            {% for product in products %}
+                            <option value="{{ product.name }} ({{ product.sku or 'Sin SKU' }})"
+                                data-id="{{ product.id }}" data-price="{{ product.sale_price }}"
+                                data-uom="{{ product.uom.symbol }}">
+                            </option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
@@ -262,6 +268,51 @@
         validateDates();
         invoiceDateInput.addEventListener('change', validateDates);
         dueDateInput.addEventListener('change', validateDates);
+
+        // Validar al cargar y al cambiar
+        validateDates();
+        invoiceDateInput.addEventListener('change', validateDates);
+        dueDateInput.addEventListener('change', validateDates);
+
+        // 3. Autocomplete Inteligente para Productos
+        const searchInput = document.getElementById('product_search_input');
+        const hiddenIdInput = document.getElementById('product_id');
+        const datalist = document.getElementById('products_datalist');
+        const unitCostInput = document.getElementById('unit_cost');
+
+        // Mapa para búsqueda rápida de opciones por valor visible
+        const optionsMap = new Map();
+        Array.from(datalist.options).forEach(opt => {
+            optionsMap.set(opt.value, {
+                id: opt.getAttribute('data-id'),
+                price: opt.getAttribute('data-price')
+            });
+        });
+
+        searchInput.addEventListener('input', function () {
+            const val = this.value;
+            const match = optionsMap.get(val);
+
+            if (match) {
+                // Producto encontrado y seleccionado exactamente
+                hiddenIdInput.value = match.id;
+
+                // Cargar precio sugerido si el campo está vacío o en cero
+                if (match.price && (unitCostInput.value === "0.00" || unitCostInput.value === "0" || unitCostInput.value === "")) {
+                    unitCostInput.value = match.price;
+                }
+
+                // Visual feedback (opcional)
+                this.style.borderColor = 'var(--color-success)';
+            } else {
+                // Entrada libre o incompleta -> Limpiar ID
+                hiddenIdInput.value = '';
+                this.style.borderColor = '';
+            }
+        });
+
+        // Limpiar input al agregar (opcional, si se recarga la página no hace falta, pero si es HTMX sí)
+        // Como este form hace submit POST completo, no es necesario limpiar manualmente aquí.
     });
 </script>
 {% endblock %}

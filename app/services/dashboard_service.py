@@ -116,13 +116,13 @@ def get_dashboard_data(session, tenant_id: int, start_dt: datetime, end_dt: date
         except Exception:
             continue
     
-    # 4. Get Recent Sales (last 10 confirmed sales)
+    # 4. Get Recent Sales (last 5 confirmed sales)
     recent_sales = session.query(Sale).filter(
         Sale.tenant_id == tenant_id,
         Sale.status == SaleStatus.CONFIRMED
     ).order_by(
         Sale.datetime.desc()
-    ).limit(10).all()
+    ).limit(5).all()
     
     return {
         'income_today': income_today,
