@@ -56,6 +56,11 @@
                         <input type="date" class="form-input-custom" id="due_date" name="due_date"
                             value="{{ draft.due_date }}" hx-post="{{ url_for('invoices.update_draft_header') }}"
                             hx-trigger="blur">
+                        <div id="date-error" class="form-error-text"
+                            style="display: none; margin-top: var(--spacing-1);">
+                            <i class="bi bi-exclamation-circle"></i> La fecha de vencimiento debe ser posterior a la
+                            fecha de la boleta.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -199,4 +204,64 @@
 
 <!-- Modal Container for HTMX -->
 <div id="invoice-create-modal-container"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const invoiceDateInput = document.getElementById('invoice_date');
+        const dueDateInput = document.getElementById('due_date');
+        const dateError = document.getElementById('date-error');
+        const submitBtn = document.querySelector('button[formaction*="add_draft_line"]');
+        const confirmBtn = document.querySelector('button[hx-get*="confirm_create_preview"]');
+
+        function formatDate(date) {
+            const yyyy = date.getFullYear();
+            let mm = date.getMonth() + 1;
+            let dd = date.getDate();
+            if (dd < 10) dd = '0' + dd;
+            if (mm < 10) mm = '0' + mm;
+            return yyyy + '-' + mm + '-' + dd;
+        }
+
+        // 1. Establecer valor por defecto para Fecha de Boleta si está vacío
+        const today = new Date();
+        if (!invoiceDateInput.value) {
+            invoiceDateInput.value = formatDate(today);
+        }
+
+        // 2. Lógica de Validación
+        function validateDates() {
+            const invDate = new Date(invoiceDateInput.value);
+            const dueDate = new Date(dueDateInput.value);
+
+            // Solo validar si ambas tienen valor
+            if (invoiceDateInput.value && dueDateInput.value) {
+                if (dueDate <= invDate) {
+                    // Mostrar error
+                    dateError.style.display = 'block';
+                    dueDateInput.classList.add('is-invalid');
+
+                    // Bloquear acciones
+                    if (submitBtn) submitBtn.disabled = true;
+                    if (confirmBtn) confirmBtn.disabled = true;
+                } else {
+                    // Ocultar error
+                    dateError.style.display = 'none';
+                    dueDateInput.classList.remove('is-invalid');
+
+                    // Habilitar acciones
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (confirmBtn) confirmBtn.disabled = false;
+                }
+            }
+        }
+
+        // Validar al cargar y al cambiar
+        validateDates();
+        invoiceDateInput.addEventListener('change', validateDates);
+        dueDateInput.addEventListener('change', validateDates);
+    });
+</script>
 {% endblock %}
