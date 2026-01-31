@@ -204,37 +204,4 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="card-custom">
-        <div class="card-header-custom">
-            <h2 class="card-title">
-                <i class="bi bi-lightning-fill" style="color: var(--color-warning);"></i>
-                Acciones Rápidas
-            </h2>
-        </div>
-        <div class="card-body-custom">
-            <div class="btn-group-custom" style="flex-wrap: wrap;">
-                <a href="{{ url_for('sales.new_sale') }}" class="btn-custom btn-primary-custom">
-                    <i class="bi bi-cart-plus"></i>
-                    Nueva Venta
-                </a>
-                <a href="{{ url_for('catalog.new_product') }}" class="btn-custom btn-success-custom">
-                    <i class="bi bi-plus-circle"></i>
-                    Nuevo Producto
-                </a>
-                <a href="{{ url_for('quotes.list_quotes') }}" class="btn-custom btn-secondary-custom">
-                    <i class="bi bi-file-earmark-text"></i>
-                    Presupuestos
-                </a>
-                <a href="{{ url_for('balance.index') }}" class="btn-custom btn-secondary-custom">
-                    <i class="bi bi-graph-up"></i>
-                    Balance
-                </a>
-                <a href="{{ url_for('invoices.new_invoice') }}" class="btn-custom btn-secondary-custom">
-                    <i class="bi bi-receipt"></i>
-                    Nueva Boleta
-                </a>
-            </div>
-        </div>
-    </div>
     {% endblock %}
