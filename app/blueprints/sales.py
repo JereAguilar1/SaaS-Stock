@@ -1149,13 +1149,14 @@ def draft_update():
         
     except ValueError as e:
         db_session.rollback()
-        flash(str(e), 'warning')
+        # flash(str(e), 'warning') # Avoid flash for HTMX updates
         draft, totals = sale_draft_service.get_draft_with_totals(
             db_session, g.tenant_id, g.user_id
         )
         return render_template('sales/_cart_content_draft.html',
                              draft=draft,
-                             totals=totals)
+                             totals=totals,
+                             error_message=str(e))
         
     except Exception as e:
         db_session.rollback()
@@ -1165,7 +1166,8 @@ def draft_update():
         )
         return render_template('sales/_cart_content_draft.html',
                              draft=draft,
-                             totals=totals)
+                             totals=totals,
+                             error_message=f"Error al actualizar: {str(e)}")
 
 
 @sales_bp.route('/draft/remove', methods=['POST'])

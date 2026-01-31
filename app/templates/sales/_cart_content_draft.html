@@ -35,7 +35,11 @@
                         %}>−</button>
                 </form>
 
-                <input type="number" class="qty-input" value="{{ line.qty|int }}" readonly>
+                <input type="number" class="qty-input form-control form-control-sm border-0 text-center p-0 mx-1"
+                    style="width: 50px; background: transparent; font-weight: 600;" name="qty"
+                    value="{{ line.qty|int }}" min="1" step="1" hx-post="{{ url_for('sales.draft_update') }}"
+                    hx-trigger="change, keyup changed delay:500ms" hx-target="#cart-container" hx-swap="innerHTML"
+                    hx-vals='{"product_id": "{{ line.product_id }}"}'>
 
                 <form hx-post="{{ url_for('sales.draft_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
                     class="d-inline">
@@ -197,7 +201,18 @@
         font-weight: 600;
         color: var(--color-text-primary);
         padding: 0;
-        pointer-events: none;
+        /* pointer-events: none; REMOVED */
+    }
+
+    /* Hide arrow/spinners for number input */
+    .qty-input::-webkit-outer-spin-button,
+    .qty-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .qty-input[type=number] {
+        -moz-appearance: textfield;
     }
 
     .cart-item-price {
