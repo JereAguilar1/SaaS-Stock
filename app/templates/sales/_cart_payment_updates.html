@@ -1,0 +1,30 @@
+{% if session.get('cash_overridden') %}
+<!-- Update Reset Button Visibility OOB -->
+<div id="cash-received-section" hx-swap-oob="true" class="mb-3">
+    <div class="input-group">
+        <span class="input-group-text">Recibido</span>
+        <input type="number" id="amount_received" class="form-control" step="0.01" min="0"
+            name="amount_received_display" value="{{ session.get('cash_amount') }}"
+            hx-post="{{ url_for('sales.draft_payment_update_cash') }}" hx-trigger="blur, change, keyup[key=='Enter']"
+            hx-swap="none" placeholder="Monto recibido">
+
+        <button class="btn btn-outline-secondary" type="button"
+            hx-post="{{ url_for('sales.draft_payment_reset_cash') }}" hx-target="#cart-container"
+            title="Igualar al total">
+            <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+    </div>
+    <div id="change-display" class="text-end mt-1 text-success fw-bold" style="display: block;">
+        Vuelto: $<span id="change-amount">{{ "%.2f"|format(session.get('cash_amount')|float - totals.total|float)
+            }}</span>
+    </div>
+</div>
+
+<!-- Update Hidden Input OOB -->
+<input type="hidden" name="payments[0][amount_received]" id="payment-received-input"
+    value="{{ session.get('cash_amount') }}" hx-swap-oob="true">
+
+{% else %}
+<!-- Reset or Sync State -->
+{% include 'sales/_cart_content_draft.html' %}
+{% endif %}

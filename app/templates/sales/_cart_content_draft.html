@@ -10,52 +10,7 @@
 <div style="flex: 1; overflow-y: auto; padding: 0 1.25rem;">
     {% if totals and totals['lines'] %}
     {% for line in totals['lines'] %}
-    <div class="cart-item">
-        <div class="cart-item-header">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <span class="cart-item-title">{{ line.product_name }}</span>
-            </div>
-
-            <form hx-post="{{ url_for('sales.draft_remove') }}" hx-target="#cart-container" hx-swap="innerHTML">
-                <input type="hidden" name="product_id" value="{{ line.product_id }}">
-                <button type="submit" class="btn-trash">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </form>
-        </div>
-
-        <div class="cart-item-controls">
-            <!-- Qty Control -->
-            <div class="qty-control">
-                <form hx-post="{{ url_for('sales.draft_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
-                    class="d-inline">
-                    <input type="hidden" name="product_id" value="{{ line.product_id }}">
-                    <input type="hidden" name="qty" value="{{ line.qty - 1 }}">
-                    <button class="btn-qty" type="submit" {% if line.qty <=1 %}disabled style="opacity:0.5" {% endif
-                        %}>−</button>
-                </form>
-
-                <input type="number" class="qty-input form-control form-control-sm border-0 text-center p-0 mx-1"
-                    style="width: 50px; background: transparent; font-weight: 600;" name="qty"
-                    value="{{ line.qty|int }}" min="1" step="1" hx-post="{{ url_for('sales.draft_update') }}"
-                    hx-trigger="change, keyup changed delay:500ms" hx-target="#cart-container" hx-swap="innerHTML"
-                    hx-vals='{"product_id": "{{ line.product_id }}"}'>
-
-                <form hx-post="{{ url_for('sales.draft_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
-                    class="d-inline">
-                    <input type="hidden" name="product_id" value="{{ line.product_id }}">
-                    <input type="hidden" name="qty" value="{{ line.qty + 1 }}">
-                    <button class="btn-qty" type="submit">+</button>
-                </form>
-            </div>
-
-            <div class="cart-item-price">
-                ${{ "%.2f"|format(line.line_total) }}
-            </div>
-        </div>
-
-        <!-- Discount Controls REMOVED -->
-    </div>
+    {% include 'sales/_cart_line.html' %}
     {% endfor %}
     {% else %}
     <div class="empty-cart-state">
@@ -72,7 +27,7 @@
     <div class="totals-area">
         <div class="total-row final-total">
             <span>Total</span>
-            <span>${{ "%.2f"|format(totals.total) }}</span>
+            <span id="cart-total-display">${{ "%.2f"|format(totals.total) }}</span>
         </div>
     </div>
 
@@ -98,7 +53,18 @@
             <div class="input-group">
                 <span class="input-group-text">Recibido</span>
                 <input type="number" id="amount_received" class="form-control" step="0.01" min="0"
-                    value="{{ totals.total }}" placeholder="Monto recibido">
+                    name="amount_received_display"
+                    value="{% if session.get('cash_overridden') %}{{ session.get('cash_amount', totals.total) }}{% else %}{{ totals.total }}{% endif %}"
+                    hx-post="{{ url_for('sales.draft_payment_update_cash') }}"
+                    hx-trigger="blur, change, keyup[key=='Enter']" hx-swap="none" placeholder="Monto recibido">
+
+                {% if session.get('cash_overridden') %}
+                <button class="btn btn-outline-secondary" type="button"
+                    hx-post="{{ url_for('sales.draft_payment_reset_cash') }}" hx-target="#cart-container"
+                    title="Igualar al total">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                {% endif %}
             </div>
             <div id="change-display" class="text-end mt-1 text-success fw-bold" style="display: none;">
                 Vuelto: $<span id="change-amount">0.00</span>
@@ -109,8 +75,12 @@
             <input type="hidden" name="idempotency_key" id="idempotency-key" value="">
             <input type="hidden" name="payments[0][method]" id="payment-method-input" value="CASH">
             <input type="hidden" name="payments[0][amount]" id="payment-amount-input" value="{{ totals.total }}">
+
+            <!-- Real submitted values for payment logic -->
             <input type="hidden" name="payments[0][amount_received]" id="payment-received-input"
-                value="{{ totals.total }}">
+                value="{% if session.get('cash_overridden') %}{{ session.get('cash_amount', totals.total) }}{% else %}{{ totals.total }}{% endif %}"
+                hx-swap-oob="true"> <!-- Add OOB swap target for updates -->
+
             <input type="hidden" name="payments[0][change_amount]" id="payment-change-input" value="0">
 
             <button type="submit" class="btn-checkout">

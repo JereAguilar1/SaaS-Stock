@@ -1,7 +1,8 @@
 """Sales blueprint for POS and cart management - Multi-Tenant."""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file, current_app, g, abort
 from sqlalchemy import or_, func, and_
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import decimal
 from datetime import datetime
 from app.database import get_session
 from app.models import Product, ProductStock, Sale, SaleLine, SaleStatus, SaleDraft
@@ -123,6 +124,9 @@ def new_sale():
              current_app.logger.warning(f"Error loading draft in new_sale: {e}")
              draft, totals = None, None
 
+        # Reset cash override state on page load
+        session['cash_overridden'] = False
+        
         # Get top selling products (tenant-scoped)
         top_products, top_products_error = get_top_selling_products(db_session, g.tenant_id, limit=10)
         
@@ -1123,8 +1127,17 @@ def draft_update():
             db_session, g.tenant_id, g.user_id
         )
         
-        # Parse values
-        qty = Decimal(qty_str) if qty_str else None
+        # Parse values safely
+        try:
+            qty = Decimal(qty_str) if qty_str and qty_str.strip() else None
+            # If qty is None, treat as no change or invalid? Service handles None as 'no change', 
+            # but for mandatory update we might want to check.
+            # If user sends empty string, we should probably raise ValueError or revert.
+            if qty_str is not None and not qty_str.strip():
+                 raise ValueError("La cantidad no puede estar vacía")
+        except decimal.InvalidOperation:
+            raise ValueError("Cantidad inválida")
+            
         discount_value = Decimal(discount_value_str) if discount_value_str else Decimal('0')
         
         # Update line
@@ -1143,24 +1156,47 @@ def draft_update():
             db_session, g.tenant_id, g.user_id
         )
         
-        return render_template('sales/_cart_content_draft.html',
-                             draft=draft,
-                             totals=totals)
+        # Find the specific line that was updated to pass to the template
+        # Note: product_id is an INT, line.product_id might be INT or STR depending on dict construction
+        updated_line = next((l for l in totals['lines'] if l['product_id'] == product_id), None)
+        
+        if updated_line:
+             return render_template('sales/_cart_update_response.html',
+                                  line=updated_line,
+                                  totals=totals)
+        else:
+             # Fallback if line disappeared (shouldn't happen on update unless qty=0, which might trigger remove)
+             return render_template('sales/_cart_content_draft.html',
+                                  draft=draft,
+                                  totals=totals)
         
     except ValueError as e:
         db_session.rollback()
-        # flash(str(e), 'warning') # Avoid flash for HTMX updates
+        # On error, we re-render the row with the error message
+        # We need the current state of the draft to re-render the row properly
         draft, totals = sale_draft_service.get_draft_with_totals(
             db_session, g.tenant_id, g.user_id
         )
-        return render_template('sales/_cart_content_draft.html',
-                             draft=draft,
-                             totals=totals,
-                             error_message=str(e))
         
+        # Locate the line
+        error_line = next((l for l in totals['lines'] if l['product_id'] == product_id), None)
+        
+        if error_line:
+             # We assume product_id is available in scope (from try block)
+             return render_template('sales/_cart_line.html',
+                                  line=error_line,
+                                  error_message=str(e),
+                                  error_line_id=str(product_id))
+        else:
+             return render_template('sales/_cart_content_draft.html',
+                                  draft=draft,
+                                  totals=totals,
+                                  error_message=str(e))
+
     except Exception as e:
         db_session.rollback()
         current_app.logger.error(f"Error in draft_update: {str(e)}", exc_info=True)
+        # For generic errors, better to refresh the whole cart
         draft, totals = sale_draft_service.get_draft_with_totals(
             db_session, g.tenant_id, g.user_id
         )
@@ -1168,6 +1204,49 @@ def draft_update():
                              draft=draft,
                              totals=totals,
                              error_message=f"Error al actualizar: {str(e)}")
+
+
+@sales_bp.route('/draft/payment/update_cash', methods=['POST'])
+@require_login
+@require_tenant
+def draft_payment_update_cash():
+    """Update cash amount manually and set override flag."""
+    db_session = get_session()
+    
+    amount_str = request.form.get('amount_received_display')
+    try:
+        amount = Decimal(amount_str) if amount_str else Decimal('0')
+    except InvalidOperation:
+        amount = Decimal('0')
+        
+    session['cash_overridden'] = True
+    session['cash_amount'] = str(amount) # Store as string for JSON serialization
+    
+    # Get current totals for calculation
+    draft, totals = sale_draft_service.get_draft_with_totals(
+        db_session, g.tenant_id, g.user_id
+    )
+    
+    return render_template('sales/_cart_payment_updates.html', totals=totals)
+
+@sales_bp.route('/draft/payment/reset_cash', methods=['POST'])
+@require_login
+@require_tenant
+def draft_payment_reset_cash():
+    """Reset cash amount to match total and clear override flag."""
+    db_session = get_session()
+    
+    session['cash_overridden'] = False
+    session.pop('cash_amount', None)
+    
+    # Get current totals to re-sync
+    draft, totals = sale_draft_service.get_draft_with_totals(
+        db_session, g.tenant_id, g.user_id
+    )
+    
+    return render_template('sales/_cart_content_draft.html',
+                         draft=draft,
+                         totals=totals)
 
 
 @sales_bp.route('/draft/remove', methods=['POST'])

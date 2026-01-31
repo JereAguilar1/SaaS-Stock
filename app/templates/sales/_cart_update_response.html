@@ -1,0 +1,29 @@
+{% include 'sales/_cart_line.html' %}
+
+<span id="cart-total-display" hx-swap-oob="true">${{ "%.2f"|format(totals.total) }}</span>
+
+<!-- Update hidden inputs for payment -->
+<!-- Update hidden inputs for payment -->
+<input type="hidden" name="payments[0][amount]" id="payment-amount-input" value="{{ totals.total }}" hx-swap-oob="true">
+
+<!-- Smart Update for Amount Received -->
+{% if not session.get('cash_overridden') %}
+<!-- If NO override: Sync visible input and hidden input to new total -->
+<input type="number" id="amount_received" hx-swap-oob="true" value="{{ totals.total }}" class="form-control"
+     name="amount_received_display" step="0.01" min="0" hx-post="{{ url_for('sales.draft_payment_update_cash') }}"
+     hx-trigger="blur, change, keyup[key=='Enter']" hx-swap="none" placeholder="Monto recibido">
+
+<input type="hidden" name="payments[0][amount_received]" id="payment-received-input" value="{{ totals.total }}"
+     hx-swap-oob="true">
+{% else %}
+<!-- If override IS active: 
+         - Keep visible input as is (manual value)
+         - Keep hidden input as is (manual value)
+         - BUT we must verify if we need to update 'change' display (vuelto)
+    -->
+<div id="change-display" class="text-end mt-1 text-success fw-bold" style="display: block;" hx-swap-oob="true">
+     Vuelto: $<span id="change-amount">{{ "%.2f"|format((session.get('cash_amount')|float -
+          totals.total|float)|round(2)) if (session.get('cash_amount')|float - totals.total|float) > 0 else "0.00"
+          }}</span>
+</div>
+{% endif %}
