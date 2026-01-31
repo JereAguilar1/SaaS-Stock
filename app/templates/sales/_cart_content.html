@@ -43,7 +43,10 @@
                         %}>−</button>
                 </form>
 
-                <input type="number" class="qty-input" value="{{ item.qty|int }}" readonly>
+                <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                <input type="number" class="qty-input" name="qty" value="{{ item.qty|int }}"
+                    hx-post="{{ url_for('sales.cart_update') }}" hx-trigger="change" hx-target="#cart-container"
+                    hx-swap="innerHTML" oninput="this.value = Math.max(1, Math.floor(this.value) || 1);">
 
                 <form hx-post="{{ url_for('sales.cart_update') }}" hx-target="#cart-container" hx-swap="innerHTML"
                     class="d-inline">
@@ -70,7 +73,7 @@
 
 <!-- Cart Footer (Fixed at bottom) -->
 <div class="cart-footer">
-     {% if cart_items %}
+    {% if cart_items %}
     <div class="totals-area">
         <!--<div class="total-row">
             <span>Subtotal</span>
@@ -192,15 +195,15 @@
     }
 
     .qty-input {
-        width: 32px;
-        border: none;
+        width: 40px;
+        border: 1px solid #e5e7eb;
         text-align: center;
         font-size: 0.9rem;
         font-weight: 600;
         color: var(--color-text-primary);
-        padding: 0;
-        pointer-events: none;
-        /* simple display */
+        padding: 2px 0;
+        border-radius: 4px;
+        margin: 0 4px;
     }
 
     .cart-item-price {
