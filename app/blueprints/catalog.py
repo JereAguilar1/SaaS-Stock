@@ -211,6 +211,31 @@ def list_products():
                              selected_stock_filter='')
 
 
+@catalog_bp.route('/<int:product_id>/detalle', methods=['GET'])
+@require_login
+@require_tenant
+def product_detail(product_id):
+    """Show product detail page (tenant-scoped)."""
+    session = get_session()
+    
+    try:
+        # Get product and verify it belongs to current tenant
+        product = session.query(Product).filter(
+            Product.id == product_id,
+            Product.tenant_id == g.tenant_id
+        ).first()
+        
+        if not product:
+            abort(404)
+        
+        return render_template('products/detail.html', product=product)
+        
+    except Exception as e:
+        flash(f'Error al cargar detalle del producto: {str(e)}', 'danger')
+        return redirect(url_for('catalog.list_products'))
+
+
+
 @catalog_bp.route('/new', methods=['GET'])
 @require_login
 @require_tenant

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle del Producto - {{ product.name }}{% endblock %}
+
+{% block page_title %}Detalle del Producto{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('catalog.list_products') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i>
+    Volver a Productos
+</a>
+<a href="{{ url_for('catalog.edit_product', product_id=product.id) }}" class="btn-custom btn-primary-custom">
+    <i class="bi bi-pencil"></i>
+    Editar Producto
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card-custom">
+    <div class="card-body-custom">
+        <div style="display: grid; grid-template-columns: 300px 1fr; gap: var(--spacing-6); align-items: start;">
+            <!-- Columna Izquierda: Imagen del Producto -->
+            <div style="position: sticky; top: var(--spacing-4);">
+                <div
+                    style="background: var(--color-bg-muted); border-radius: var(--radius-md); padding: var(--spacing-4); text-align: center;">
+                    {% if product.image_url %}
+                    <div
+                        style="width: 250px; height: 250px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background-color: #fff; border-radius: var(--radius-sm); border: 2px solid var(--color-border-light); overflow: hidden;">
+                        <img src="{{ product.image_url }}" alt="{{ product.name }}"
+                            style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    {% else %}
+                    <div
+                        style="width: 250px; height: 250px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background-color: #fff; border-radius: var(--radius-sm); border: 2px solid var(--color-border-light); overflow: hidden;">
+                        <img src="{{ url_for('static', filename='img/no-image.svg') }}" alt="Sin imagen"
+                            style="width: 100%; height: 100%; object-fit: contain; padding: var(--spacing-4);">
+                    </div>
+                    {% endif %}
+
+                    <!-- Estado del Producto -->
+                    <div style="margin-top: var(--spacing-4);">
+                        {% if product.active %}
+                        <span class="badge-custom badge-success"
+                            style="font-size: var(--font-size-base); padding: var(--spacing-2) var(--spacing-4);">
+                            <i class="bi bi-check-circle"></i> Activo
+                        </span>
+                        {% else %}
+                        <span class="badge-custom badge-secondary"
+                            style="font-size: var(--font-size-base); padding: var(--spacing-2) var(--spacing-4);">
+                            <i class="bi bi-x-circle"></i> Inactivo
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Ficha Técnica -->
+            <div>
+                <h2
+                    style="margin-bottom: var(--spacing-4); color: var(--color-text-primary); font-weight: var(--font-weight-bold);">
+                    {{ product.name }}
+                </h2>
+
+                <!-- Información General -->
+                <div class="card-custom" style="margin-bottom: var(--spacing-4);">
+                    <div class="card-header-custom">
+                        <h3
+                            style="margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);">
+                            <i class="bi bi-info-circle"></i> Información General
+                        </h3>
+                    </div>
+                    <div class="card-body-custom">
+                        <dl style="display: grid; grid-template-columns: 200px 1fr; gap: var(--spacing-3); margin: 0;">
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                ID:</dt>
+                            <dd style="margin: 0;">{{ product.id }}</dd>
+
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                SKU:</dt>
+                            <dd style="margin: 0;">{{ product.sku or '-' }}</dd>
+
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Código de Barras:</dt>
+                            <dd style="margin: 0;">{{ product.barcode or '-' }}</dd>
+
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Categoría:</dt>
+                            <dd style="margin: 0;">
+                                {% if product.category %}
+                                <span class="badge-custom badge-info">{{ product.category.name }}</span>
+                                {% else %}
+                                <span style="color: var(--color-text-muted);">Sin categoría</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Unidad de Medida:</dt>
+                            <dd style="margin: 0;">
+                                <span class="badge-custom badge-info">{{ product.uom.symbol }}</span>
+                                {{ product.uom.name }}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Información de Precio y Stock -->
+                <div class="card-custom" style="margin-bottom: var(--spacing-4);">
+                    <div class="card-header-custom">
+                        <h3
+                            style="margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);">
+                            <i class="bi bi-cash-stack"></i> Precio y Stock
+                        </h3>
+                    </div>
+                    <div class="card-body-custom">
+                        <dl style="display: grid; grid-template-columns: 200px 1fr; gap: var(--spacing-3); margin: 0;">
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Precio de Venta:</dt>
+                            <dd
+                                style="margin: 0; font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-success);">
+                                ${{ product.sale_price|money_ar }}
+                            </dd>
+
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Stock Actual:</dt>
+                            <dd style="margin: 0;">
+                                {% if product.on_hand_qty == 0 %}
+                                <span class="badge-custom badge-danger"
+                                    style="font-size: var(--font-size-lg); padding: var(--spacing-2) var(--spacing-3);">
+                                    <i class="bi bi-exclamation-triangle"></i> 0 {{ product.uom.symbol }}
+                                </span>
+                                {% elif product.min_stock_qty > 0 and product.on_hand_qty <= product.min_stock_qty %}
+                                    <span class="badge-custom badge-warning"
+                                    style="font-size: var(--font-size-lg); padding: var(--spacing-2) var(--spacing-3);">
+                                    <i class="bi bi-exclamation-circle"></i> {{ product.on_hand_qty|num_ar }} {{
+                                    product.uom.symbol }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge-custom badge-success"
+                                        style="font-size: var(--font-size-lg); padding: var(--spacing-2) var(--spacing-3);">
+                                        <i class="bi bi-check-circle"></i> {{ product.on_hand_qty|num_ar }} {{
+                                        product.uom.symbol }}
+                                    </span>
+                                    {% endif %}
+                            </dd>
+
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Stock Mínimo:</dt>
+                            <dd style="margin: 0;">
+                                {% if product.min_stock_qty > 0 %}
+                                <span style="font-size: var(--font-size-lg);">{{ product.min_stock_qty|num_ar }} {{
+                                    product.uom.symbol }}</span>
+                                {% else %}
+                                <span style="color: var(--color-text-muted);">No configurado</span>
+                                {% endif %}
+                            </dd>
+
+                            {% if product.min_stock_qty > 0 and product.on_hand_qty <= product.min_stock_qty %} <dt
+                                style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Alerta:</dt>
+                                <dd style="margin: 0;">
+                                    <div class="alert-custom alert-warning" style="margin: 0;">
+                                        <i class="alert-custom-icon bi bi-exclamation-triangle"></i>
+                                        <div class="alert-custom-content">
+                                            <strong>Stock bajo:</strong> El stock actual está en o por debajo del mínimo
+                                            configurado.
+                                        </div>
+                                    </div>
+                                </dd>
+                                {% endif %}
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Información de Auditoría -->
+                <div class="card-custom">
+                    <div class="card-header-custom">
+                        <h3
+                            style="margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);">
+                            <i class="bi bi-clock-history"></i> Información de Auditoría
+                        </h3>
+                    </div>
+                    <div class="card-body-custom">
+                        <dl style="display: grid; grid-template-columns: 200px 1fr; gap: var(--spacing-3); margin: 0;">
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Fecha de Creación:</dt>
+                            <dd style="margin: 0;">
+                                <i class="bi bi-calendar-plus"></i>
+                                {{ product.created_at.strftime('%d/%m/%Y %H:%M') if product.created_at else '-' }}
+                            </dd>
+
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                Última Actualización:</dt>
+                            <dd style="margin: 0;">
+                                <i class="bi bi-calendar-check"></i>
+                                {{ product.updated_at.strftime('%d/%m/%Y %H:%M') if product.updated_at else '-' }}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Responsive: Stack columns on mobile -->
+<style>
+    @media (max-width: 768px) {
+        .card-body-custom>div[style*="grid-template-columns: 300px 1fr"] {
+            grid-template-columns: 1fr !important;
+        }
+
+        .card-body-custom>div>div:first-child {
+            position: static !important;
+        }
+    }
+</style>
+{% endblock %}

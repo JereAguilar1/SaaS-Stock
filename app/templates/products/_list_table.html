@@ -43,15 +43,12 @@
                     <th style="width: 60px;">ID</th>
                     <th style="width: 80px;">Imagen</th>
                     <th>Nombre</th>
-                    <th>SKU</th>
-                    <th>Código Barras</th>
-                    <th>Categoría</th>
-                    <th>Unidad</th>
-                    <th style="text-align: right;">Precio Venta</th>
+                    <th style="text-align: right; width: 120px;">Precio</th>
                     <th style="text-align: center; width: 100px;">Stock</th>
                     <th style="text-align: center; width: 100px;">Stock Mín.</th>
-                    <th style="text-align: center; width: 100px;">Estado</th>
-                    <th style="text-align: center; width: 180px;">Acciones</th>
+                    <th style="width: 100px;">Unidad</th>
+                    <th>Categoría</th>
+                    <th style="text-align: center; width: 200px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -74,13 +71,6 @@
                         <br><span class="badge-custom badge-secondary">Sin stock</span>
                         {% endif %}
                     </td>
-                    <td>{{ product.sku or '-' }}</td>
-                    <td>{{ product.barcode or '-' }}</td>
-                    <td>{{ product.category.name if product.category else '-' }}</td>
-                    <td>
-                        <span class="badge-custom badge-info">{{ product.uom.symbol }}</span>
-                        {{ product.uom.name }}
-                    </td>
                     <td style="text-align: right; font-weight: var(--font-weight-semibold);">
                         ${{ product.sale_price|money_ar }}
                     </td>
@@ -100,29 +90,21 @@
                         <span style="color: var(--color-text-muted);">—</span>
                         {% endif %}
                     </td>
-                    <td style="text-align: center;">
-                        {% if product.active %}
-                        <span class="badge-custom badge-success">Activo</span>
-                        {% else %}
-                        <span class="badge-custom badge-secondary">Inactivo</span>
-                        {% endif %}
+                    <td>
+                        <span class="badge-custom badge-info">{{ product.uom.symbol }}</span>
+                        {{ product.uom.name }}
                     </td>
+                    <td>{{ product.category.name if product.category else '-' }}</td>
                     <td>
                         <div class="table-actions">
+                            <a href="{{ url_for('catalog.product_detail', product_id=product.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Ver Detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
                             <a href="{{ url_for('catalog.edit_product', product_id=product.id) }}"
                                 class="btn-custom btn-secondary-custom btn-sm" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <form method="POST" action="{{ url_for('catalog.toggle_active', product_id=product.id) }}"
-                                style="display: inline;">
-                                <button type="submit"
-                                    class="btn-custom {% if product.active %}btn-secondary-custom{% else %}btn-success-custom{% endif %} btn-sm"
-                                    title="{% if product.active %}Desactivar{% else %}Activar{% endif %}"
-                                    onclick="return confirm('¿Está seguro de {% if product.active %}desactivar{% else %}activar{% endif %} este producto?')">
-                                    <i
-                                        class="bi bi-{% if product.active %}toggle-off{% else %}toggle-on{% endif %}"></i>
-                                </button>
-                            </form>
                             <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
                                 data-bs-toggle="modal" data-bs-target="#deleteProductModal"
                                 data-product-id="{{ product.id }}" data-product-name="{{ product.name }}"
