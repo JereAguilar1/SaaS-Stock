@@ -286,7 +286,17 @@ def create_product():
         barcode = request.form.get('barcode', '').strip() or None
         category_id = request.form.get('category_id', '').strip() or None
         uom_id = request.form.get('uom_id', '').strip()
-        sale_price = request.form.get('sale_price', '0').strip()
+        
+        # SANITIZER: Limpiar precio de formato local (1.000,00 -> 1000.00)
+        raw_price = request.form.get('sale_price', '0').strip()
+        if ',' in raw_price:
+            # Formato local: punto para miles, coma para decimales
+            clean_price = raw_price.replace('.', '').replace(',', '.')
+        else:
+            # Formato estándar o sin formato
+            clean_price = raw_price
+        sale_price = clean_price
+        
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
         active = request.form.get('active') == 'on'
         
@@ -458,7 +468,17 @@ def update_product(product_id):
         barcode = request.form.get('barcode', '').strip() or None
         category_id = request.form.get('category_id', '').strip() or None
         uom_id = request.form.get('uom_id', '').strip()
-        sale_price = request.form.get('sale_price', '0').strip()
+        
+        # SANITIZER: Limpiar precio de formato local (1.000,00 -> 1000.00)
+        raw_price = request.form.get('sale_price', '0').strip()
+        if ',' in raw_price:
+            # Formato local: punto para miles, coma para decimales
+            clean_price = raw_price.replace('.', '').replace(',', '.')
+        else:
+            # Formato estándar o sin formato
+            clean_price = raw_price
+        sale_price = clean_price
+        
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
         active = request.form.get('active') == 'on'
         
