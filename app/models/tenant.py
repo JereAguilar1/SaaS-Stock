@@ -14,6 +14,7 @@ class Tenant(Base):
     slug = Column(String(80), nullable=False, unique=True)  # URL-safe identifier
     name = Column(String(200), nullable=False)  # Display name
     active = Column(Boolean, nullable=False, default=True)
+    is_suspended = Column(Boolean, nullable=False, default=False)  # Admin can suspend tenant access
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     

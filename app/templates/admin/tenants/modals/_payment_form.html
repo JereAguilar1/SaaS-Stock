@@ -1,0 +1,84 @@
+<!-- Payment Form Modal Content -->
+<div class="modal-header">
+    <h5 class="modal-title">Registrar Pago Manual</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<form hx-post="{{ url_for('admin.create_payment', tenant_id=tenant_id) }}" hx-target="#payments-tab-content"
+    hx-swap="innerHTML">
+
+    <div class="modal-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label for="amount" class="form-label">Monto <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0.01"
+                    placeholder="0.00" required>
+                <div class="invalid-feedback">
+                    El monto es requerido y debe ser mayor a 0
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label for="payment_date" class="form-label">Fecha de Pago <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="payment_date" name="payment_date" value="{{ today }}"
+                    required>
+                <div class="invalid-feedback">
+                    La fecha es requerida
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-md-6">
+                <label for="payment_method" class="form-label">Método de Pago <span class="text-danger">*</span></label>
+                <select class="form-select" id="payment_method" name="payment_method" required>
+                    <option value="transfer" selected>Transferencia Bancaria</option>
+                    <option value="cash">Efectivo</option>
+                    <option value="stripe_manual">Stripe (Manual)</option>
+                    <option value="other">Otro</option>
+                </select>
+                <div class="invalid-feedback">
+                    El método de pago es requerido
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label for="reference" class="form-label">Referencia/Comprobante</label>
+                <input type="text" class="form-control" id="reference" name="reference" maxlength="255"
+                    placeholder="Ej: Nro de transferencia, recibo, etc.">
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <label for="notes" class="form-label">Notas</label>
+            <textarea class="form-control" id="notes" name="notes" rows="3"
+                placeholder="Notas adicionales (opcional)"></textarea>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Guardar Pago
+        </button>
+    </div>
+</form>
+
+<script>
+    // Close modal on successful payment creation
+    document.body.addEventListener('closeModal', function () {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('globalModal'));
+        if (modal) {
+            modal.hide();
+        }
+    });
+
+    // Set today's date as default
+    document.addEventListener('DOMContentLoaded', function () {
+        const dateInput = document.getElementById('payment_date');
+        if (dateInput && !dateInput.value) {
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+        }
+    });
+</script>

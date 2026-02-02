@@ -1,0 +1,202 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Dashboard - Admin Panel{% endblock %}
+
+{% block page_title %}Dashboard Global{% endblock %}
+
+{% block content %}
+<!-- Alerts for Subscription Status -->
+<div class="row mb-3">
+    <div class="col-12">
+        {% if kpis.past_due_tenants > 0 %}
+        <div class="alert alert-danger d-flex align-items-center mb-2" role="alert">
+            <i class="bi bi-exclamation-octagon-fill fs-4 me-2"></i>
+            <div>
+                <strong>Atención:</strong> Hay <strong>{{ kpis.past_due_tenants }}</strong> negocios con pagos vencidos
+                (Past Due).
+                <a href="{{ url_for('admin.list_tenants') }}?status=past_due" class="alert-link">Ver lista</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if kpis.trial_tenants > 0 %}
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="bi bi-stopwatch-fill fs-4 me-2"></i>
+            <div>
+                Hay <strong>{{ kpis.trial_tenants }}</strong> negocios en período de prueba (Trial).
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="text-muted mb-0" style="font-size: 0.875rem;">Total Negocios</h6>
+                    <i class="bi bi-building" style="font-size: 1.5rem; color: var(--color-primary);"></i>
+                </div>
+                <h2 class="mb-0" style="font-size: 2rem; font-weight: 700;">{{ kpis.total_tenants }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="text-muted mb-0" style="font-size: 0.875rem;">Activos (30d)</h6>
+                    <i class="bi bi-activity" style="font-size: 1.5rem; color: var(--color-success);"></i>
+                </div>
+                <h2 class="mb-0" style="font-size: 2rem; font-weight: 700;">{{ kpis.active_tenants_30d }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="text-muted mb-0" style="font-size: 0.875rem;">Total Ventas</h6>
+                    <i class="bi bi-cart-check" style="font-size: 1.5rem; color: var(--color-info);"></i>
+                </div>
+                <h2 class="mb-0" style="font-size: 2rem; font-weight: 700;">{{ kpis.total_sales }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h6 class="text-muted mb-0" style="font-size: 0.875rem;">Ingresos Totales</h6>
+                    <i class="bi bi-currency-dollar" style="font-size: 1.5rem; color: var(--color-warning);"></i>
+                </div>
+                <h2 class="mb-0" style="font-size: 2rem; font-weight: 700;">${{ "{:,.0f}".format(kpis.total_revenue) }}
+                </h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sales Trend Chart -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Evolución de Ventas (Últimos 30 días)</h5>
+                <canvas id="salesTrendChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Acciones Rápidas</h5>
+                <a href="{{ url_for('admin.list_tenants') }}" class="btn btn-primary">
+                    <i class="bi bi-building"></i> Ver Todos los Negocios
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Sales trend chart using design system colors
+    const salesData = {{ sales_trend | tojson }};
+
+    const labels = salesData.map(d => d.date);
+    const counts = salesData.map(d => d.count);
+    const revenues = salesData.map(d => d.revenue);
+
+    // Get CSS variables for colors
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+    const warningColor = getComputedStyle(document.documentElement).getPropertyValue('--color-warning').trim();
+
+    const ctx = document.getElementById('salesTrendChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Cantidad de Ventas',
+                    data: counts,
+                    borderColor: primaryColor,
+                    backgroundColor: primaryColor + '20',
+                    yAxisID: 'y',
+                    tension: 0.4
+                },
+                {
+                    label: 'Ingresos ($)',
+                    data: revenues,
+                    borderColor: warningColor,
+                    backgroundColor: warningColor + '20',
+                    yAxisID: 'y1',
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#111827'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: '#E5E7EB'
+                    },
+                    ticks: {
+                        color: '#6B7280'
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    grid: {
+                        color: '#E5E7EB'
+                    },
+                    ticks: {
+                        color: '#6B7280'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                    ticks: {
+                        color: '#6B7280'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

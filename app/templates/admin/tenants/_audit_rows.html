@@ -1,0 +1,40 @@
+{% for log in logs %}
+<tr>
+    <td class="text-nowrap" style="width: 150px;">
+        {{ log.created_at.strftime('%d/%m/%Y %H:%M') }}
+    </td>
+    <td>
+        <strong>{{ log.admin_user.email }}</strong>
+    </td>
+    <td>
+        {% if log.action == 'IMPERSONATION_START' %}
+        <span class="badge bg-danger">IMPERSONATION START</span>
+        {% elif log.action == 'IMPERSONATION_END' %}
+        <span class="badge bg-secondary">IMPERSONATION END</span>
+        {% elif log.action == 'SUSPEND_TENANT' %}
+        <span class="badge bg-warning text-dark">SUSPENDED</span>
+        {% elif log.action == 'REACTIVATE_TENANT' %}
+        <span class="badge bg-success">REACTIVATED</span>
+        {% else %}
+        <span class="badge bg-light text-dark border">{{ log.action }}</span>
+        {% endif %}
+    </td>
+    <td>
+        <code>{{ log.ip_address }}</code>
+    </td>
+    <td>
+        <button class="btn btn-sm btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse"
+            data-bs-target="#auditCheck{{ log.id }}">
+            Ver Detalles <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="collapse mt-2" id="auditCheck{{ log.id }}">
+            <pre class="bg-light p-2 rounded small mb-0"
+                style="font-size: 0.75rem;">{{ log.details | tojson(indent=2) if log.details else '{}' }}</pre>
+        </div>
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="5" class="text-center py-4 text-muted">No hay registros de auditoría</td>
+</tr>
+{% endfor %}

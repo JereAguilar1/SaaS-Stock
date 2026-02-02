@@ -1,0 +1,224 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ tenant.name }} - Admin Panel{% endblock %}
+
+{% block page_title %}Detalle de Negocio{% endblock %}
+
+{% block content %}
+<!-- Page Header with Actions -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('admin.list_tenants') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <h1 class="h3 mb-0">{{ tenant.name }}</h1>
+        {% if tenant.is_suspended %}
+        <span class="badge bg-danger">SUSPENDIDO</span>
+        {% elif tenant.subscription.status == 'past_due' %}
+        <span class="badge bg-danger">DEUDA PENDIENTE</span>
+        {% elif tenant.subscription.status == 'canceled' %}
+        <span class="badge bg-secondary">CANCELADO</span>
+        {% elif tenant.subscription.status == 'trial' %}
+        <span class="badge bg-warning text-dark">TRIAL</span>
+        {% else %}
+        <span class="badge bg-success">ACTIVO</span>
+        {% endif %}
+    </div>
+
+    <div class="d-flex gap-2">
+        {% if not tenant.is_suspended %}
+        <form method="POST" action="{{ url_for('admin.impersonate_tenant', tenant_id=tenant.id) }}"
+            onsubmit="return confirm('⚠️ ESTÁS ENTRANDO EN MODO SOPORTE\n\n- Accederás como el usuario owner\n- Todas tus acciones serán auditadas\n- Podrás ver datos reales del cliente\n\n¿Deseas continuar?');">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-incognito"></i> Impersonar (Soporte)
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('admin.suspend_tenant', tenant_id=tenant.id) }}"
+            onsubmit="return confirm('¿Estás seguro de suspender este negocio? El usuario principal no podrá acceder.');">
+            <button type="submit" class="btn btn-warning text-dark">
+                <i class="bi bi-pause-circle"></i> Suspender
+            </button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('admin.reactivate_tenant', tenant_id=tenant.id) }}">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-play-circle"></i> Reactivar
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-4" id="tenantTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button"
+            role="tab">
+            <i class="bi bi-info-circle me-1"></i> General
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="subscription-tab" data-bs-toggle="tab" data-bs-target="#subscription" type="button"
+            role="tab">
+            <i class="bi bi-credit-card me-1"></i> Suscripción
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button"
+            role="tab">
+            <i class="bi bi-cash me-1"></i> Pagos
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit" type="button" role="tab">
+            <i class="bi bi-shield-check me-1"></i> Auditoría
+        </button>
+    </li>
+</ul>
+
+<!-- Tabs Content -->
+<div class="tab-content" id="tenantTabsContent">
+    <!-- General Tab -->
+    <div class="tab-pane fade show active" id="general" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Información del Negocio</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="text-muted w-25">ID:</td>
+                                <td class="fw-bold">{{ tenant.id }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Slug:</td>
+                                <td><code>{{ tenant.slug }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Nombre:</td>
+                                <td>{{ tenant.name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Fecha Alta:</td>
+                                <td>{{ tenant.created_at.strftime('%d/%m/%Y') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Usuario Owner</h5>
+                        {% set owner = tenant.user_tenants | selectattr('role', 'equalto', 'owner') |
+                        map(attribute='user') | first %}
+                        {% if owner %}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-circle bg-primary text-white me-3 d-flex align-items-center justify-content-center rounded-circle"
+                                style="width: 48px; height: 48px;">
+                                {{ owner.email[:2].upper() }}
+                            </div>
+                            <div>
+                                <h6 class="mb-0">{{ owner.full_name or 'Sin Nombre' }}</h6>
+                                <small class="text-muted">{{ owner.email }}</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="small text-muted">
+                            <i class="bi bi-clock"></i> Último login: {{ owner.last_login.strftime('%d/%m/%Y %H:%M') if
+                            owner.last_login else 'Nunca' }}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> No se encontró usuario owner.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <h2 class="mb-0" style="font-size: 2rem; font-weight: 700;">${{ "{:,.0f}".format(tenant.total_revenue)
+                    }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Tab -->
+    <div class="tab-pane fade" id="subscription" role="tabpanel">
+        <div class="card">
+            <div class="card-body">
+                {% include 'admin/tenants/_subscription_tab.html' %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments Tab -->
+    <div class="tab-pane fade" id="payments" role="tabpanel">
+        <div class="card">
+            <div class="card-body" id="payments-tab-content"
+                hx-get="{{ url_for('admin.list_payments', tenant_id=tenant.id) }}"
+                hx-trigger="load, refreshPayments from:body" hx-swap="innerHTML">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Tab -->
+    <div class="tab-pane fade" id="audit" role="tabpanel">
+        <div class="card">
+            <div class="card-body">
+                {% include 'admin/tenants/_audit_tab.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Latest Sales -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Últimas 10 Ventas</h5>
+
+                {% if tenant.latest_sales|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Fecha</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in tenant.latest_sales %}
+                            <tr>
+                                <td>#{{ sale.id }}</td>
+                                <td>{{ sale.datetime.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td><strong>${{ "{:,.2f}".format(sale.total) }}</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4">No hay ventas registradas</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Global Modal for Forms -->
+<div class="modal fade" id="globalModal" tabindex="-1" aria-labelledby="globalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" id="globalModalContent">
+            <!-- Modal content loaded via HTMX -->
+        </div>
+    </div>
+</div>
+{% endblock %}

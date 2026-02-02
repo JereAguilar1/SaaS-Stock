@@ -134,10 +134,12 @@ def create_app(config_object='config.Config'):
     from app.blueprints.debug import debug_bp
     from app.blueprints.metrics import metrics_bp  # PASO 9
     from app.blueprints.auth_google import auth_google_bp  # GOOGLE_AUTH
+    from app.blueprints.admin import admin_bp  # ADMIN_PANEL_V1
 
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(auth_google_bp)  # GOOGLE_AUTH
+    app.register_blueprint(admin_bp)  # ADMIN_PANEL_V1
     app.register_blueprint(main_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(users_bp)  # PASO 6
@@ -151,6 +153,11 @@ def create_app(config_object='config.Config'):
     app.register_blueprint(missing_products_bp)  # MEJORA 18
     app.register_blueprint(debug_bp)
     app.register_blueprint(metrics_bp)  # PASO 9
+    
+    # Register CLI commands (ADMIN_PANEL_V1)
+    from app.cli_commands import init_cli_commands
+    init_cli_commands(app)
+    
     app.logger.info(f"MAIL_SERVER={app.config.get('MAIL_SERVER')}")
     app.logger.info(f"MAIL_USERNAME={app.config.get('MAIL_USERNAME')}")
     app.logger.info(f"MAIL_DEFAULT_SENDER={app.config.get('MAIL_DEFAULT_SENDER')}")
