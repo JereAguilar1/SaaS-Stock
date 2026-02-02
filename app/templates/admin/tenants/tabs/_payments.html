@@ -1,0 +1,92 @@
+<!-- Payments Tab Content -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Historial de Pagos</h5>
+    <button class="btn btn-primary btn-sm" hx-get="{{ url_for('admin.new_payment', tenant_id=tenant_id) }}"
+        hx-target="#globalModalContent" data-bs-toggle="modal" data-bs-target="#globalModal">
+        <i class="bi bi-plus-circle"></i> Registrar Pago
+    </button>
+</div>
+
+{% if payments %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Método</th>
+                <th>Referencia</th>
+                <th>Monto</th>
+                <th>Admin</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payments %}
+            <tr class="{% if payment.status == 'void' %}text-muted text-decoration-line-through{% endif %}">
+                <td>{{ payment.payment_date.strftime('%d/%m/%Y') }}</td>
+                <td>
+                    {% if payment.payment_method == 'transfer' %}
+                    <i class="bi bi-bank"></i> Transferencia
+                    {% elif payment.payment_method == 'cash' %}
+                    <i class="bi bi-cash"></i> Efectivo
+                    {% elif payment.payment_method == 'stripe_manual' %}
+                    <i class="bi bi-credit-card"></i> Stripe
+                    {% else %}
+                    <i class="bi bi-question-circle"></i> Otro
+                    {% endif %}
+                </td>
+                <td>
+                    {% if payment.reference %}
+                    <code class="small">{{ payment.reference }}</code>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="fw-bold">${{ "{:,.2f}".format(payment.amount) }}</td>
+                <td>
+                    {% if payment.admin_user %}
+                    <small>{{ payment.admin_user.email }}</small>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if payment.status == 'paid' %}
+                    <span class="badge bg-success">Pagado</span>
+                    {% elif payment.status == 'pending' %}
+                    <span class="badge bg-warning">Pendiente</span>
+                    {% elif payment.status == 'void' %}
+                    <span class="badge bg-secondary">Anulado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if payment.status != 'void' %}
+                    <button class="btn btn-sm btn-outline-danger"
+                        hx-post="{{ url_for('admin.void_payment', payment_id=payment.id) }}"
+                        hx-target="#payments-tab-content"
+                        hx-confirm="¿Estás seguro de anular este pago? Esta acción se registrará en la auditoría.">
+                        <i class="bi bi-x-circle"></i> Anular
+                    </button>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% if payment.notes %}
+            <tr class="{% if payment.status == 'void' %}text-muted{% endif %}">
+                <td colspan="7" class="small bg-light">
+                    <strong>Notas:</strong> {{ payment.notes }}
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-inbox" style="font-size: 3rem; color: var(--color-text-muted);"></i>
+    <p class="text-muted mt-3">No hay pagos registrados</p>
+</div>
+{% endif %}

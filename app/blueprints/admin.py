@@ -365,3 +365,139 @@ def get_tenant_audit_logs(tenant_id):
         .all()
         
     return render_template('admin/tenants/_audit_rows.html', logs=logs)
+
+
+# =====================================================
+# PAYMENT MANAGEMENT
+# =====================================================
+
+@admin_bp.route('/tenants/<int:tenant_id>/payments')
+@admin_required
+def list_payments(tenant_id):
+    """Get payments for a tenant (HTMX endpoint)."""
+    from app.services import admin_payment_service
+    
+    payments = admin_payment_service.get_payments_by_tenant(db_session, tenant_id)
+    
+    return render_template(
+        'admin/tenants/tabs/_payments.html',
+        tenant_id=tenant_id,
+        payments=payments
+    )
+
+
+@admin_bp.route('/tenants/<int:tenant_id>/payments/new')
+@admin_required
+def new_payment(tenant_id):
+    """Show payment form modal (HTMX endpoint)."""
+    return render_template(
+        'admin/tenants/modals/_payment_form.html',
+        tenant_id=tenant_id
+    )
+
+
+@admin_bp.route('/tenants/<int:tenant_id>/payments', methods=['POST'])
+@admin_required
+def create_payment(tenant_id):
+    """Create a new payment (HTMX endpoint)."""
+    from app.services import admin_payment_service
+    from flask import g
+    from datetime import datetime
+    
+    # Manual form validation
+    try:
+        amount = float(request.form.get('amount', 0))
+        payment_date_str = request.form.get('payment_date')
+        payment_date = datetime.strptime(payment_date_str, '%Y-%m-%d').date() if payment_date_str else datetime.now().date()
+        payment_method = request.form.get('payment_method', 'transfer')
+        reference = request.form.get('reference', '').strip()
+        notes = request.form.get('notes', '').strip()
+        
+        if amount <= 0:
+            raise ValueError("El monto debe ser mayor a 0")
+        
+    except (ValueError, TypeError) as e:
+        flash(f'Error en los datos del formulario: {str(e)}', 'danger')
+        return render_template(
+            'admin/tenants/modals/_payment_form.html',
+            tenant_id=tenant_id,
+            errors={'amount': str(e)}
+        )
+    
+    # Get admin IP
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    # Create payment
+    success, message, payment = admin_payment_service.create_payment(
+        db_session=db_session,
+        tenant_id=tenant_id,
+        data={
+            'amount': amount,
+            'payment_date': payment_date,
+            'payment_method': payment_method,
+            'reference': reference if reference else None,
+            'notes': notes if notes else None
+        },
+        admin_user_id=g.admin_user.id,
+        ip_address=ip_address
+    )
+    
+    if success:
+        flash(message, 'success')
+        
+        # Return updated payments list
+        payments = admin_payment_service.get_payments_by_tenant(db_session, tenant_id)
+        response = render_template(
+            'admin/tenants/tabs/_payments.html',
+            tenant_id=tenant_id,
+            payments=payments
+        )
+        
+        # Add HX-Trigger header to close modal
+        from flask import make_response
+        resp = make_response(response)
+        resp.headers['HX-Trigger'] = 'closeModal'
+        return resp
+    else:
+        flash(message, 'danger')
+        return render_template(
+            'admin/tenants/modals/_payment_form.html',
+            tenant_id=tenant_id,
+            errors={'general': message}
+        )
+
+
+@admin_bp.route('/payments/<int:payment_id>/void', methods=['POST'])
+@admin_required
+def void_payment(payment_id):
+    """Void a payment (HTMX endpoint)."""
+    from app.services import admin_payment_service
+    from flask import g
+    from app.models import Payment
+    
+    # Get payment to find tenant_id
+    payment = db_session.query(Payment).filter_by(id=payment_id).first()
+    if not payment:
+        flash('Pago no encontrado', 'danger')
+        return '', 404
+    
+    tenant_id = payment.tenant_id
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    success, message = admin_payment_service.void_payment(
+        db_session=db_session,
+        payment_id=payment_id,
+        admin_user_id=g.admin_user.id,
+        ip_address=ip_address
+    )
+    
+    flash(message, 'success' if success else 'danger')
+    
+    # Return updated payments list
+    payments = admin_payment_service.get_payments_by_tenant(db_session, tenant_id)
+    return render_template(
+        'admin/tenants/tabs/_payments.html',
+        tenant_id=tenant_id,
+        payments=payments
+    )
+

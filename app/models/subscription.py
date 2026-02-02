@@ -81,6 +81,7 @@ class Payment(Base):
     # Payment Details
     amount = Column(Numeric(10, 2), nullable=False)
     payment_date = Column(Date, nullable=False)
+    payment_method = Column(String(50), nullable=False, default='transfer')
     reference = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     
@@ -98,7 +99,8 @@ class Payment(Base):
     
     # Table constraints
     __table_args__ = (
-        CheckConstraint("status IN ('pending', 'paid')", name='check_payment_status'),
+        CheckConstraint("status IN ('pending', 'paid', 'void')", name='check_payment_status'),
+        CheckConstraint("payment_method IN ('transfer', 'cash', 'stripe_manual', 'other')", name='check_payment_method'),
     )
     
     def __repr__(self):
