@@ -24,12 +24,71 @@ CREATE TABLE IF NOT EXISTS tenant (
     slug VARCHAR(80) NOT NULL UNIQUE,
     name VARCHAR(200) NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_suspended BOOLEAN NOT NULL DEFAULT FALSE, -- Added in ADMIN_PANEL_V1
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_tenant_active ON tenant(active);
 CREATE INDEX IF NOT EXISTS idx_tenant_slug ON tenant(slug);
+CREATE INDEX IF NOT EXISTS idx_tenant_is_suspended ON tenant(is_suspended);
+
+-- Admin Users: Global platform administrators (isolated from tenants)
+CREATE TABLE IF NOT EXISTS admin_users (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login TIMESTAMPTZ NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
+
+-- Tenant Subscriptions: Plans and status for each tenant
+CREATE TABLE IF NOT EXISTS tenant_subscriptions (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    plan_type VARCHAR(20) NOT NULL CHECK (plan_type IN ('free', 'basic', 'pro')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('trial', 'active', 'past_due', 'canceled')),
+    trial_ends_at TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    amount NUMERIC(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(tenant_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant ON tenant_subscriptions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON tenant_subscriptions(status);
+
+-- Tenant Payments: Manual payment records registered by admins
+CREATE TABLE IF NOT EXISTS tenant_payments (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    amount NUMERIC(10, 2) NOT NULL,
+    payment_date DATE NOT NULL,
+    reference VARCHAR(255),
+    notes TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'paid' CHECK (status IN ('pending', 'paid')),
+    created_by BIGINT REFERENCES admin_users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payments_tenant ON tenant_payments(tenant_id);
+
+-- Admin Audit Logs: Tracks sensitive admin actions
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id BIGSERIAL PRIMARY KEY,
+    admin_user_id BIGINT NOT NULL REFERENCES admin_users(id),
+    action VARCHAR(100) NOT NULL,
+    target_tenant_id BIGINT REFERENCES tenant(id),
+    details JSONB,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_admin ON admin_audit_logs(admin_user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_tenant ON admin_audit_logs(target_tenant_id);
 
 -- App User: platform users (email-based authentication)
 CREATE TABLE IF NOT EXISTS app_user (
@@ -74,7 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_user_tenant_user ON user_tenant(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant ON user_tenant(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_user_tenant_role ON user_tenant(role);
 
--- Audit Log: tracks critical user actions
+-- Audit Log: tracks critical user actions (tenant level)
 CREATE TABLE IF NOT EXISTS audit_log (
     id BIGSERIAL PRIMARY KEY,
     tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON UPDATE RESTRICT ON DELETE CASCADE,
