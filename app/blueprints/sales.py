@@ -1,6 +1,6 @@
 """Sales blueprint for POS and cart management - Multi-Tenant."""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file, current_app, g, abort
-from sqlalchemy import or_, func, and_
+from sqlalchemy import or_, func, and_, desc
 from decimal import Decimal, InvalidOperation
 import decimal
 from datetime import datetime
@@ -189,21 +189,34 @@ def product_search():
                 exact_barcode_match = exact_match.id
                 products = [exact_match]
             else:
-                # Build search filter for fuzzy search
+            # Build search filter for fuzzy search
                 search_filter = or_(
                     func.lower(Product.name).like(f'%{search_query.lower()}%'),
                     and_(Product.sku.isnot(None), func.lower(Product.sku).like(f'%{search_query.lower()}%')),
                     and_(Product.barcode.isnot(None), func.lower(Product.barcode).like(f'%{search_query.lower()}%'))
                 )
                 
+                # Popularity Sort Query
+                # Left Outer Join with SaleLine -> Sale to calculate total sold
+                # We prioritize products with more sales history
                 products = (db_session.query(Product)
                            .outerjoin(ProductStock)
+                           .outerjoin(SaleLine, SaleLine.product_id == Product.id)
+                           .outerjoin(Sale, and_(
+                               Sale.id == SaleLine.sale_id, 
+                               Sale.status == SaleStatus.CONFIRMED,
+                               Sale.tenant_id == g.tenant_id
+                           ))
                            .filter(
                                Product.tenant_id == g.tenant_id,
                                Product.active == True
                            )
                            .filter(search_filter)
-                           .order_by(Product.name)
+                           .group_by(Product.id)
+                           .order_by(
+                               desc(func.sum(func.coalesce(SaleLine.qty, 0))), # Order by popularity
+                               Product.name                                    # Then alphabetically
+                           )
                            .limit(20)
                            .all())
         else:
