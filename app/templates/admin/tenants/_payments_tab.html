@@ -1,0 +1,84 @@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">Historial de Pagos</h5>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                data-bs-target="#newPaymentModal">
+                <i class="bi bi-plus-lg"></i> Registrar Pago
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Monto</th>
+                        <th>Referencia</th>
+                        <th>Estado</th>
+                        <th>Registrado Por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in tenant.payments %}
+                    <tr>
+                        <td>{{ payment.payment_date.strftime('%d/%m/%Y') }}</td>
+                        <td>${{ "{:,.2f}".format(payment.amount) }}</td>
+                        <td><code>{{ payment.reference or '-' }}</code></td>
+                        <td>
+                            {% if payment.status == 'paid' %}
+                            <span class="badge bg-success">Pagado</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-muted">{{ payment.admin_user.email if payment.admin_user else 'Sistema' }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-3 text-muted">No hay pagos registrados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- New Payment Modal -->
+<div class="modal fade" id="newPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Pago Manual</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form hx-post="{{ url_for('admin.register_payment', tenant_id=tenant.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Monto ($)</label>
+                        <input type="number" step="0.01" name="amount" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Pago</label>
+                        <input type="date" name="payment_date" class="form-control"
+                            value="{{ now().strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Referencia / Nro Transacción</label>
+                        <input type="text" name="reference" class="form-control" placeholder="Ej: TRANS-123456">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <textarea name="notes" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

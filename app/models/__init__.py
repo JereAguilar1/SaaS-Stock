@@ -26,6 +26,10 @@ from app.models.quote_line import QuoteLine
 from app.models.missing_product_request import MissingProductRequest, normalize_missing_product_name
 from app.models.audit_log import AuditLog, AuditAction  # PASO 6
 
+# Admin Panel V2
+from app.models.subscription import Subscription, Payment
+from app.models.admin_audit import AdminAuditLog, AuditAction as AdminAuditAction
+
 __all__ = [
     # SaaS Core
     'Tenant', 'AppUser', 'UserTenant', 'UserRole',
@@ -38,5 +42,7 @@ __all__ = [
     'Quote', 'QuoteStatus', 'QuoteLine',
     'MissingProductRequest', 'normalize_missing_product_name',
     'AuditLog', 'AuditAction',  # PASO 6
+    # Admin Panel V2
+    'AdminUser', 'Subscription', 'Payment', 'AdminAuditLog', 'AdminAuditAction',
 ]
 

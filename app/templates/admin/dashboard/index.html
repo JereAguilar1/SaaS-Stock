@@ -5,6 +5,31 @@
 {% block page_title %}Dashboard Global{% endblock %}
 
 {% block content %}
+<!-- Alerts for Subscription Status -->
+<div class="row mb-3">
+    <div class="col-12">
+        {% if kpis.past_due_tenants > 0 %}
+        <div class="alert alert-danger d-flex align-items-center mb-2" role="alert">
+            <i class="bi bi-exclamation-octagon-fill fs-4 me-2"></i>
+            <div>
+                <strong>Atención:</strong> Hay <strong>{{ kpis.past_due_tenants }}</strong> negocios con pagos vencidos
+                (Past Due).
+                <a href="{{ url_for('admin.list_tenants') }}?status=past_due" class="alert-link">Ver lista</a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if kpis.trial_tenants > 0 %}
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="bi bi-stopwatch-fill fs-4 me-2"></i>
+            <div>
+                Hay <strong>{{ kpis.trial_tenants }}</strong> negocios en período de prueba (Trial).
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- KPI Cards -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">

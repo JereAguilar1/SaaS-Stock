@@ -5,98 +5,137 @@
 {% block page_title %}Detalle de Negocio{% endblock %}
 
 {% block content %}
-<!-- Tenant Info Card -->
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between mb-3">
-                    <div>
-                        <h3 class="mb-1">{{ tenant.name }}</h3>
-                        <p class="text-muted mb-0">
-                            <code style="color: var(--color-text-muted);">{{ tenant.slug }}</code>
-                        </p>
-                    </div>
-                    <div>
-                        {% if tenant.is_suspended %}
-                        <span class="badge bg-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">
-                            <i class="bi bi-x-circle-fill"></i> Suspendido
-                        </span>
-                        {% else %}
-                        <span class="badge bg-success" style="font-size: 1rem; padding: 0.5rem 1rem;">
-                            <i class="bi bi-check-circle-fill"></i> Activo
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="text-muted small">Email del Owner</label>
-                        <p class="mb-0"><strong>{{ tenant.owner_email }}</strong></p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="text-muted small">Fecha de Alta</label>
-                        <p class="mb-0"><strong>{{ tenant.created_at.strftime('%d/%m/%Y %H:%M') }}</strong></p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="text-muted small">Usuarios Activos</label>
-                        <p class="mb-0"><strong>{{ tenant.user_count }}</strong></p>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- Page Header with Actions -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ url_for('admin.list_tenants') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        <h1 class="h3 mb-0">{{ tenant.name }}</h1>
+        {% if tenant.is_suspended %}
+        <span class="badge bg-danger">SUSPENDIDO</span>
+        {% elif tenant.subscription.status == 'past_due' %}
+        <span class="badge bg-danger">DEUDA PENDIENTE</span>
+        {% elif tenant.subscription.status == 'canceled' %}
+        <span class="badge bg-secondary">CANCELADO</span>
+        {% elif tenant.subscription.status == 'trial' %}
+        <span class="badge bg-warning text-dark">TRIAL</span>
+        {% else %}
+        <span class="badge bg-success">ACTIVO</span>
+        {% endif %}
     </div>
 
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Acciones</h5>
+    <div class="d-flex gap-2">
+        {% if not tenant.is_suspended %}
+        <form method="POST" action="{{ url_for('admin.impersonate_tenant', tenant_id=tenant.id) }}"
+            onsubmit="return confirm('⚠️ ESTÁS ENTRANDO EN MODO SOPORTE\n\n- Accederás como el usuario owner\n- Todas tus acciones serán auditadas\n- Podrás ver datos reales del cliente\n\n¿Deseas continuar?');">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-incognito"></i> Impersonar (Soporte)
+            </button>
+        </form>
 
-                {% if tenant.is_suspended %}
-                <form method="POST" action="{{ url_for('admin.reactivate_tenant', tenant_id=tenant.id) }}">
-                    <button type="submit" class="btn btn-success w-100 mb-2"
-                        onclick="return confirm('¿Reactivar este negocio? Los usuarios podrán iniciar sesión nuevamente.')">
-                        <i class="bi bi-check2-circle"></i> Reactivar Negocio
-                    </button>
-                </form>
-                {% else %}
-                <form method="POST" action="{{ url_for('admin.suspend_tenant', tenant_id=tenant.id) }}">
-                    <button type="submit" class="btn btn-danger w-100 mb-2"
-                        onclick="return confirm('¿Suspender este negocio? Los usuarios NO podrán iniciar sesión.')">
-                        <i class="bi bi-x-circle"></i> Suspender Negocio
-                    </button>
-                </form>
-                {% endif %}
-
-                <a href="{{ url_for('admin.list_tenants') }}" class="btn btn-outline-secondary w-100">
-                    <i class="bi bi-arrow-left"></i> Volver al Listado
-                </a>
-            </div>
-        </div>
+        <form method="POST" action="{{ url_for('admin.suspend_tenant', tenant_id=tenant.id) }}"
+            onsubmit="return confirm('¿Estás seguro de suspender este negocio? El usuario principal no podrá acceder.');">
+            <button type="submit" class="btn btn-warning text-dark">
+                <i class="bi bi-pause-circle"></i> Suspender
+            </button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('admin.reactivate_tenant', tenant_id=tenant.id) }}">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-play-circle"></i> Reactivar
+            </button>
+        </form>
+        {% endif %}
     </div>
 </div>
 
-<!-- Metrics Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h6 class="text-muted mb-0">Total Ventas</h6>
-                    <i class="bi bi-cart-check" style="font-size: 1.5rem; color: var(--color-info);"></i>
-                </div>
-                <h2 class="mb-0" style="font-size: 2rem; font-weight: 700;">{{ tenant.total_sales }}</h2>
-            </div>
-        </div>
-    </div>
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-4" id="tenantTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button"
+            role="tab">
+            <i class="bi bi-info-circle me-1"></i> General
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="subscription-tab" data-bs-toggle="tab" data-bs-target="#subscription" type="button"
+            role="tab">
+            <i class="bi bi-credit-card me-1"></i> Suscripción
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="payments-tab" data-bs-toggle="tab" data-bs-target="#payments" type="button"
+            role="tab">
+            <i class="bi bi-cash me-1"></i> Pagos
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit" type="button" role="tab">
+            <i class="bi bi-shield-check me-1"></i> Auditoría
+        </button>
+    </li>
+</ul>
 
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h6 class="text-muted mb-0">Ingresos Totales</h6>
-                    <i class="bi bi-currency-dollar" style="font-size: 1.5rem; color: var(--color-warning);"></i>
+<!-- Tabs Content -->
+<div class="tab-content" id="tenantTabsContent">
+    <!-- General Tab -->
+    <div class="tab-pane fade show active" id="general" role="tabpanel">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Información del Negocio</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="text-muted w-25">ID:</td>
+                                <td class="fw-bold">{{ tenant.id }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Slug:</td>
+                                <td><code>{{ tenant.slug }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Nombre:</td>
+                                <td>{{ tenant.name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Fecha Alta:</td>
+                                <td>{{ tenant.created_at.strftime('%d/%m/%Y') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Usuario Owner</h5>
+                        {% set owner = tenant.user_tenants | selectattr('role', 'equalto', 'owner') |
+                        map(attribute='user') | first %}
+                        {% if owner %}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-circle bg-primary text-white me-3 d-flex align-items-center justify-content-center rounded-circle"
+                                style="width: 48px; height: 48px;">
+                                {{ owner.email[:2].upper() }}
+                            </div>
+                            <div>
+                                <h6 class="mb-0">{{ owner.full_name or 'Sin Nombre' }}</h6>
+                                <small class="text-muted">{{ owner.email }}</small>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="small text-muted">
+                            <i class="bi bi-clock"></i> Último login: {{ owner.last_login.strftime('%d/%m/%Y %H:%M') if
+                            owner.last_login else 'Nunca' }}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> No se encontró usuario owner.
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
                 <h2 class="mb-0" style="font-size: 2rem; font-weight: 700;">${{ "{:,.0f}".format(tenant.total_revenue)
                     }}</h2>

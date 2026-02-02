@@ -44,11 +44,22 @@ def get_global_kpis(db_session):
         Sale.status == 'CONFIRMED'
     ).scalar() or 0
     
+    # Calculate active tenants (not suspended)
+    active_tenants = db_session.query(Tenant).filter_by(is_suspended=False).count()
+    
+    # Subscription status counts
+    from app.models import Subscription
+    past_due_tenants = db_session.query(Subscription).filter_by(status='past_due').count()
+    trial_tenants = db_session.query(Subscription).filter_by(status='trial').count()
+    
     return {
         'total_tenants': total_tenants,
         'active_tenants_30d': active_tenants_30d,
         'total_sales': total_sales,
-        'total_revenue': float(total_revenue)
+        'total_revenue': float(total_revenue),
+        'active_tenants': active_tenants,
+        'past_due_tenants': past_due_tenants,
+        'trial_tenants': trial_tenants,
     }
 
 
@@ -243,5 +254,12 @@ def get_tenant_detail(db_session, tenant_id):
         'total_sales': sales_stats.total_sales if sales_stats else 0,
         'total_revenue': float(sales_stats.total_revenue) if sales_stats else 0.0,
         'user_count': user_count,
-        'latest_sales': sales_list
+        'latest_sales': sales_list,
+        'subscription': {
+            'plan_type': tenant.subscription.plan_type if tenant.subscription else 'free',
+            'status': tenant.subscription.status if tenant.subscription else 'trial',
+            'amount': float(tenant.subscription.amount) if tenant.subscription and tenant.subscription.amount else 0.0,
+            'trial_ends_at': tenant.subscription.trial_ends_at,
+            'current_period_end': tenant.subscription.current_period_end
+        } if tenant.subscription else None
     }

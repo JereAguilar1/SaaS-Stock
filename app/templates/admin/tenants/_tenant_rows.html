@@ -18,7 +18,8 @@
     <td>{{ tenant.total_sales }}</td>
     <td>${{ "{:,.0f}".format(tenant.total_revenue) }}</td>
     <td>
-        <a href="{{ url_for('admin.tenant_detail', tenant_id=tenant.id) }}" class="btn btn-sm btn-outline-primary">
+        <a href="{{ url_for('admin.tenant_detail', tenant_id=tenant.id) }}" class="btn btn-sm btn-outline-primary"
+            hx-boost="false">
             <i class="bi bi-eye"></i> Ver
         </a>
         {% if tenant.is_suspended %}

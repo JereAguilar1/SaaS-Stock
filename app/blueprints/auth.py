@@ -376,3 +376,32 @@ def root():
             return redirect(url_for('auth.select_tenant'))
     else:
         return redirect(url_for('auth.login'))
+
+
+# =====================================================
+# IMPERSONATION - STOP (EXIT SUPPORT MODE)
+# =====================================================
+
+@auth_bp.route('/stop-impersonation', methods=['POST'])
+def stop_impersonation():
+    """
+    Stop impersonating a tenant and return to admin session.
+    
+    This route is accessible from the impersonation banner that appears
+    on all pages when an admin is in support mode.
+    """
+    from app.services.impersonation_service import stop_impersonation as stop_imp_service
+    
+    # Get client IP
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    # Stop impersonation
+    success, message, redirect_url = stop_imp_service(ip_address=ip_address)
+    
+    flash(message, 'success' if success else 'danger')
+    
+    if redirect_url:
+        return redirect(redirect_url)
+    else:
+        # Fallback to admin login if no redirect URL
+        return redirect(url_for('admin.login'))

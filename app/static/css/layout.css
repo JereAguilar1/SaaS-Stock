@@ -422,3 +422,24 @@
         opacity: 1;
     }
 }
+
+/* ============================================
+   IMPERSONATION BANNER
+   ============================================ */
+
+.impersonation-banner {
+    background: linear-gradient(135deg, #DC2626, #F59E0B);
+    color: white;
+    padding: 0.5rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-size: var(--font-size-sm);
+}
+
+.impersonation-banner .btn-light {
+    color: #DC2626;
+    font-weight: 600;
+    border: none;
+}

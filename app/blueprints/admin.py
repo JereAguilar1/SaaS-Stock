@@ -200,3 +200,168 @@ def index():
     if session.get('admin_user_id'):
         return redirect(url_for('admin.dashboard'))
     return redirect(url_for('admin.login'))
+
+
+# =====================================================
+# IMPERSONATION (SUPPORT MODE)
+# =====================================================
+
+@admin_bp.route('/tenants/<int:tenant_id>/impersonate', methods=['POST'])
+@admin_required
+def impersonate_tenant(tenant_id):
+    """
+    Start impersonating a tenant for support purposes.
+    
+    This allows an admin to log in as the tenant owner to troubleshoot issues.
+    All actions are logged in the audit trail.
+    """
+    from app.services.impersonation_service import start_impersonation
+    from flask import g
+    
+    # Get client IP
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    
+    # Start impersonation
+    success, message, redirect_url = start_impersonation(
+        admin_user=g.admin_user,
+        tenant_id=tenant_id,
+        ip_address=ip_address
+    )
+    
+    if success:
+        flash(message, 'success')
+        return redirect(redirect_url)
+    else:
+        flash(message, 'danger')
+        return redirect(url_for('admin.tenant_detail', tenant_id=tenant_id))
+
+
+# =====================================================
+# SUBSCRIPTIONS & PAYMENTS
+# =====================================================
+
+@admin_bp.route('/tenants/<int:tenant_id>/subscription', methods=['POST'])
+@admin_required
+def update_subscription(tenant_id):
+    """Update tenant subscription details."""
+    tenant = db_session.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant:
+        return '', 404
+        
+    subscription = tenant.subscription
+    if not subscription:
+        # Create if not exists (should have been created by migration)
+        from app.models import Subscription
+        subscription = Subscription(tenant_id=tenant.id, plan_type='free', status='trial')
+        db_session.add(subscription)
+    
+    # Update fields
+    subscription.plan_type = request.form.get('plan_type')
+    subscription.status = request.form.get('status')
+    
+    # Parse dates
+    trial_ends = request.form.get('trial_ends_at')
+    if trial_ends:
+        subscription.trial_ends_at = datetime.strptime(trial_ends, '%Y-%m-%d')
+    else:
+        subscription.trial_ends_at = None
+        
+    period_end = request.form.get('current_period_end')
+    if period_end:
+        subscription.current_period_end = datetime.strptime(period_end, '%Y-%m-%d')
+    else:
+        subscription.current_period_end = None
+    
+    # Audit log
+    from app.models import AdminAuditLog, AdminAuditAction
+    from flask import g
+    
+    audit = AdminAuditLog.log_action(
+        admin_user_id=g.admin_user.id,
+        action=AdminAuditAction.UPDATE_SUBSCRIPTION,
+        target_tenant_id=tenant.id,
+        details={
+            'plan_type': subscription.plan_type,
+            'status': subscription.status,
+            'trial_ends_at': str(subscription.trial_ends_at),
+            'current_period_end': str(subscription.current_period_end)
+        },
+        ip_address=request.remote_addr
+    )
+    db_session.add(audit)
+    db_session.commit()
+    
+    flash('Suscripción actualizada correctamente', 'success')
+    return redirect(url_for('admin.tenant_detail', tenant_id=tenant_id))
+
+
+@admin_bp.route('/tenants/<int:tenant_id>/payments', methods=['POST'])
+@admin_required
+def register_payment(tenant_id):
+    """Register a manual payment for a tenant."""
+    tenant = db_session.query(Tenant).filter_by(id=tenant_id).first()
+    if not tenant:
+        return '', 404
+        
+    from app.models import Payment, AdminAuditLog, AdminAuditAction
+    from flask import g
+    from decimal import Decimal
+    
+    try:
+        amount = Decimal(request.form.get('amount', '0'))
+        payment_date = datetime.strptime(request.form.get('payment_date'), '%Y-%m-%d').date()
+        reference = request.form.get('reference')
+        notes = request.form.get('notes')
+        
+        payment = Payment(
+            tenant_id=tenant.id,
+            amount=amount,
+            payment_date=payment_date,
+            reference=reference,
+            notes=notes,
+            created_by=g.admin_user.id
+        )
+        db_session.add(payment)
+        
+        # Update subscription total amount (LTV)
+        if not tenant.subscription:
+            tenant.subscription.amount = 0
+        tenant.subscription.amount = (tenant.subscription.amount or 0) + amount
+        
+        # Audit log
+        audit = AdminAuditLog.log_action(
+            admin_user_id=g.admin_user.id,
+            action=AdminAuditAction.REGISTER_PAYMENT,
+            target_tenant_id=tenant.id,
+            details={
+                'amount': str(amount),
+                'payment_date': str(payment_date),
+                'reference': reference
+            },
+            ip_address=request.remote_addr
+        )
+        db_session.add(audit)
+        
+        db_session.commit()
+        flash('Pago registrado correctamente', 'success')
+        
+    except Exception as e:
+        db_session.rollback()
+        flash(f'Error al registrar pago: {str(e)}', 'danger')
+        
+    return redirect(url_for('admin.tenant_detail', tenant_id=tenant_id))
+
+
+@admin_bp.route('/tenants/<int:tenant_id>/audit-logs')
+@admin_required
+def get_tenant_audit_logs(tenant_id):
+    """Get audit logs for a specific tenant (HTMX)."""
+    from app.models import AdminAuditLog
+    
+    logs = db_session.query(AdminAuditLog)\
+        .filter_by(target_tenant_id=tenant_id)\
+        .order_by(AdminAuditLog.created_at.desc())\
+        .limit(50)\
+        .all()
+        
+    return render_template('admin/tenants/_audit_rows.html', logs=logs)

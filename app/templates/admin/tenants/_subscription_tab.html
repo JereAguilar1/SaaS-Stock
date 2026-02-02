@@ -1,0 +1,97 @@
+<div class="row">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Plan Actual</h5>
+
+                <form id="subscriptionForm" hx-post="{{ url_for('admin.update_subscription', tenant_id=tenant.id) }}"
+                    hx-swap="none">
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Plan</label>
+                        <select name="plan_type" class="form-select">
+                            <option value="free" {% if tenant.subscription.plan_type=='free' %}selected{% endif %}>Free
+                                Tier</option>
+                            <option value="basic" {% if tenant.subscription.plan_type=='basic' %}selected{% endif %}>
+                                Basic ($19/mo)</option>
+                            <option value="pro" {% if tenant.subscription.plan_type=='pro' %}selected{% endif %}>Pro
+                                ($49/mo)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Estado</label>
+                        <select name="status" class="form-select">
+                            <option value="trial" {% if tenant.subscription.status=='trial' %}selected{% endif %}>Trial
+                            </option>
+                            <option value="active" {% if tenant.subscription.status=='active' %}selected{% endif %}>
+                                Activo</option>
+                            <option value="past_due" {% if tenant.subscription.status=='past_due' %}selected{% endif %}>
+                                Vencido (Past Due)</option>
+                            <option value="canceled" {% if tenant.subscription.status=='canceled' %}selected{% endif %}>
+                                Cancelado</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fin del Trial</label>
+                            <input type="date" name="trial_ends_at" class="form-control"
+                                value="{{ tenant.subscription.trial_ends_at.strftime('%Y-%m-%d') if tenant.subscription.trial_ends_at else '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Próximo Vencimiento</label>
+                            <input type="date" name="current_period_end" class="form-control"
+                                value="{{ tenant.subscription.current_period_end.strftime('%Y-%m-%d') if tenant.subscription.current_period_end else '' }}">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Guardar Cambios
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Resumen de Monetización</h5>
+
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted d-block small">Ingresos Totales (LTV)</span>
+                            <span class="h5 mb-0">${{ "{:,.2f}".format(tenant.subscription.amount|default(0)) }}</span>
+                        </div>
+                        <i class="bi bi-cash-coin fs-4 text-success"></i>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted d-block small">Último Pago</span>
+                            <span class="fw-bold">
+                                {% if tenant.payments and tenant.payments|length > 0 %}
+                                {{ tenant.payments[0].payment_date.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </span>
+                        </div>
+                        <i class="bi bi-calendar-check fs-4 text-primary"></i>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted d-block small">Estado de Cuenta</span>
+                            {% if tenant.subscription.is_past_due %}
+                            <span class="badge bg-danger">Deuda Pendiente</span>
+                            {% else %}
+                            <span class="badge bg-success">Al día</span>
+                            {% endif %}
+                        </div>
+                        <i class="bi bi-check-circle fs-4 text-muted"></i>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
