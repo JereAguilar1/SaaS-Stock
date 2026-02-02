@@ -38,7 +38,7 @@
         </div>
 
         <div class="cart-item-price">
-            ${{ "%.2f"|format(line.line_total) }}
+            ${{ line.line_total|money_ar }}
         </div>
     </div>
 

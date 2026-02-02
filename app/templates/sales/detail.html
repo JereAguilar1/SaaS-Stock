@@ -49,9 +49,9 @@
                             <td style="text-align: center;">
                                 <span class="badge-custom badge-secondary">{{ line.qty }}</span>
                             </td>
-                            <td style="text-align: right;">${{ "%.2f"|format(line.unit_price) }}</td>
+                            <td style="text-align: right;">${{ line.unit_price|money_ar }}</td>
                             <td style="text-align: right;">
-                                <strong style="color: var(--color-text-primary);">${{ "%.2f"|format(line.line_total)
+                                <strong style="color: var(--color-text-primary);">${{ line.line_total|money_ar
                                     }}</strong>
                             </td>
                         </tr>
@@ -65,7 +65,7 @@
                             <td style="text-align: right; padding: var(--spacing-4);">
                                 <span
                                     style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-success);">
-                                    ${{ "%.2f"|format(sale.total) }}
+                                    ${{ sale.total|money_ar }}
                                 </span>
                             </td>
                         </tr>
@@ -104,7 +104,7 @@
                         Total Venta</div>
                     <div
                         style="font-size: var(--font-size-4xl); color: var(--color-primary); font-weight: var(--font-weight-bold);">
-                        ${{ "%.2f"|format(sale.total) }}
+                        ${{ sale.total|money_ar }}
                     </div>
                     <div style="margin-top: var(--spacing-3);">
                         {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}

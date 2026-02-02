@@ -112,8 +112,9 @@
                             <div style="position: relative;">
                                 <span
                                     style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);">$</span>
-                                <input type="number" class="form-input-custom" id="sale_price" name="sale_price"
-                                    value="{{ product.sale_price if product else '0.00' }}" step="0.01" min="0" required
+                                <input type="number" class="form-input-custom no-spinner" id="sale_price"
+                                    name="sale_price" value="{{ product.sale_price if product else '0.00' }}"
+                                    step="0.01" min="0" required
                                     onfocus="if(this.value === '0.00' || this.value === '0') this.value = '';"
                                     onblur="if(this.value === '') this.value = '0.00';"
                                     style="padding-left: 28px; font-weight: var(--font-weight-bold); color: var(--color-success);">
@@ -237,4 +238,148 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    /**
+     * Formatea un número en estilo argentino "Smart":
+     * - Separador de miles: punto (.)
+     * - Separador decimal: coma (,)
+     * - Elimina ceros decimales innecesarios
+     */
+    function formatSmartAr(value) {
+        if (value === null || value === undefined || value === '' || isNaN(value)) return '';
+
+        const num = parseFloat(value);
+        if (num === 0) return '0';
+
+        // Separar parte entera y decimal
+        let [integerPart, decimalPart] = num.toFixed(2).split('.');
+
+        // Eliminar ceros finales en decimales
+        decimalPart = decimalPart.replace(/0+$/, '');
+
+        // Formatear parte entera con separador de miles
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+        // Construir resultado
+        return decimalPart ? `${integerPart},${decimalPart}` : integerPart;
+    }
+
+    /**
+     * Convierte formato argentino a número para inputs
+     */
+    function parseArToNumber(value) {
+        if (!value) return '';
+        // Eliminar puntos (separador de miles) y reemplazar coma por punto
+        return value.toString().replace(/\./g, '').replace(',', '.');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const salePriceInput = document.getElementById('sale_price');
+        const minStockInput = document.getElementById('min_stock_qty');
+
+        // Formatear precio de venta al perder el foco
+        if (salePriceInput) {
+            salePriceInput.addEventListener('blur', function () {
+                if (this.value && this.value !== '') {
+                    const numValue = parseFloat(this.value);
+                    if (!isNaN(numValue) && numValue > 0) {
+                        // Mostrar formato visual temporalmente
+                        const formatted = formatSmartAr(numValue);
+                        this.setAttribute('data-raw-value', this.value);
+                        this.value = formatted;
+                        this.type = 'text';
+                    } else if (this.value === '') {
+                        this.value = '0.00';
+                    }
+                }
+            });
+
+            salePriceInput.addEventListener('focus', function () {
+                // Restaurar valor numérico para edición
+                const rawValue = this.getAttribute('data-raw-value');
+                if (rawValue) {
+                    this.type = 'number';
+                    this.value = rawValue;
+                    this.removeAttribute('data-raw-value');
+                }
+                // Limpiar si es 0 o 0.00
+                if (this.value === '0.00' || this.value === '0') {
+                    this.value = '';
+                }
+            });
+        }
+
+        // Formatear stock mínimo al perder el foco
+        if (minStockInput) {
+            minStockInput.addEventListener('blur', function () {
+                if (this.value && this.value !== '') {
+                    const numValue = parseInt(this.value);
+                    if (!isNaN(numValue) && numValue > 0) {
+                        // Mostrar formato visual temporalmente
+                        const formatted = formatSmartAr(numValue);
+                        this.setAttribute('data-raw-value', this.value);
+                        this.value = formatted;
+                        this.type = 'text';
+                    }
+                }
+            });
+
+            minStockInput.addEventListener('focus', function () {
+                // Restaurar valor numérico para edición
+                const rawValue = this.getAttribute('data-raw-value');
+                if (rawValue) {
+                    this.type = 'number';
+                    this.value = rawValue;
+                    this.removeAttribute('data-raw-value');
+                }
+            });
+        }
+
+        // Antes de enviar el formulario, restaurar valores numéricos
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                if (salePriceInput && salePriceInput.type === 'text') {
+                    const rawValue = salePriceInput.getAttribute('data-raw-value');
+                    if (rawValue) {
+                        salePriceInput.type = 'number';
+                        salePriceInput.value = rawValue;
+                    } else {
+                        // Convertir formato argentino a número
+                        salePriceInput.value = parseArToNumber(salePriceInput.value);
+                        salePriceInput.type = 'number';
+                    }
+                }
+
+                if (minStockInput && minStockInput.type === 'text') {
+                    const rawValue = minStockInput.getAttribute('data-raw-value');
+                    if (rawValue) {
+                        minStockInput.type = 'number';
+                        minStockInput.value = rawValue;
+                    } else {
+                        // Convertir formato argentino a número
+                        minStockInput.value = parseArToNumber(minStockInput.value);
+                        minStockInput.type = 'number';
+                    }
+                }
+            });
+        }
+    });
+</script>
+
+<style>
+    /* Ocultar spinners (flechas) en inputs de precio */
+    .no-spinner::-webkit-outer-spin-button,
+    .no-spinner::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .no-spinner[type=number] {
+        -moz-appearance: textfield;
+    }
+</style>
 {% endblock %}

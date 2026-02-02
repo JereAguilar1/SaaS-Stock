@@ -73,7 +73,7 @@
                     </td>
                     <td style="text-align: right;">
                         <strong style="color: var(--color-success); font-weight: var(--font-weight-semibold);">${{
-                            "%.2f"|format(sale.total) }}</strong>
+                            sale.total|money_ar }}</strong>
                     </td>
                     <td>
                         {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}

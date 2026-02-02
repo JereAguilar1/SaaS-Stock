@@ -44,7 +44,7 @@
             <div>
                 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-xs);">Total Original</dt>
                 <dd style="color: var(--color-primary); font-weight: var(--font-weight-bold);">${{
-                    "%.2f"|format(sale.total) }}</dd>
+                    sale.total|money_ar }}</dd>
             </div>
         </dl>
     </div>
@@ -87,12 +87,12 @@
                                     data-unit-price="{{ line.unit_price }}" data-stock="{{ line.current_stock }}"
                                     required style="text-align: center;">
                             </td>
-                            <td style="text-align: right;" class="unit-price">${{ "%.2f"|format(line.unit_price) }}</td>
+                            <td style="text-align: right;" class="unit-price">${{ line.unit_price|money_ar }}</td>
                             <td style="text-align: right;">
                                 <span class="badge-custom badge-info">{{ line.current_stock }}</span>
                             </td>
                             <td style="text-align: right;" class="line-total">
-                                <strong>${{ "%.2f"|format(line.line_total) }}</strong>
+                                <strong>${{ line.line_total|money_ar }}</strong>
                             </td>
                             <td style="text-align: center;">
                                 <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
@@ -112,7 +112,7 @@
                                 <span
                                     style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-primary);"
                                     id="total-display">
-                                    ${{ "%.2f"|format(sale.total) }}
+                                    ${{ sale.total|money_ar }}
                                 </span>
                             </td>
                             <td></td>

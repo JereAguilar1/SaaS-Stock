@@ -103,10 +103,11 @@
                         <div style="position: relative;">
                             <span
                                 style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);">$</span>
-                            <input type="number" class="form-input-custom" id="unit_cost" name="unit_cost" min="0"
-                                step="0.01" value="0.00" title="Ingrese el costo unitario con hasta dos decimales"
-                                onfocus="if(this.value === '0.00' || this.value === '0') this.value = '';"
-                                onblur="if(this.value === '') this.value = '0.00';" style="padding-left: 28px;">
+                            <input type="text" class="form-input-custom" id="unit_cost" name="unit_cost_display"
+                                value="0" title="Ingrese el costo unitario con hasta dos decimales (ej: 5.000,50)"
+                                onfocus="if(this.value === '0' || this.value === '0.00') this.value = '';"
+                                style="padding-left: 28px;">
+                            <input type="hidden" id="unit_cost_hidden" name="unit_cost" value="0">
                         </div>
                     </div>
                 </div>
@@ -146,7 +147,7 @@
                         <td><strong style="color: var(--color-text-primary);">{{ product.name if product else 'Producto
                                 no encontrado' }}</strong></td>
                         <td>{{ product.uom.symbol if product else '-' }}</td>
-                        <td style="text-align: right;">{{ line.qty|num_ar }}</td>
+                        <td style="text-align: right;">{{ line.qty|int }}</td>
                         <td style="text-align: right;">${{ line.unit_cost|money_ar }}</td>
                         <td style="text-align: right;"><strong style="color: var(--color-text-primary);">${{
                                 line_total|money_ar }}</strong></td>
@@ -311,8 +312,76 @@
             }
         });
 
+
         // Limpiar input al agregar (opcional, si se recarga la página no hace falta, pero si es HTMX sí)
         // Como este form hace submit POST completo, no es necesario limpiar manualmente aquí.
+
+        // ========== FORMATO ARGENTINO PARA COSTO UNITARIO ==========
+        /**
+         * Formatea un número en estilo argentino "Smart"
+         */
+        function formatSmartAr(value) {
+            if (value === null || value === undefined || value === '' || isNaN(value)) return '';
+
+            const num = parseFloat(value);
+            if (num === 0) return '0';
+
+            // Separar parte entera y decimal
+            let [integerPart, decimalPart] = num.toFixed(2).split('.');
+
+            // Eliminar ceros finales en decimales
+            decimalPart = decimalPart.replace(/0+$/, '');
+
+            // Formatear parte entera con separador de miles
+            integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+            // Construir resultado
+            return decimalPart ? `${integerPart},${decimalPart}` : integerPart;
+        }
+
+        /**
+         * Convierte formato argentino a número
+         */
+        function parseArToNumber(value) {
+            if (!value || value === '') return 0;
+            // Eliminar puntos (separador de miles) y reemplazar coma por punto
+            const cleaned = value.toString().replace(/\./g, '').replace(',', '.');
+            return parseFloat(cleaned) || 0;
+        }
+
+        const unitCostFormatInput = document.getElementById('unit_cost');
+        const unitCostHidden = document.getElementById('unit_cost_hidden');
+        const invoiceFormSubmit = document.querySelector('form');
+
+        // Formatear al perder el foco
+        if (unitCostFormatInput) {
+            unitCostFormatInput.addEventListener('blur', function () {
+                if (this.value && this.value !== '') {
+                    const numValue = parseArToNumber(this.value);
+                    if (!isNaN(numValue) && numValue > 0) {
+                        this.value = formatSmartAr(numValue);
+                        unitCostHidden.value = numValue.toFixed(2);
+                    } else if (this.value === '') {
+                        this.value = '0';
+                        unitCostHidden.value = '0';
+                    }
+                }
+            });
+
+            // Actualizar hidden input mientras escribe
+            unitCostFormatInput.addEventListener('input', function () {
+                const numValue = parseArToNumber(this.value);
+                unitCostHidden.value = isNaN(numValue) ? '0' : numValue.toFixed(2);
+            });
+        }
+
+        // Antes de enviar el formulario, asegurar que el hidden tenga el valor correcto
+        if (invoiceFormSubmit && unitCostFormatInput && unitCostHidden) {
+            invoiceFormSubmit.addEventListener('submit', function (e) {
+                const numValue = parseArToNumber(unitCostFormatInput.value);
+                unitCostHidden.value = isNaN(numValue) ? '0' : numValue.toFixed(2);
+            });
+        }
     });
 </script>
 {% endblock %}

@@ -27,7 +27,7 @@
     <div class="totals-area">
         <div class="total-row final-total">
             <span>Total</span>
-            <span id="cart-total-display">${{ "%.2f"|format(totals.total) }}</span>
+            <span id="cart-total-display">${{ totals.total|money_ar }}</span>
         </div>
     </div>
 
@@ -52,9 +52,9 @@
         <div id="cash-received-section" class="mb-3" style="display: none;">
             <div class="input-group">
                 <span class="input-group-text">Recibido</span>
-                <input type="number" id="amount_received" class="form-control" step="0.01" min="0"
-                    name="amount_received_display"
-                    value="{% if session.get('cash_overridden') %}{{ session.get('cash_amount', totals.total) }}{% else %}{{ totals.total }}{% endif %}"
+                <input type="text" id="amount_received" class="form-control" name="amount_received_display"
+                    value="{% if session.get('cash_overridden') %}{{ session.get('cash_amount', totals.total)|money_ar }}{% else %}{{ totals.total|money_ar }}{% endif %}"
+                    onfocus="if(this.value === '0' || this.value === '0.00') this.value = '';"
                     hx-post="{{ url_for('sales.draft_payment_update_cash') }}"
                     hx-trigger="blur, change, keyup[key=='Enter']" hx-swap="none" placeholder="Monto recibido">
 

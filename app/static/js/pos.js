@@ -106,9 +106,9 @@ function handlePaymentMethodChange(selectElement, isInit = false) {
 
         // Set default received amount only if initializing or if value is empty/different context
         if (amountReceivedInput && isInit) {
-            amountReceivedInput.value = total.toFixed(2);
+            amountReceivedInput.value = formatSmartAr(total);
         } else if (amountReceivedInput && amountReceivedInput.value === '') {
-            amountReceivedInput.value = total.toFixed(2);
+            amountReceivedInput.value = formatSmartAr(total);
         }
 
         calculateChange();
@@ -116,6 +116,44 @@ function handlePaymentMethodChange(selectElement, isInit = false) {
         if (cashSection) cashSection.style.display = 'none';
         if (changeDisplay) changeDisplay.style.display = 'none';
     }
+}
+
+/**
+ * Formatea un número en estilo argentino "Smart":
+ * - Separador de miles: punto (.)
+ * - Separador decimal: coma (,)
+ * - Elimina ceros decimales innecesarios
+ * 
+ * Ejemplos: 1000 -> "1.000", 1250.5 -> "1.250,5", 1250.05 -> "1.250,05"
+ */
+function formatSmartAr(value) {
+    if (value === null || value === undefined || isNaN(value)) return '0';
+
+    const num = parseFloat(value);
+    if (num === 0) return '0';
+
+    // Separar parte entera y decimal
+    let [integerPart, decimalPart] = num.toFixed(2).split('.');
+
+    // Eliminar ceros finales en decimales
+    decimalPart = decimalPart.replace(/0+$/, '');
+
+    // Formatear parte entera con separador de miles
+    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+    // Construir resultado
+    return decimalPart ? `${integerPart},${decimalPart}` : integerPart;
+}
+
+/**
+ * Convierte formato argentino a número
+ * Ejemplo: "1.250,50" -> 1250.50
+ */
+function parseArToNumber(value) {
+    if (!value || value === '') return 0;
+    // Eliminar puntos (separador de miles) y reemplazar coma por punto
+    const cleaned = value.toString().replace(/\./g, '').replace(',', '.');
+    return parseFloat(cleaned) || 0;
 }
 
 function calculateChange() {
@@ -128,18 +166,21 @@ function calculateChange() {
 
     if (!amountReceivedInput || !paymentAmountInput) return;
 
-    const received = parseFloat(amountReceivedInput.value) || 0;
+    // Parsear formato argentino si es texto
+    const received = parseArToNumber(amountReceivedInput.value);
     const total = parseFloat(paymentAmountInput.value) || 0;
     const change = received - total;
 
-    // Update hidden inputs for submission
+    // Update hidden inputs for submission (mantener precisión decimal)
     if (paymentReceivedInput) {
         paymentReceivedInput.value = received.toFixed(2);
     }
 
     if (change > 0) {
-        if (changeAmountSpan) changeAmountSpan.textContent = change.toFixed(2);
+        // Usar formato Smart para visualización
+        if (changeAmountSpan) changeAmountSpan.textContent = formatSmartAr(change);
         if (changeDisplay) changeDisplay.style.display = 'block';
+        // Mantener precisión decimal para envío al backend
         if (paymentChangedInput) paymentChangedInput.value = change.toFixed(2);
     } else {
         if (changeDisplay) changeDisplay.style.display = 'none';

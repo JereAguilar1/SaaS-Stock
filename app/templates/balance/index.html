@@ -317,7 +317,7 @@
     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
     <div class="stat-card" style="border-left: 4px solid var(--color-success);">
         <div class="stat-label">Ingresos Totales</div>
-        <div class="stat-value" style="color: var(--color-success);">${{ "%.2f"|format(totals.total_income) }}</div>
+        <div class="stat-value" style="color: var(--color-success);">${{ totals.total_income|money_ar }}</div>
         <div class="stat-change positive">
             <i class="bi bi-arrow-down-circle"></i> Entradas
         </div>
@@ -325,7 +325,7 @@
 
     <div class="stat-card" style="border-left: 4px solid var(--color-danger);">
         <div class="stat-label">Egresos Totales</div>
-        <div class="stat-value" style="color: var(--color-danger);">${{ "%.2f"|format(totals.total_expense) }}</div>
+        <div class="stat-value" style="color: var(--color-danger);">${{ totals.total_expense|money_ar }}</div>
         <div class="stat-change negative">
             <i class="bi bi-arrow-up-circle"></i> Salidas
         </div>
@@ -336,7 +336,7 @@
         <div class="stat-label">Neto (Ganancia/Pérdida)</div>
         <div class="stat-value"
             style="color: {% if totals.total_net >= 0 %}var(--color-primary){% else %}var(--color-warning){% endif %};">
-            ${{ "%.2f"|format(totals.total_net) }}
+            ${{ totals.total_net|money_ar }}
         </div>
         <div class="stat-change">
             <i class="bi bi-calculator"></i> Resultado
@@ -381,21 +381,21 @@
                         </strong></td>
                     <td style="text-align: right; color: var(--color-success);">
                         {% if item.income > 0 %}
-                        ${{ "%.2f"|format(item.income) }}
+                        ${{ item.income|money_ar }}
                         {% else %}
-                        <span style="color: var(--color-text-muted);">$0.00</span>
+                        <span style="color: var(--color-text-muted);">$0</span>
                         {% endif %}
                     </td>
                     <td style="text-align: right; color: var(--color-danger);">
                         {% if item.expense > 0 %}
-                        ${{ "%.2f"|format(item.expense) }}
+                        ${{ item.expense|money_ar }}
                         {% else %}
-                        <span style="color: var(--color-text-muted);">$0.00</span>
+                        <span style="color: var(--color-text-muted);">$0</span>
                         {% endif %}
                     </td>
                     <td
                         style="text-align: right; font-weight: var(--font-weight-semibold); color: {% if item.net >= 0 %}var(--color-primary){% else %}var(--color-warning){% endif %};">
-                        ${{ "%.2f"|format(item.net) }}
+                        ${{ item.net|money_ar }}
                     </td>
                 </tr>
                 {% endfor %}
@@ -404,14 +404,14 @@
                 <tr>
                     <td style="padding: var(--spacing-4);">TOTALES</td>
                     <td style="text-align: right; padding: var(--spacing-4); color: var(--color-success);">
-                        ${{ "%.2f"|format(totals.total_income) }}
+                        ${{ totals.total_income|money_ar }}
                     </td>
                     <td style="text-align: right; padding: var(--spacing-4); color: var(--color-danger);">
-                        ${{ "%.2f"|format(totals.total_expense) }}
+                        ${{ totals.total_expense|money_ar }}
                     </td>
                     <td
                         style="text-align: right; padding: var(--spacing-4); color: {% if totals.total_net >= 0 %}var(--color-primary){% else %}var(--color-warning){% endif %};">
-                        ${{ "%.2f"|format(totals.total_net) }}
+                        ${{ totals.total_net|money_ar }}
                     </td>
                 </tr>
             </tfoot>

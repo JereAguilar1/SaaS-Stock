@@ -20,6 +20,22 @@
     <!--Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.ico') }}">
 
+    <!-- Global Styles -->
+    <style>
+        /* Ocultar spinners (flechas) en inputs numéricos con clase no-spinner */
+        .no-spinner::-webkit-outer-spin-button,
+        .no-spinner::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            appearance: none;
+            margin: 0;
+        }
+
+        .no-spinner[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+    </style>
+
     {% block extra_css %}{% endblock %}
 </head>
 

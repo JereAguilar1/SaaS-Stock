@@ -106,6 +106,10 @@ def money_ar_2(value: Union[int, float, Decimal, str, None]) -> str:
     """
     Formatea un monto monetario en estilo argentino con exactamente 2 decimales.
     Siempre muestra dos decimales y usa punto para miles y coma para decimales.
+    
+    NOTA: Esta función está mantenida por compatibilidad pero NO debe usarse
+    en nuevos desarrollos. Usar money_ar() que implementa formato "Smart"
+    (elimina decimales innecesarios: 1.000 en lugar de 1.000,00).
 
     Args:
         value: Monto a formatear

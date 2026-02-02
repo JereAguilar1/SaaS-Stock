@@ -16,7 +16,7 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-success fw-bold" style="font-size: 0.85rem;">${{ "%.2f"|format(product.sale_price)
+                <span class="text-success fw-bold" style="font-size: 0.85rem;">${{ product.sale_price|money_ar
                     }}</span>
                 {% if product.on_hand_qty > 0 %}
                 <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">Only {{ product.on_hand_qty|int
