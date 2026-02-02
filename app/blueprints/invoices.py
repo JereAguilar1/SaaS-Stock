@@ -2,14 +2,15 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, g, abort
 from decimal import Decimal
 from datetime import datetime, date, timedelta
-from sqlalchemy import and_
+from sqlalchemy import and_, or_, func
 from app.database import get_session
-from app.models import PurchaseInvoice, Supplier, Product, InvoiceStatus
+from app.models import PurchaseInvoice, Supplier, Product, InvoiceStatus, ProductStock
 from app.services.invoice_service import create_invoice_with_lines
 from app.services.payment_service import pay_invoice
 from app.services.invoice_alerts_service import is_invoice_overdue
 from app.middleware import require_login, require_tenant
 from app.utils.number_format import parse_ar_decimal, parse_ar_number
+from flask import jsonify
 
 invoices_bp = Blueprint('invoices', __name__, url_prefix='/invoices')
 
@@ -580,3 +581,49 @@ def pay_invoice_route(invoice_id):
         db_session.rollback()
         flash(f'Error al procesar pago: {str(e)}', 'danger')
         return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+
+
+@invoices_bp.route('/products/search', methods=['GET'])
+@require_login
+@require_tenant
+def search_products():
+    """Search products for autocomplete (JSON)."""
+    db_session = get_session()
+    
+    try:
+        query = request.args.get('q', '').strip()
+        
+        # Base query
+        base_query = db_session.query(Product).filter(
+            Product.tenant_id == g.tenant_id,
+            Product.active == True
+        )
+        
+        if query:
+            # Search by name, SKU or barcode (case insensitive)
+            products = base_query.filter(
+                or_(
+                    Product.name.ilike(f'%{query}%'),
+                    Product.sku.ilike(f'%{query}%'),
+                    Product.barcode.ilike(f'%{query}%')
+                )
+            ).limit(20).all()
+        else:
+            # Return top 50 products if no query (Show All behavior)
+            products = base_query.order_by(Product.name).limit(50).all()
+        
+        results = []
+        for p in products:
+            results.append({
+                'id': p.id,
+                'name': p.name,
+                'sku': p.sku or '',
+                'sale_price': str(p.sale_price),
+                'uom_symbol': p.uom.symbol if p.uom else ''
+            })
+            
+        return jsonify(results)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error searching products: {e}")
+        return jsonify({'error': str(e)}), 500

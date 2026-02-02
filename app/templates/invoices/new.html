@@ -77,18 +77,17 @@
                 <div class="form-group">
                     <label for="product_search_input" class="form-label-custom">Producto</label>
                     <div style="position: relative;">
-                        <input type="text" class="form-input-custom" id="product_search_input" list="products_datalist"
-                            placeholder="Buscar por Nombre o SKU..." autocomplete="off">
+                        <!-- Updated Input: remove list attribute, ensure autocomplete off -->
+                        <input type="text" class="form-input-custom" id="product_search_input"
+                            placeholder="Buscar por Nombre, SKU o Código de Barras..." autocomplete="off">
                         <input type="hidden" id="product_id" name="product_id" required>
 
-                        <datalist id="products_datalist">
-                            {% for product in products %}
-                            <option value="{{ product.name }} ({{ product.sku or 'Sin SKU' }})"
-                                data-id="{{ product.id }}" data-price="{{ product.sale_price }}"
-                                data-uom="{{ product.uom.symbol }}">
-                            </option>
-                            {% endfor %}
-                        </datalist>
+                        <!-- Custom Results Container -->
+                        <ul id="product_search_results" class="list-group" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; 
+                                   max-height: 300px; overflow-y: auto; background: white; border: 1px solid #ddd; 
+                                   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                                   margin-top: 4px; border-radius: 4px; padding: 0; list-style: none;">
+                        </ul>
                     </div>
                 </div>
 
@@ -275,46 +274,142 @@
         invoiceDateInput.addEventListener('change', validateDates);
         dueDateInput.addEventListener('change', validateDates);
 
-        // 3. Autocomplete Inteligente para Productos
+        // 3. Autocomplete Inteligente para Productos (Custom Typeahead)
         const searchInput = document.getElementById('product_search_input');
+        const searchResults = document.getElementById('product_search_results');
         const hiddenIdInput = document.getElementById('product_id');
-        const datalist = document.getElementById('products_datalist');
         const unitCostInput = document.getElementById('unit_cost');
 
-        // Mapa para búsqueda rápida de opciones por valor visible
-        const optionsMap = new Map();
-        Array.from(datalist.options).forEach(opt => {
-            optionsMap.set(opt.value, {
-                id: opt.getAttribute('data-id'),
-                price: opt.getAttribute('data-price')
-            });
+        // Debounce helper
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Search logic
+        const performSearch = debounce(async function () {
+            const query = searchInput.value.trim();
+
+            // Allow empty query to fetch default list ("Show All" behavior)
+            // if (query.length < 2) { ... } -> REMOVED
+
+            try {
+                const response = await fetch(`/invoices/products/search?q=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error('Error en búsqueda');
+                const products = await response.json();
+
+                renderResults(products);
+            } catch (error) {
+                console.error('Search error:', error);
+                searchResults.style.display = 'none';
+            }
+        }, 300);
+
+        // Render logic
+        function renderResults(products) {
+            searchResults.innerHTML = '';
+
+            if (products.length === 0) {
+                // If query was not empty but no results found
+                if (searchInput.value.trim() !== '') {
+                    const li = document.createElement('li');
+                    li.style.padding = '8px 12px';
+                    li.style.color = '#6c757d';
+                    li.textContent = 'No se encontraron productos';
+                    searchResults.appendChild(li);
+                    searchResults.style.display = 'block';
+                } else {
+                    // Empty query and no products (empty inventory)
+                    const li = document.createElement('li');
+                    li.style.padding = '8px 12px';
+                    li.style.color = '#6c757d';
+                    li.textContent = 'No hay productos disponibles';
+                    searchResults.appendChild(li);
+                    searchResults.style.display = 'block';
+                }
+            } else {
+                products.forEach(product => {
+                    const li = document.createElement('li');
+                    li.style.padding = '8px 12px';
+                    li.style.cursor = 'pointer';
+                    li.style.borderBottom = '1px solid #f0f0f0';
+                    li.style.color = '#333'; // Ensure visibility
+
+                    // Hover effect via JS since inline styles are used
+                    li.onmouseover = () => li.style.background = '#f8f9fa';
+                    li.onmouseout = () => li.style.background = 'white';
+
+                    li.innerHTML = `
+                        <div style="font-weight: 600;">${product.name}</div>
+                        <div style="font-size: 0.85em; color: #666;">
+                            SKU: ${product.sku || 'N/A'} | UOM: ${product.uom_symbol}
+                        </div>
+                    `;
+
+                    li.addEventListener('click', () => selectProduct(product));
+                    searchResults.appendChild(li);
+                });
+                searchResults.style.display = 'block';
+            }
+        }
+
+        // Selection logic
+        function selectProduct(product) {
+            searchInput.value = `${product.name} (${product.sku || 'Sin SKU'})`;
+            hiddenIdInput.value = product.id;
+
+            // Auto-fill cost if empty or zero
+            if (unitCostInput && (unitCostInput.value === "0.00" || unitCostInput.value === "0" || unitCostInput.value === "")) {
+                // Ensure formatSmartAr is available or implement simplified version
+                // Assuming formatSmartAr is globally available or defined below
+                if (typeof formatSmartAr === 'function') {
+                    unitCostInput.value = formatSmartAr(product.sale_price);
+
+                    // Also trigger trigger input event to update hidden cost input logic if presents
+                    unitCostInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    unitCostInput.dispatchEvent(new Event('blur', { bubbles: true }));
+                } else {
+                    unitCostInput.value = product.sale_price;
+                }
+            }
+
+            searchResults.style.display = 'none';
+        }
+
+        // Event Listeners
+        searchInput.addEventListener('input', function () {
+            // Clear ID on input change to force selection
+            hiddenIdInput.value = '';
+            performSearch();
         });
 
-        searchInput.addEventListener('input', function () {
-            const val = this.value;
-            const match = optionsMap.get(val);
-
-            if (match) {
-                // Producto encontrado y seleccionado exactamente
-                hiddenIdInput.value = match.id;
-
-                // Cargar precio sugerido si el campo está vacío o en cero
-                if (match.price && (unitCostInput.value === "0.00" || unitCostInput.value === "0" || unitCostInput.value === "")) {
-                    unitCostInput.value = match.price;
-                }
-
-                // Visual feedback (opcional)
-                this.style.borderColor = 'var(--color-success)';
+        // NEW: Trigger search on focus ("Show All" behavior)
+        searchInput.addEventListener('focus', function () {
+            // If already has a selected value (ID is set), maybe don't pop up?
+            // User requirement: "When making click... or when empty"
+            // Let's just trigger it. If they want to change it, they see options.
+            if (hiddenIdInput.value === '') {
+                performSearch();
             } else {
-                // Entrada libre o incompleta -> Limpiar ID
-                hiddenIdInput.value = '';
-                this.style.borderColor = '';
+                // If they have something selected, they might want to see the list again if they clear it
+                // Or if they just clicked it.
+                // Let's trigger it.
+                performSearch();
+            }
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
             }
         });
 
 
         // Limpiar input al agregar (opcional, si se recarga la página no hace falta, pero si es HTMX sí)
-        // Como este form hace submit POST completo, no es necesario limpiar manualmente aquí.
 
         // ========== FORMATO ARGENTINO PARA COSTO UNITARIO ==========
         /**
