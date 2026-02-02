@@ -1,0 +1,46 @@
+{% for tenant in tenants %}
+<tr>
+    <td><strong>{{ tenant.name }}</strong></td>
+    <td>{{ tenant.owner_email }}</td>
+    <td><code style="color: var(--color-text-muted);">{{ tenant.slug }}</code></td>
+    <td>{{ tenant.created_at.strftime('%d/%m/%Y') }}</td>
+    <td>
+        {% if tenant.is_suspended %}
+        <span class="badge bg-danger">
+            <i class="bi bi-x-circle-fill"></i> Suspendido
+        </span>
+        {% else %}
+        <span class="badge bg-success">
+            <i class="bi bi-check-circle-fill"></i> Activo
+        </span>
+        {% endif %}
+    </td>
+    <td>{{ tenant.total_sales }}</td>
+    <td>${{ "{:,.0f}".format(tenant.total_revenue) }}</td>
+    <td>
+        <a href="{{ url_for('admin.tenant_detail', tenant_id=tenant.id) }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-eye"></i> Ver
+        </a>
+        {% if tenant.is_suspended %}
+        <button hx-post="{{ url_for('admin.reactivate_tenant', tenant_id=tenant.id) }}"
+            hx-confirm="¿Reactivar el negocio '{{ tenant.name }}'?" class="btn btn-sm btn-success">
+            <i class="bi bi-check2-circle"></i>
+        </button>
+        {% else %}
+        <button hx-post="{{ url_for('admin.suspend_tenant', tenant_id=tenant.id) }}"
+            hx-confirm="¿Suspender el negocio '{{ tenant.name }}'? Los usuarios no podrán iniciar sesión."
+            class="btn btn-sm btn-danger">
+            <i class="bi bi-x-circle"></i>
+        </button>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+{% if tenants|length == 0 %}
+<tr>
+    <td colspan="8" class="text-center py-4 text-muted">
+        No se encontraron negocios con estos criterios
+    </td>
+</tr>
+{% endif %}

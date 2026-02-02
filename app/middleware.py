@@ -34,6 +34,17 @@ def load_user_and_tenant():
                 ).first()
                 
                 if user_tenant:
+                    # ADMIN PANEL: Check if tenant is suspended
+                    from app.models import Tenant
+                    tenant = db_session.query(Tenant).filter_by(id=tenant_id).first()
+                    
+                    if tenant and tenant.is_suspended:
+                        # Tenant is suspended - block access immediately
+                        session.clear()
+                        flash('Este negocio ha sido suspendido. Contacta soporte.', 'danger')
+                        # Don't set g.user or g.tenant_id - force re-login
+                        return
+                    
                     g.tenant_id = tenant_id
                     g.user_role = user_tenant.role  # PASO 6: Set user role
                 else:

@@ -1,0 +1,36 @@
+<header class="app-topbar">
+    <div class="topbar-left">
+        <!-- Mobile Sidebar Toggle -->
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <i class="bi bi-list" style="font-size: 1.5rem;"></i>
+        </button>
+
+        <!-- Page Title -->
+        <h1 class="topbar-title">{% block page_title %}Admin Panel{% endblock %}</h1>
+    </div>
+
+    <div class="topbar-right">
+        <!-- Superadmin Badge -->
+        <span class="badge bg-danger" style="font-size: 0.75rem; padding: 0.5rem 0.75rem;">
+            <i class="bi bi-shield-fill-check"></i> SUPERADMIN
+        </span>
+
+        <!-- User Dropdown (Future) -->
+        <!--
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                {{ g.admin_user.email if g.admin_user else 'Admin' }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <form method="POST" action="{{ url_for('admin.logout') }}">
+                        <button type="submit" class="dropdown-item">
+                            <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+        -->
+    </div>
+</header>

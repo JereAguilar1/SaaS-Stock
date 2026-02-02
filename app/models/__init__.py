@@ -1,7 +1,8 @@
-"""Models package."""
+"""Models package - exports all SQLAlchemy models."""
 # SaaS Core Models
-from app.models.tenant import Tenant
+from app.models.admin_user import AdminUser
 from app.models.app_user import AppUser
+from app.models.tenant import Tenant
 from app.models.user_tenant import UserTenant, UserRole
 
 # Business Models
