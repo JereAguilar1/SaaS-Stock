@@ -53,8 +53,7 @@
             </thead>
             <tbody>
                 {% for product in products %}
-                <tr
-                    style="{% if product.on_hand_qty == 0 %}background-color: var(--color-bg-muted); opacity: 0.7;{% endif %}">
+                <tr {% if product.on_hand_qty==0 %}style="background-color: var(--color-bg-muted);" {% endif %}>
                     <td>{{ product.id }}</td>
                     <td>
                         {% if product.image_url %}

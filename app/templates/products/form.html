@@ -113,7 +113,9 @@
                                 <span
                                     style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);">$</span>
                                 <input type="text" class="form-input-custom no-spinner" id="sale_price"
-                                    name="sale_price" value="0,00" inputmode="decimal" required
+                                    name="sale_price"
+                                    value="{% if product and product.sale_price %}{{ '{:,.2f}'.format(product.sale_price).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% else %}0,00{% endif %}"
+                                    inputmode="decimal" required
                                     onfocus="if(this.value === '0,00' || this.value === '0') this.value = '';"
                                     onblur="if(this.value === '') this.value = '0,00';"
                                     style="padding-left: 28px; font-weight: var(--font-weight-bold); color: var(--color-success);"

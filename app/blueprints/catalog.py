@@ -282,19 +282,36 @@ def create_product():
     try:
         # Get form data
         name = request.form.get('name', '').strip()
-        sku = request.form.get('sku', '').strip() or None
-        barcode = request.form.get('barcode', '').strip() or None
+        
+        # NORMALIZACIÓN SKU: Convertir "none" o vacío a NULL
+        sku_raw = request.form.get('sku', '').strip()
+        if sku_raw.lower() == 'none' or sku_raw == '':
+            sku = None
+        else:
+            sku = sku_raw
+        
+        # NORMALIZACIÓN BARCODE: Convertir "none" o vacío a NULL
+        barcode_raw = request.form.get('barcode', '').strip()
+        if barcode_raw.lower() == 'none' or barcode_raw == '':
+            barcode = None
+        else:
+            barcode = barcode_raw
+        
         category_id = request.form.get('category_id', '').strip() or None
         uom_id = request.form.get('uom_id', '').strip()
         
         # SANITIZER: Limpiar precio de formato local (1.000,00 -> 1000.00)
-        raw_price = request.form.get('sale_price', '0').strip()
-        if ',' in raw_price:
-            # Formato local: punto para miles, coma para decimales
-            clean_price = raw_price.replace('.', '').replace(',', '.')
-        else:
-            # Formato estándar o sin formato
-            clean_price = raw_price
+        # Algoritmo estricto:
+        # 1. Obtener valor como string
+        # 2. Eliminar TODOS los puntos (separadores de miles)
+        # 3. Reemplazar coma por punto (separador decimal)
+        raw_price = request.form.get('sale_price', '0')
+        # Forzar a string por seguridad
+        raw_price = str(raw_price).strip()
+        # Paso 1: Eliminar puntos de miles (20.000 -> 20000)
+        clean_price = raw_price.replace('.', '')
+        # Paso 2: Normalizar decimal (20000,50 -> 20000.50)
+        clean_price = clean_price.replace(',', '.')
         sale_price = clean_price
         
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
@@ -326,12 +343,13 @@ def create_product():
             if not category:
                 errors.append('La categoría seleccionada no existe o no pertenece a su negocio')
         
+        # Validación de precio
         try:
             sale_price_decimal = float(sale_price)
             if sale_price_decimal < 0:
                 errors.append('El precio de venta debe ser mayor o igual a 0')
-        except ValueError:
-            errors.append('El precio de venta debe ser un número válido')
+        except (ValueError, TypeError):
+            errors.append(f'El precio de venta debe ser un número válido. Valor recibido: "{raw_price}"')
         
         try:
             min_stock_qty_decimal = float(min_stock_qty) if min_stock_qty else 0
@@ -464,19 +482,36 @@ def update_product(product_id):
         
         # Get form data
         name = request.form.get('name', '').strip()
-        sku = request.form.get('sku', '').strip() or None
-        barcode = request.form.get('barcode', '').strip() or None
+        
+        # NORMALIZACIÓN SKU: Convertir "none" o vacío a NULL
+        sku_raw = request.form.get('sku', '').strip()
+        if sku_raw.lower() == 'none' or sku_raw == '':
+            sku = None
+        else:
+            sku = sku_raw
+        
+        # NORMALIZACIÓN BARCODE: Convertir "none" o vacío a NULL
+        barcode_raw = request.form.get('barcode', '').strip()
+        if barcode_raw.lower() == 'none' or barcode_raw == '':
+            barcode = None
+        else:
+            barcode = barcode_raw
+        
         category_id = request.form.get('category_id', '').strip() or None
         uom_id = request.form.get('uom_id', '').strip()
         
         # SANITIZER: Limpiar precio de formato local (1.000,00 -> 1000.00)
-        raw_price = request.form.get('sale_price', '0').strip()
-        if ',' in raw_price:
-            # Formato local: punto para miles, coma para decimales
-            clean_price = raw_price.replace('.', '').replace(',', '.')
-        else:
-            # Formato estándar o sin formato
-            clean_price = raw_price
+        # Algoritmo estricto:
+        # 1. Obtener valor como string
+        # 2. Eliminar TODOS los puntos (separadores de miles)
+        # 3. Reemplazar coma por punto (separador decimal)
+        raw_price = request.form.get('sale_price', '0')
+        # Forzar a string por seguridad
+        raw_price = str(raw_price).strip()
+        # Paso 1: Eliminar puntos de miles (20.000 -> 20000)
+        clean_price = raw_price.replace('.', '')
+        # Paso 2: Normalizar decimal (20000,50 -> 20000.50)
+        clean_price = clean_price.replace(',', '.')
         sale_price = clean_price
         
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
@@ -506,12 +541,13 @@ def update_product(product_id):
             if not category:
                 errors.append('La categoría seleccionada no existe o no pertenece a su negocio')
         
+        # Validación de precio
         try:
             sale_price_decimal = float(sale_price)
             if sale_price_decimal < 0:
                 errors.append('El precio de venta debe ser mayor o igual a 0')
-        except ValueError:
-            errors.append('El precio de venta debe ser un número válido')
+        except (ValueError, TypeError):
+            errors.append(f'El precio de venta debe ser un número válido. Valor recibido: "{raw_price}"')
         
         try:
             min_stock_qty_decimal = float(min_stock_qty) if min_stock_qty else 0
