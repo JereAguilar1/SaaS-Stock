@@ -1367,13 +1367,19 @@ def confirm_draft():
         if not idempotency_key:
             raise ValueError('Clave de idempotencia requerida')
         
-        # Get draft
-        draft = sale_draft_service.get_or_create_draft(
-            db_session, g.tenant_id, g.user_id
-        )
+        # ROBUSTEZ: Obtener draft con manejo de errores
+        try:
+            draft = sale_draft_service.get_or_create_draft(
+                db_session, g.tenant_id, g.user_id
+            )
+        except Exception as draft_error:
+            current_app.logger.error(f"Error getting draft in confirm_draft: {draft_error}", exc_info=True)
+            flash('Error: Carrito no válido. Por favor, intente nuevamente.', 'danger')
+            return redirect(url_for('sales.new_sale'))
         
-        if not draft.lines:
-            raise ValueError('El carrito estÃ¡ vacÃ­o')
+        if not draft or not draft.lines:
+            flash('Error: El carrito está vacío', 'warning')
+            return redirect(url_for('sales.new_sale'))
         
         # Parse payments from form
         # Expected format: payments[0][method], payments[0][amount], etc.
@@ -1409,7 +1415,7 @@ def confirm_draft():
             payment_index += 1
         
         if not payments:
-            raise ValueError('Debe especificar al menos un mÃ©todo de pago')
+            raise ValueError('Debe especificar al menos un método de pago')
         
         # Confirm sale
         sale_id = confirm_sale_from_draft(
@@ -1421,12 +1427,16 @@ def confirm_draft():
             user_id=g.user_id
         )
         
-        # Clear draft after successful confirmation
-        sale_draft_service.clear_draft(
-            session=db_session,
-            draft_id=draft.id,
-            tenant_id=g.tenant_id
-        )
+        # ROBUSTEZ: Clear draft con manejo de errores (no crítico)
+        try:
+            sale_draft_service.clear_draft(
+                session=db_session,
+                draft_id=draft.id,
+                tenant_id=g.tenant_id
+            )
+        except Exception as clear_error:
+            current_app.logger.warning(f"Error clearing draft after confirmation: {clear_error}")
+            # No propagar error, la venta ya fue confirmada
         
         db_session.commit()
         

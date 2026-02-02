@@ -81,7 +81,7 @@
             <div class="card-body-custom" style="text-align: center; padding: var(--spacing-8) var(--spacing-6);">
                 <div
                     style="font-size: 3rem; font-weight: var(--font-weight-bold); color: var(--color-success); line-height: 1;">
-                    ${{ "%.2f"|format(invoice.total_amount) }}
+                    ${{ invoice.total_amount|money_ar }}
                 </div>
                 <div style="color: var(--color-text-secondary); margin-top: var(--spacing-2);">
                     {{ invoice.lines|length }} ítem(s)
@@ -151,10 +151,10 @@
                     <td><strong style="color: var(--color-text-primary);">{{ line.product.name }}</strong></td>
                     <td>{{ line.product.sku or '-' }}</td>
                     <td><span class="badge-custom badge-info">{{ line.product.uom.symbol }}</span></td>
-                    <td style="text-align: right;">{{ "%.3f"|format(line.qty) }}</td>
-                    <td style="text-align: right;">${{ "%.4f"|format(line.unit_cost) }}</td>
+                    <td style="text-align: right;">{{ line.qty|num_ar }}</td>
+                    <td style="text-align: right;">${{ line.unit_cost|money_ar }}</td>
                     <td style="text-align: right;"><strong style="color: var(--color-text-primary);">${{
-                            "%.2f"|format(line.line_total) }}</strong></td>
+                            line.line_total|money_ar }}</strong></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -166,7 +166,7 @@
                     <td style="text-align: right; padding: var(--spacing-4);">
                         <span
                             style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-success);">${{
-                            "%.2f"|format(invoice.total_amount) }}</span>
+                            invoice.total_amount|money_ar }}</span>
                     </td>
                 </tr>
             </tfoot>

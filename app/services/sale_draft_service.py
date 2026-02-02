@@ -36,6 +36,8 @@ def get_or_create_draft(session: Session, tenant_id: int, user_id: int) -> SaleD
         )
         session.add(draft)
         session.flush()
+        # ROBUSTEZ: Commit inmediato para garantizar ID disponible
+        session.commit()
     
     return draft
 
@@ -253,28 +255,36 @@ def clear_draft(session: Session, draft_id: int, tenant_id: int) -> None:
         tenant_id: Tenant ID (for validation)
     
     Raises:
-        ValueError: If validation fails
+        ValueError: If validation fails (non-critical, allows continuation)
     """
-    # Validate draft belongs to tenant
-    draft = session.query(SaleDraft).filter(
-        SaleDraft.id == draft_id,
-        SaleDraft.tenant_id == tenant_id
-    ).first()
-    
-    if not draft:
-        raise ValueError('Draft no encontrado')
-    
-    # Delete all lines (cascade will handle this, but explicit is better)
-    session.query(SaleDraftLine).filter(
-        SaleDraftLine.draft_id == draft_id
-    ).delete()
-    
-    # Reset global discount
-    draft.discount_type = None
-    draft.discount_value = Decimal('0')
-    draft.updated_at = datetime.now()
-    
-    session.flush()
+    try:
+        # Validate draft belongs to tenant
+        draft = session.query(SaleDraft).filter(
+            SaleDraft.id == draft_id,
+            SaleDraft.tenant_id == tenant_id
+        ).first()
+        
+        if not draft:
+            # ROBUSTEZ: No romper si draft no existe, solo loguear
+            import logging
+            logging.warning(f"clear_draft: Draft {draft_id} not found for tenant {tenant_id}")
+            return
+        
+        # Delete all lines (cascade will handle this, but explicit is better)
+        session.query(SaleDraftLine).filter(
+            SaleDraftLine.draft_id == draft_id
+        ).delete()
+        
+        # Reset global discount
+        draft.discount_type = None
+        draft.discount_value = Decimal('0')
+        draft.updated_at = datetime.now()
+        
+        session.flush()
+    except Exception as e:
+        # ROBUSTEZ: No propagar error, solo loguear
+        import logging
+        logging.error(f"Error in clear_draft: {e}", exc_info=True)
 
 
 def apply_global_discount(
