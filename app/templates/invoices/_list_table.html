@@ -9,14 +9,15 @@
                     <th>Nº Boleta</th>
                     <th>Fecha</th>
                     <th>Vencimiento</th>
-                    <th style="text-align: right;">Total</th>
+                    <th style="text-align: right;">Total / Pendiente</th>
                     <th style="text-align: center;">Estado</th>
                     <th style="text-align: center;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% for invoice in invoices %}
-                <tr style="{% if invoice.is_overdue %}background-color: var(--color-danger-light);{% endif %}">
+                <tr
+                    style="{% if invoice.is_overdue and invoice.status.value != 'PAID' %}background-color: var(--color-danger-light);{% endif %}">
                     <td>{{ invoice.id }}</td>
                     <td><strong style="color: var(--color-text-primary);">{{ invoice.supplier.name }}</strong></td>
                     <td>
@@ -31,7 +32,7 @@
                     <td>
                         {% if invoice.due_date %}
                         <div style="display: flex; align-items: center; gap: var(--spacing-2);">
-                            {% if invoice.is_overdue %}
+                            {% if invoice.is_overdue and invoice.status.value != 'PAID' %}
                             <i class="bi bi-exclamation-triangle-fill" style="color: var(--color-danger);"></i>
                             <span style="color: var(--color-danger); font-weight: var(--font-weight-semibold);">{{
                                 invoice.due_date|date_ar }}</span>
@@ -45,14 +46,21 @@
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
-                        <strong style="color: var(--color-text-primary); font-weight: var(--font-weight-semibold);">${{
-                            invoice.total_amount|money_ar }}</strong>
+                        <div style="font-weight: var(--font-weight-semibold);">${{ invoice.total_amount|money_ar }}
+                        </div>
+                        {% if invoice.status.value != 'PAID' %}
+                        <div style="font-size: var(--font-size-xs); color: var(--color-danger);">
+                            Falta: ${{ (invoice.total_amount - invoice.paid_amount)|money_ar }}
+                        </div>
+                        {% endif %}
                     </td>
                     <td style="text-align: center;">
-                        {% if invoice.is_overdue %}
+                        {% if invoice.is_overdue and invoice.status.value != 'PAID' %}
                         <span class="badge-custom badge-danger">Caducada</span>
                         {% elif invoice.status.value == 'PENDING' %}
                         <span class="badge-custom badge-warning">Pendiente</span>
+                        {% elif invoice.status.value == 'PARTIALLY_PAID' %}
+                        <span class="badge-custom badge-info">Parcial</span>
                         {% else %}
                         <span class="badge-custom badge-success">Pagada</span>
                         {% endif %}
@@ -63,7 +71,7 @@
                                 class="btn-custom btn-secondary-custom btn-sm" title="Ver detalle">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            {% if invoice.status.value == 'PENDING' %}
+                            {% if invoice.status.value != 'PAID' %}
                             <button type="button" class="btn-custom btn-warning-custom btn-sm" title="Pagar"
                                 hx-get="{{ url_for('invoices.pay_invoice_preview', invoice_id=invoice.id) }}"
                                 hx-target="#modal-container" hx-swap="innerHTML"

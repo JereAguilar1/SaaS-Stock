@@ -164,7 +164,7 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'invoice_status') THEN
-    CREATE TYPE invoice_status AS ENUM ('PENDING', 'PAID');
+    CREATE TYPE invoice_status AS ENUM ('PENDING', 'PARTIALLY_PAID', 'PAID');
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'stock_move_type') THEN
@@ -374,12 +374,13 @@ CREATE TABLE IF NOT EXISTS purchase_invoice (
   invoice_date  DATE NOT NULL,
   due_date      DATE,
   total_amount  NUMERIC(12,2) NOT NULL CHECK (total_amount >= 0),
+  paid_amount   NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (paid_amount >= 0),
   status        invoice_status NOT NULL DEFAULT 'PENDING',
   paid_at       DATE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT invoice_paid_at_consistency CHECK (
     (status = 'PAID' AND paid_at IS NOT NULL) OR
-    (status = 'PENDING' AND paid_at IS NULL)
+    (status != 'PAID')
   )
 );
 
@@ -400,7 +401,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS purchase_invoice_tenant_supplier_number_uniq
 -- Fast "debt" queries per tenant
 CREATE INDEX IF NOT EXISTS idx_invoice_pending_supplier
   ON purchase_invoice(supplier_id)
-  WHERE status = 'PENDING';
+  WHERE status IN ('PENDING', 'PARTIALLY_PAID');
+
+CREATE TABLE IF NOT EXISTS purchase_invoice_payment (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    invoice_id BIGINT NOT NULL REFERENCES purchase_invoice(id) ON DELETE CASCADE,
+    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('CASH', 'TRANSFER', 'CARD')),
+    amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+    paid_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by BIGINT REFERENCES app_user(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_payment_tenant ON purchase_invoice_payment(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_payment_invoice ON purchase_invoice_payment(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_payment_date ON purchase_invoice_payment(paid_at DESC);
 
 CREATE TABLE IF NOT EXISTS purchase_invoice_line (
   id          BIGSERIAL PRIMARY KEY,

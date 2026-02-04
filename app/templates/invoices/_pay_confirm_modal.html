@@ -1,155 +1,103 @@
 <div class="modal fade" id="confirmPayInvoiceModal" tabindex="-1" aria-labelledby="confirmPayInvoiceModalLabel"
     aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content"
             style="border-radius: var(--radius-xl); border: none; box-shadow: var(--shadow-2xl);">
             <div class="modal-header"
-                style="background-color: var(--color-warning); color: var(--color-text-primary); border-bottom: 1px solid rgba(0,0,0,0.05);">
+                style="background-color: var(--color-success); color: white; border-bottom: 1px solid rgba(0,0,0,0.05);">
                 <h5 class="modal-title" id="confirmPayInvoiceModalLabel"
                     style="font-weight: var(--font-weight-bold); display: flex; align-items: center; gap: var(--spacing-2);">
-                    <i class="bi bi-cash-coin"></i> Confirmar Pago de Boleta #{{ invoice.id }}
+                    <i class="bi bi-cash-coin"></i> Registrar Pago - Boleta #{{ invoice.id }}
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
             </div>
             <div class="modal-body" style="background-color: var(--color-bg-body); padding: var(--spacing-6);">
-                <div class="alert-custom alert-info" style="margin-bottom: var(--spacing-6);">
-                    <i class="alert-custom-icon bi bi-info-circle"></i>
-                    <div class="alert-custom-content">
-                        Revise los detalles antes de confirmar. Esto registrará un <strong>EGRESO</strong> de
-                        <strong>${{ invoice.total_amount|money_ar }}</strong> en el libro mayor financiero.
-                    </div>
-                </div>
 
-                <!-- Invoice Summary -->
-                <div class="card-custom" style="margin-bottom: var(--spacing-6);">
-                    <div class="card-header-custom" style="background-color: var(--color-bg-surface);">
-                        <h6 class="card-title" style="font-size: var(--font-size-sm);"><i
-                                class="bi bi-file-earmark-text"></i> Información de la Boleta</h6>
+                <!-- Balance Info -->
+                <div class="alert-custom alert-info"
+                    style="margin-bottom: var(--spacing-6); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Boleta</div>
+                        <div style="font-weight: bold;">${{ invoice.total_amount|money_ar }}</div>
                     </div>
-                    <div class="card-body-custom">
-                        <dl
-                            style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4); margin: 0; font-size: var(--font-size-sm);">
-                            <div>
-                                <dt style="color: var(--color-text-secondary);">Proveedor</dt>
-                                <dd style="font-weight: bold;">{{ invoice.supplier.name }}</dd>
-                            </div>
-                            <div>
-                                <dt style="color: var(--color-text-secondary);">Nº Boleta</dt>
-                                <dd>{{ invoice.invoice_number }}</dd>
-                            </div>
-                            <div>
-                                <dt style="color: var(--color-text-secondary);">Fecha</dt>
-                                <dd>{{ invoice.invoice_date|date_ar }}</dd>
-                            </div>
-                            <div>
-                                <dt style="color: var(--color-text-secondary);">Total a Pagar</dt>
-                                <dd
-                                    style="font-size: var(--font-size-lg); font-weight: bold; color: var(--color-danger);">
-                                    ${{ invoice.total_amount|money_ar }}
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
-
-                <!-- Items Detail -->
-                <div class="card-custom" style="margin-bottom: var(--spacing-6);">
-                    <div class="card-header-custom">
-                        <h6 class="card-title" style="font-size: var(--font-size-sm);"><i class="bi bi-list-ul"></i>
-                            Detalle de Ítems ({{ invoice.lines|length }})</h6>
-                    </div>
-                    <div class="table-container">
-                        <table class="table-custom">
-                            <thead>
-                                <tr>
-                                    <th>Producto</th>
-                                    <th style="text-align: center;">Qty</th>
-                                    <th style="text-align: right;">Costo</th>
-                                    <th style="text-align: right;">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for line in invoice.lines %}
-                                <tr>
-                                    <td>
-                                        <div>{{ line.product.name }}</div>
-                                        <small style="color: var(--color-text-muted);">SKU: {{ line.product.sku or '-'
-                                            }}</small>
-                                    </td>
-                                    <td style="text-align: center;">{{ line.qty|num_ar }}</td>
-                                    <td style="text-align: right;">${{ line.unit_cost|money_ar }}</td>
-                                    <td style="text-align: right;"><strong>${{ line.line_total|money_ar }}</strong></td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot style="background-color: var(--color-bg-muted);">
-                                <tr>
-                                    <td colspan="3" style="text-align: right; font-weight: bold;">TOTAL:</td>
-                                    <td style="text-align: right;">
-                                        <span style="font-weight: bold; color: var(--color-danger);">${{
-                                            invoice.total_amount|money_ar }}</span>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                    <div style="text-align: right;">
+                        <div
+                            style="font-size: var(--font-size-xs); text-transform: uppercase; color: var(--color-danger);">
+                            Saldo Pendiente</div>
+                        <div style="font-weight: bold; font-size: var(--font-size-lg); color: var(--color-danger);">${{
+                            (invoice.total_amount - invoice.paid_amount)|money_ar }}</div>
                     </div>
                 </div>
 
                 <!-- Payment Form -->
-                <div class="card-custom" style="border: 1px solid var(--color-warning);">
-                    <div class="card-header-custom"
-                        style="background-color: #fffbeb; color: var(--color-text-primary);">
-                        <h6 class="card-title" style="font-size: var(--font-size-sm);"><i
-                                class="bi bi-calendar-check"></i> Datos del Pago</h6>
-                    </div>
-                    <div class="card-body-custom">
-                        <form method="POST" action="{{ url_for('invoices.pay_invoice_route', invoice_id=invoice.id) }}"
-                            id="confirmPayForm">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
-                                <div class="form-group">
-                                    <label for="paid_at_modal" class="form-label-custom">
-                                        Fecha de Pago <span style="color: var(--color-danger);">*</span>
-                                    </label>
-                                    <input type="date" class="form-input-custom" id="paid_at_modal" name="paid_at"
-                                        value="{{ today }}" max="{{ today }}" required>
-                                </div>
+                <form hx-post="{{ url_for('invoices.register_payment_route', invoice_id=invoice.id) }}"
+                    hx-target="#modal-errors" hx-swap="innerHTML" id="confirmPayForm">
 
-                                <div class="form-group">
-                                    <label for="payment_method_modal" class="form-label-custom">
-                                        Método de Pago <span style="color: var(--color-danger);">*</span>
-                                    </label>
-                                    <select class="form-select-custom" id="payment_method_modal" name="payment_method"
-                                        required>
-                                        <option value="CASH" selected>💵 Efectivo</option>
-                                        <option value="TRANSFER">🏦 Transferencia</option>
-                                    </select>
-                                </div>
+                    <div id="modal-errors" style="margin-bottom: var(--spacing-4);"></div>
+
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4); margin-bottom: var(--spacing-4);">
+                        <div class="form-group">
+                            <label for="amount_modal" class="form-label-custom">
+                                Monto a Pagar <span style="color: var(--color-danger);">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control form-input-custom"
+                                    id="amount_modal" name="amount" value="{{ pending_amount }}"
+                                    max="{{ pending_amount }}" min="0.01" required>
                             </div>
-                        </form>
-                    </div>
-                </div>
+                        </div>
 
-                <!-- Warning -->
-                <div class="alert-custom alert-warning" style="margin-top: var(--spacing-6);">
-                    <i class="alert-custom-icon bi bi-exclamation-triangle-fill"></i>
-                    <div class="alert-custom-content">
-                        <strong>Importante:</strong> Al confirmar, se registrará automáticamente un
-                        <strong>EGRESO</strong> de <strong>${{ invoice.total_amount|money_ar }}</strong> en el libro
-                        mayor financiero.
+                        <div class="form-group">
+                            <label for="payment_method_modal" class="form-label-custom">
+                                Método <span style="color: var(--color-danger);">*</span>
+                            </label>
+                            <select class="form-select-custom" id="payment_method_modal" name="payment_method" required>
+                                <option value="CASH" selected>💵 Efectivo</option>
+                                <option value="TRANSFER">🏦 Transferencia</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
+                    <div class="form-group" style="margin-bottom: var(--spacing-4);">
+                        <label for="paid_at_modal" class="form-label-custom">
+                            Fecha de Pago <span style="color: var(--color-danger);">*</span>
+                        </label>
+                        <input type="date" class="form-input-custom" id="paid_at_modal" name="paid_at"
+                            value="{{ today }}" required>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: var(--spacing-4);">
+                        <label for="notes_modal" class="form-label-custom">Notas (Opcional)</label>
+                        <textarea class="form-input-custom" id="notes_modal" name="notes" rows="2"
+                            placeholder="Referencia, nº operación, etc..."></textarea>
+                    </div>
+
+                    <!-- Warning -->
+                    <div
+                        style="font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-bottom: var(--spacing-4);">
+                        <i class="bi bi-info-circle"></i> Se registrará un egreso en el libro mayor financiero.
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div
+                        style="display: flex; gap: var(--spacing-3); justify-content: flex-end; padding-top: var(--spacing-4); border-top: 1px solid var(--color-border-light);">
+                        <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-custom btn-primary-custom"
+                            style="background-color: var(--color-success); border-color: var(--color-success); min-width: 120px;"
+                            id="confirmPayBtn">
+                            Registrar Pago
+                        </button>
+                    </div>
+
+                </form>
             </div>
-            <div class="modal-footer"
-                style="padding: var(--spacing-4); border-top: 1px solid var(--color-border-light); background-color: var(--color-bg-muted);">
-                <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i> Cancelar
-                </button>
-                <button type="submit" form="confirmPayForm" class="btn-custom btn-primary-custom"
-                    style="background-color: var(--color-success); border-color: var(--color-success);"
-                    id="confirmPayBtn">
-                    <i class="bi bi-check-circle"></i> Confirmar Pago
-                </button>
+            <div class="modal-footer" style="display: none;">
+                <!-- Footer moved inside form -->
             </div>
         </div>
     </div>
@@ -162,15 +110,77 @@
             const modal = new bootstrap.Modal(modalElement);
             modal.show();
 
+            // Focus amount
+            setTimeout(() => {
+                const amountInput = document.getElementById('amount_modal');
+                if (amountInput) {
+                    amountInput.focus();
+                    amountInput.select();
+                }
+            }, 500);
+
             const form = document.getElementById('confirmPayForm');
-            const btn = document.getElementById('confirmPayBtn');
-            if (form && btn) {
-                form.addEventListener('submit', function () {
+
+            // Log HTMX configuration for debugging
+            console.log('[PAYMENT] Form HTMX config:', {
+                'hx-post': form.getAttribute('hx-post'),
+                'hx-target': form.getAttribute('hx-target'),
+                'hx-swap': form.getAttribute('hx-swap')
+            });
+
+            // Handle HTMX events to close modal
+            form.addEventListener('htmx:afterRequest', function (evt) {
+                console.log('[PAYMENT] afterRequest:', evt.detail);
+                if (evt.detail.successful) {
+                    console.log('[PAYMENT] Request successful, closing modal');
+                    modal.hide();
+                    // Remove modal from DOM after hide
+                    modalElement.addEventListener('hidden.bs.modal', function () {
+                        modalElement.remove();
+                    });
+                } else {
+                    console.error('[PAYMENT] Request failed:', evt.detail);
+                    // Re-enable button on error
+                    const btn = document.getElementById('confirmPayBtn');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Registrar Pago';
+                    }
+                }
+            });
+
+            form.addEventListener('htmx:beforeRequest', function (evt) {
+                console.log('[PAYMENT] beforeRequest - sending data:', new FormData(form));
+                const btn = document.getElementById('confirmPayBtn');
+                if (btn) {
                     btn.disabled = true;
                     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Procesando...';
-                });
-            }
+                }
+            });
 
+            // Handle HTTP errors (4xx, 5xx)
+            form.addEventListener('htmx:responseError', function (evt) {
+                console.error('[PAYMENT] HTTP Error:', evt.detail);
+                const btn = document.getElementById('confirmPayBtn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Registrar Pago';
+                }
+                // Error should be displayed via HX-Retarget to #modal-errors
+            });
+
+            // Handle missing target error (e.g. when on list view)
+            form.addEventListener('htmx:targetError', function (evt) {
+                console.warn('[PAYMENT] Target error (expected on list view):', evt.detail);
+                // If the target is missing but the request was successful (e.g. managed by HX-Refresh or side effects),
+                // we should just close the modal.
+                modal.hide();
+                modalElement.addEventListener('hidden.bs.modal', function () {
+                    modalElement.remove();
+                });
+            });
+
+            // Clean up if closed manually
             modalElement.addEventListener('hidden.bs.modal', function () {
                 modalElement.remove();
             });

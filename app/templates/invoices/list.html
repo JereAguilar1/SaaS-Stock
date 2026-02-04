@@ -73,6 +73,8 @@
                         <option value="">Todos los estados</option>
                         <option value="PENDING" {% if selected_status=='PENDING' %}selected{% endif %}>Pendiente
                         </option>
+                        <option value="PARTIALLY_PAID" {% if selected_status=='PARTIALLY_PAID' %}selected{% endif %}>
+                            Pago Parcial</option>
                         <option value="PAID" {% if selected_status=='PAID' %}selected{% endif %}>Pagada</option>
                     </select>
 

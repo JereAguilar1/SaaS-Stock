@@ -4,49 +4,44 @@ from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from app.models import (
-    PurchaseInvoice, InvoiceStatus,
+    PurchaseInvoice, InvoiceStatus, PurchaseInvoicePayment,
     FinanceLedger, LedgerType, LedgerReferenceType, PaymentMethod
 )
 
 
-def pay_invoice(invoice_id: int, paid_at: date, session, payment_method: str = 'CASH', tenant_id: int = None) -> None:
+def register_invoice_payment(
+    tenant_id: int,
+    invoice_id: int,
+    amount: Decimal,
+    payment_method: str,
+    paid_at: datetime,
+    notes: str = None,
+    user_id: int = None,
+    session=None
+) -> object:
     """
-    Mark a purchase invoice as PAID and register EXPENSE (tenant-scoped).
-    
-    Steps (in a single transaction):
-    1. Lock invoice row (SELECT FOR UPDATE) - validate tenant
-    2. Validate invoice exists and is PENDING
-    3. Validate paid_at is provided
-    4. Update invoice: status=PAID, paid_at=paid_at
-    5. Insert finance_ledger: type=EXPENSE, amount=total_amount, reference=INVOICE_PAYMENT, tenant_id
-    6. Commit or rollback
+    Register a payment for a purchase invoice (partial or full).
     
     Args:
-        invoice_id: ID of the invoice to pay
-        paid_at: Payment date
+        tenant_id: Tenant ID
+        invoice_id: Invoice ID
+        amount: Payment amount
+        payment_method: 'CASH', 'TRANSFER', 'CARD'
+        paid_at: Payment date/time
+        notes: Optional notes
+        user_id: User ID registering the payment
         session: SQLAlchemy session
-        payment_method: 'CASH' or 'TRANSFER'
-        tenant_id: Tenant ID (REQUIRED for multi-tenant validation)
         
-    Raises:
-        ValueError: For business logic errors
-        Exception: For other errors
+    Returns:
+        PurchaseInvoicePayment object
     """
-    
     try:
-        # Validate tenant_id is provided
-        if not tenant_id:
-            raise ValueError('tenant_id es requerido')
-        
-        # Start nested transaction
-        session.begin_nested()
-        
         # Step 1: Lock invoice row and validate tenant
         invoice = (
             session.query(PurchaseInvoice)
             .filter(
                 PurchaseInvoice.id == invoice_id,
-                PurchaseInvoice.tenant_id == tenant_id  # CRITICAL
+                PurchaseInvoice.tenant_id == tenant_id
             )
             .with_for_update()
             .first()
@@ -55,77 +50,109 @@ def pay_invoice(invoice_id: int, paid_at: date, session, payment_method: str = '
         if not invoice:
             raise ValueError(f'Boleta con ID {invoice_id} no encontrada o no pertenece a su negocio')
         
-        # Step 2: Validate invoice is PENDING
-        if invoice.status != InvoiceStatus.PENDING:
-            raise ValueError(
-                f'La boleta ya está {invoice.status.value}. '
-                f'Solo se pueden pagar boletas PENDING.'
-            )
-        
-        # Step 3: Validate paid_at
-        if not paid_at:
-            raise ValueError('La fecha de pago es requerida')
-        
-        # Defensive: validate total_amount
-        if invoice.total_amount < 0:
-            raise ValueError(
-                f'El monto total de la boleta es inválido: {invoice.total_amount}'
-            )
-        
-        # Defensive: validate invoice has lines
-        if not invoice.lines or len(invoice.lines) == 0:
-            raise ValueError('La boleta no tiene ítems. No se puede pagar.')
-        
-        # Step 4: Update invoice
-        invoice.status = InvoiceStatus.PAID
-        invoice.paid_at = paid_at
-        
-        session.flush()  # Ensure invoice is updated before creating ledger entry
-        
-        # Step 5: Create finance_ledger entry (EXPENSE) with tenant_id
+        # Step 2: Validate status
+        if invoice.status == InvoiceStatus.PAID:
+            raise ValueError('La boleta ya está totalmente pagada.')
+            
+        # Step 3: validate amount
+        if amount <= 0:
+            raise ValueError('El monto a pagar debe ser mayor a 0.')
+            
+        pending_amount = invoice.total_amount - invoice.paid_amount
+        # Allow a small epsilon for float precision issues if needed, but Decimal handles this well.
+        # Check if amount > pending_amount
+        if amount > pending_amount:
+            raise ValueError(f'El monto ({amount}) excede el saldo pendiente ({pending_amount}).')
+            
+        # Step 4: Create payment record
         from app.models import normalize_payment_method
         payment_method_normalized = normalize_payment_method(payment_method)
         
-        # Sanitize notes to prevent issues with special characters
+        payment = PurchaseInvoicePayment(
+            tenant_id=tenant_id,
+            invoice_id=invoice_id,
+            payment_method=payment_method_normalized,
+            amount=amount,
+            paid_at=paid_at,
+            notes=notes,
+            created_by=user_id
+        )
+        session.add(payment)
+        
+        # Step 5: Update invoice
+        invoice.paid_amount += amount
+        
+        if invoice.paid_amount >= invoice.total_amount:
+            invoice.status = InvoiceStatus.PAID
+            # If strictly equal, fine. If greater (should be caught by check above), clamp?
+            # Ideally paid_amount matches total_amount exactly.
+            if invoice.paid_at is None:
+                invoice.paid_at = paid_at.date() if isinstance(paid_at, datetime) else paid_at
+        else:
+            invoice.status = InvoiceStatus.PARTIALLY_PAID
+            
+        session.flush()
+        
+        # Step 6: Create finance ledger entry
+        # Sanitize notes
         supplier_name_safe = str(invoice.supplier.name).replace('\\', '/').replace('\n', ' ').replace('\r', '')
         invoice_number_safe = str(invoice.invoice_number).replace('\\', '/').replace('\n', ' ').replace('\r', '')
-        notes_text = f'Pago boleta #{invoice_number_safe} - {supplier_name_safe}'
         
+        ledger_notes = f'Pago parcial boleta #{invoice_number_safe} - {supplier_name_safe}'
+        if notes:
+            ledger_notes += f' ({notes})'
+            
         ledger_entry = FinanceLedger(
-            tenant_id=tenant_id,  # CRITICAL
-            datetime=datetime.now(),
+            tenant_id=tenant_id,
+            datetime=paid_at,
             type=LedgerType.EXPENSE,
-            amount=invoice.total_amount,
+            amount=amount,
+            category="Pago Boleta",
             reference_type=LedgerReferenceType.INVOICE_PAYMENT,
             reference_id=invoice.id,
-            notes=notes_text[:500],
+            notes=ledger_notes[:500],
             payment_method=payment_method_normalized
         )
-        
         session.add(ledger_entry)
         
-        # Step 6: Commit transaction
-        session.commit()
+        # NOTE: Commit is handled by the caller (route)
         
-        # PASO 8: Invalidate balance cache
+        # Invalidate cache
         try:
             from app.services.cache_service import get_cache
             cache = get_cache()
             cache.invalidate_module(tenant_id, 'balance')
         except Exception:
-            pass  # Graceful degradation
-        
+            pass
+            
+        return payment
+
     except ValueError:
-        # Business logic errors - rollback and re-raise
-        session.rollback()
         raise
-        
     except IntegrityError as e:
-        session.rollback()
-        error_msg = str(e.orig)
-        raise Exception(f'Error de integridad al registrar pago: {error_msg}')
-        
+        raise Exception(f'Error de integridad: {str(e.orig)}')
     except Exception as e:
-        # Other errors - rollback and re-raise
-        session.rollback()
-        raise Exception(f'Error al procesar pago: {str(e)}')
+        raise Exception(f'Error al registrar pago: {str(e)}')
+
+
+def pay_invoice(invoice_id: int, paid_at: date, session, payment_method: str = 'CASH', tenant_id: int = None) -> None:
+    """
+    Legacy wrapper for full payment.
+    """
+    # Fetch invoice to get total amount
+    invoice = session.query(PurchaseInvoice).get(invoice_id)
+    if not invoice:
+        raise ValueError('Boleta no encontrada')
+        
+    amount = invoice.total_amount - invoice.paid_amount
+    if amount <= 0:
+        raise ValueError('La boleta ya está pagada')
+        
+    register_invoice_payment(
+        tenant_id=tenant_id,
+        invoice_id=invoice_id,
+        amount=amount,
+        payment_method=payment_method,
+        paid_at=datetime.combine(paid_at, datetime.min.time()),
+        session=session
+    )

@@ -1,0 +1,115 @@
+<div id="invoice-payments-section">
+    <!-- Summary Cards -->
+    <div
+        style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-4); margin-bottom: var(--spacing-6);">
+        <!-- Total -->
+        <div class="card-custom">
+            <div class="card-body-custom" style="padding: var(--spacing-4); text-align: center;">
+                <div
+                    style="color: var(--color-text-secondary); font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Total</div>
+                <div
+                    style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-top: var(--spacing-1);">
+                    ${{ invoice.total_amount|money_ar }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Paid -->
+        <div class="card-custom">
+            <div class="card-body-custom" style="padding: var(--spacing-4); text-align: center;">
+                <div
+                    style="color: var(--color-text-secondary); font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Pagado</div>
+                <div
+                    style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-success); margin-top: var(--spacing-1);">
+                    ${{ invoice.paid_amount|money_ar }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending -->
+        <div class="card-custom"
+            style="background-color: {{ 'var(--color-bg-muted)' if invoice.status.value == 'PAID' else 'transparent' }}; border: {{ '1px solid var(--color-danger)' if invoice.status.value != 'PAID' else 'none' }}">
+            <div class="card-body-custom" style="padding: var(--spacing-4); text-align: center;">
+                <div
+                    style="color: var(--color-text-secondary); font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em;">
+                    Pendiente</div>
+                <div
+                    style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: {{ 'var(--color-text-muted)' if invoice.status.value == 'PAID' else 'var(--color-danger)' }}; margin-top: var(--spacing-1);">
+                    ${{ (invoice.total_amount - invoice.paid_amount)|money_ar }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Button (only if not fully paid) -->
+    {% if invoice.status.value != 'PAID' %}
+    <div style="margin-bottom: var(--spacing-6); text-align: center;">
+        <button type="button" class="btn-custom btn-success-custom"
+            style="min-width: 200px; justify-content: center; padding: var(--spacing-3); font-size: var(--font-size-lg);"
+            hx-get="{{ url_for('invoices.pay_invoice_preview', invoice_id=invoice.id) }}"
+            hx-target="#invoice-modal-container" hx-swap="innerHTML" hx-indicator="#pay-loading">
+            <i class="bi bi-wallet2"></i> Registrar Pago
+        </button>
+        <div id="pay-loading" class="htmx-indicator"
+            style="justify-content: center; margin-top: var(--spacing-2); color: var(--color-success);">
+            <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Payments History Table -->
+    {% if invoice.payments %}
+    <div class="card-custom">
+        <div class="card-header-custom" style="background-color: var(--color-bg-muted);">
+            <h5 class="card-title" style="font-size: var(--font-size-md);">
+                <i class="bi bi-clock-history"></i> Historial de Pagos
+            </h5>
+        </div>
+        <div class="table-container">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Método</th>
+                        <th>Notas</th>
+                        <th>Registrado por</th>
+                        <th style="text-align: right;">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in invoice.payments %}
+                    <tr>
+                        <td>{{ payment.paid_at|date_ar }}</td>
+                        <td>
+                            {% if payment.payment_method == 'CASH' %}
+                            <span class="badge-custom badge-success">Efectivo</span>
+                            {% elif payment.payment_method == 'TRANSFER' %}
+                            <span class="badge-custom badge-info">Transferencia</span>
+                            {% else %}
+                            <span class="badge-custom badge-secondary">{{ payment.payment_method }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ payment.notes or '-' }}</td>
+                        <td style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">
+                            {{ payment.created_by if payment.created_by else 'Sistema' }}
+                        </td>
+                        <td style="text-align: right; font-weight: bold; color: var(--color-success);">
+                            ${{ payment.amount|money_ar }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div
+        style="text-align: center; color: var(--color-text-secondary); padding: var(--spacing-4); background-color: var(--color-bg-muted); border-radius: var(--radius-md);">
+        <i class="bi bi-info-circle" style="margin-right: var(--spacing-2);"></i> No hay pagos registrados.
+    </div>
+    {% endif %}
+</div>

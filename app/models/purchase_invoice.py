@@ -9,6 +9,7 @@ import enum
 class InvoiceStatus(enum.Enum):
     """Invoice status enum."""
     PENDING = "PENDING"
+    PARTIALLY_PAID = "PARTIALLY_PAID"
     PAID = "PAID"
 
 
@@ -24,6 +25,7 @@ class PurchaseInvoice(Base):
     invoice_date = Column(Date, nullable=False)
     due_date = Column(Date, nullable=True)
     total_amount = Column(Numeric(14, 2), nullable=False)
+    paid_amount = Column(Numeric(14, 2), nullable=False, default=0)
     status = Column(Enum(InvoiceStatus, name='invoice_status'), nullable=False, default=InvoiceStatus.PENDING)
     paid_at = Column(Date, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -32,6 +34,7 @@ class PurchaseInvoice(Base):
     tenant = relationship('Tenant')
     supplier = relationship('Supplier', back_populates='invoices')
     lines = relationship('PurchaseInvoiceLine', back_populates='invoice', cascade='all, delete-orphan')
+    payments = relationship('PurchaseInvoicePayment', back_populates='invoice', cascade='all, delete-orphan', order_by='PurchaseInvoicePayment.paid_at.desc()')
     
     def __repr__(self):
         return f"<PurchaseInvoice(id={self.id}, invoice_number='{self.invoice_number}', status={self.status.value})>"
