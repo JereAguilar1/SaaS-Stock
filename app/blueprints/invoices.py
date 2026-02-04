@@ -677,3 +677,47 @@ def register_payment_route(invoice_id):
 def pay_invoice_route(invoice_id):
     """Legacy route compatibility."""
     return register_payment_route(invoice_id)
+
+
+@invoices_bp.route('/products/search', methods=['GET'])
+@require_login
+@require_tenant
+def search_products():
+    """Search products for invoice creation (return JSON)."""
+    db_session = get_session()
+    
+    try:
+        query_str = request.args.get('q', '').strip()
+        
+        # Build query (tenant-scoped)
+        products_query = db_session.query(Product).filter(
+            Product.tenant_id == g.tenant_id,
+            Product.active == True
+        )
+        
+        if query_str:
+            search_filter = or_(
+                func.lower(Product.name).like(f'%{query_str.lower()}%'),
+                func.lower(Product.sku).like(f'%{query_str.lower()}%'),
+                func.lower(Product.barcode).like(f'%{query_str.lower()}%')
+            )
+            products_query = products_query.filter(search_filter)
+        
+        # Limit results
+        products = products_query.order_by(Product.name).limit(20).all()
+        
+        results = []
+        for p in products:
+            results.append({
+                'id': p.id,
+                'name': p.name,
+                'sku': p.sku,
+                'uom_symbol': p.uom.symbol if p.uom else '',
+                'sale_price': float(p.sale_price) if p.sale_price else 0
+            })
+            
+        return jsonify(results)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error searching products for invoice: {e}")
+        return jsonify([]), 500
