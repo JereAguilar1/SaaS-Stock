@@ -49,7 +49,7 @@
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
                             value="{{ product.name if product else '' }}" required maxlength="255"
-                            placeholder="Ej: Martillo Galponero 25mm"
+                            placeholder="Ej: Martillo Galponero 25mm" autocomplete="off"
                             style="font-size: var(--font-size-lg); font-weight: var(--font-weight-medium);">
                     </div>
 
@@ -59,13 +59,13 @@
                             <label for="sku" class="form-label-custom">SKU</label>
                             <input type="text" class="form-input-custom" id="sku" name="sku"
                                 value="{{ product.sku if product else '' }}" maxlength="100"
-                                placeholder="Código interno">
+                                placeholder="Código interno" autocomplete="off">
                         </div>
                         <div class="form-group">
                             <label for="barcode" class="form-label-custom">Código de Barras</label>
                             <input type="text" class="form-input-custom" id="barcode" name="barcode"
                                 value="{{ product.barcode if product else '' }}" maxlength="100"
-                                placeholder="EAN-13 / UPC">
+                                placeholder="EAN-13 / UPC" autocomplete="off">
                         </div>
                     </div>
 
@@ -129,7 +129,7 @@
                             </label>
                             <input type="number" class="form-input-custom" id="min_stock_qty" name="min_stock_qty"
                                 value="{{ product.min_stock_qty | int if (product and product.min_stock_qty) else '' }}"
-                                step="1" min="0">
+                                step="1" min="0" autocomplete="off">
                         </div>
                     </div>
 

@@ -42,7 +42,7 @@
                         placeholder="Buscar producto por nombre, SKU o código de barras..." autofocus
                         onfocus="this.select()" hx-get="{{ url_for('sales.product_search') }}"
                         hx-trigger="keyup changed delay:400ms, search" hx-target="#sales-product-results"
-                        hx-indicator="#sales-search-indicator">
+                        hx-indicator="#sales-search-indicator" autocomplete="off">
                     <span class="input-group-text bg-white border-start-0" id="sales-search-indicator">
                         <div class="htmx-indicator spinner-border spinner-border-sm text-primary" role="status"></div>
                     </span>

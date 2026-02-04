@@ -46,7 +46,7 @@
                         value="{{ search_query or '' }}" style="padding-left: 36px;"
                         hx-get="{{ url_for('invoices.list_invoices') }}" hx-trigger="input changed delay:350ms, search"
                         hx-target="#invoices-list-container" hx-swap="innerHTML"
-                        hx-include="[name='supplier_id'], [name='status']" hx-push-url="true">
+                        hx-include="[name='supplier_id'], [name='status']" hx-push-url="true" autocomplete="off">
                 </div>
             </div>
 

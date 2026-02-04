@@ -38,7 +38,7 @@
                     </label>
                     <input type="text" class="form-input-custom" id="invoice_number" name="invoice_number"
                         value="{{ draft.invoice_number }}" required placeholder="000-00000000"
-                        hx-post="{{ url_for('invoices.update_draft_header') }}" hx-trigger="blur">
+                        hx-post="{{ url_for('invoices.update_draft_header') }}" hx-trigger="blur" autocomplete="off">
                 </div>
 
                 <!-- Dates -->

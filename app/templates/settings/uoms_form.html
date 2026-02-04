@@ -27,7 +27,7 @@
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
                             value="{{ uom.name if uom else '' }}" placeholder="Ej: Unidad, Metro, Kilogramo, Litro"
-                            maxlength="80" required autofocus>
+                            maxlength="80" required autofocus autocomplete="off">
                         <small
                             style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
                             Nombre completo de la unidad de medida (máx. 80 caracteres)
@@ -40,7 +40,7 @@
                         </label>
                         <input type="text" class="form-input-custom" id="symbol" name="symbol"
                             value="{{ uom.symbol if uom else '' }}" placeholder="Ej: ud, m, kg, l" maxlength="16"
-                            required>
+                            required autocomplete="off">
                         <small
                             style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
                             Abreviatura o símbolo (máx. 16 caracteres)

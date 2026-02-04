@@ -59,7 +59,7 @@
                 <label for="search_q" class="form-label-custom">
                     <i class="bi bi-search"></i> Buscar
                 </label>
-                <input type="text" class="form-input-custom" id="search_q" name="q"
+                <input type="text" class="form-input-custom" id="search_q" name="q" autocomplete="off"
                     placeholder="Nombre, SKU o código de barras..." value="{{ search_query or '' }}"
                     hx-get="{{ url_for('catalog.list_products') }}" hx-trigger="input changed delay:350ms, search"
                     hx-target="#products-list-container" hx-swap="innerHTML"
