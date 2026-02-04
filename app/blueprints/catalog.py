@@ -314,6 +314,12 @@ def create_product():
         clean_price = clean_price.replace(',', '.')
         sale_price = clean_price
         
+        # SANITIZER: Limpiar costo de formato local
+        raw_cost = request.form.get('cost', '0')
+        raw_cost = str(raw_cost).strip()
+        clean_cost = raw_cost.replace('.', '').replace(',', '.')
+        cost = clean_cost
+        
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
         active = request.form.get('active') == 'on'
         
@@ -351,6 +357,14 @@ def create_product():
         except (ValueError, TypeError):
             errors.append(f'El precio de venta debe ser un número válido. Valor recibido: "{raw_price}"')
         
+        # Validación de costo
+        try:
+            cost_decimal = float(cost)
+            if cost_decimal < 0:
+                errors.append('El costo debe ser mayor o igual a 0')
+        except (ValueError, TypeError):
+            errors.append(f'El costo debe ser un número válido. Valor recibido: "{raw_cost}"')
+        
         try:
             min_stock_qty_decimal = float(min_stock_qty) if min_stock_qty else 0
             if min_stock_qty_decimal < 0:
@@ -385,6 +399,7 @@ def create_product():
             category_id=int(category_id) if category_id else None,
             uom_id=int(uom_id),
             sale_price=sale_price_decimal,
+            cost=cost_decimal,
             active=active,
             image_path=image_url,  # Now stores full URL instead of filename
             min_stock_qty=min_stock_qty_decimal
@@ -514,6 +529,12 @@ def update_product(product_id):
         clean_price = clean_price.replace(',', '.')
         sale_price = clean_price
         
+        # SANITIZER: Limpiar costo de formato local
+        raw_cost = request.form.get('cost', '0')
+        raw_cost = str(raw_cost).strip()
+        clean_cost = raw_cost.replace('.', '').replace(',', '.')
+        cost = clean_cost
+        
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
         active = request.form.get('active') == 'on'
         
@@ -548,6 +569,14 @@ def update_product(product_id):
                 errors.append('El precio de venta debe ser mayor o igual a 0')
         except (ValueError, TypeError):
             errors.append(f'El precio de venta debe ser un número válido. Valor recibido: "{raw_price}"')
+        
+        # Validación de costo
+        try:
+            cost_decimal = float(cost)
+            if cost_decimal < 0:
+                errors.append('El costo debe ser mayor o igual a 0')
+        except (ValueError, TypeError):
+            errors.append(f'El costo debe ser un número válido. Valor recibido: "{raw_cost}"')
         
         try:
             min_stock_qty_decimal = float(min_stock_qty) if min_stock_qty else 0
@@ -588,6 +617,7 @@ def update_product(product_id):
         product.category_id = int(category_id) if category_id else None
         product.uom_id = int(uom_id)
         product.sale_price = sale_price_decimal
+        product.cost = cost_decimal
         product.min_stock_qty = min_stock_qty_decimal
         product.active = active
         

@@ -19,6 +19,7 @@ class Product(Base):
     uom_id = Column(BigInteger, ForeignKey('uom.id'), nullable=False)
     active = Column(Boolean, nullable=False, default=True)
     sale_price = Column(Numeric(10, 2), nullable=False)
+    cost = Column(Numeric(10, 2), nullable=False, default=0, server_default='0.00')  # Precio de compra
     image_path = Column(String(255), nullable=True)
     min_stock_qty = Column(BigInteger, nullable=False, default=0, server_default='0')  # MEJORA 11 - Changed to INTEGER
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

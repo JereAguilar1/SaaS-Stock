@@ -103,8 +103,25 @@
 
                     <hr style="border-color: var(--color-border-light); margin: var(--spacing-6) 0;">
 
-                    <!-- Sale Price -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                    <!-- Pricing Section -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--spacing-4);">
+                        <div class="form-group">
+                            <label for="cost" class="form-label-custom">
+                                Costo (Precio de Compra)
+                            </label>
+                            <div style="position: relative;">
+                                <span
+                                    style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);">$</span>
+                                <input type="text" class="form-input-custom no-spinner" id="cost" name="cost"
+                                    value="{% if product and product.cost %}{{ '{:,.2f}'.format(product.cost).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% else %}0,00{% endif %}"
+                                    inputmode="decimal"
+                                    onfocus="if(this.value === '0,00' || this.value === '0') this.value = '';"
+                                    onblur="if(this.value === '') this.value = '0,00';"
+                                    style="padding-left: 28px; color: var(--color-text-secondary);"
+                                    placeholder="1.000,00">
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="sale_price" class="form-label-custom">
                                 Precio de Venta <span style="color: var(--color-danger);">*</span>
@@ -279,9 +296,63 @@
         return value.toString().replace(/\./g, '').replace(',', '.');
     }
 
+    /**
+     * Formatea un precio en formato argentino con 2 decimales SIEMPRE:
+     * - Separador de miles: punto (.)
+     * - Separador decimal: coma (,)
+     * - Siempre muestra 2 decimales (ej: 1.500,00)
+     */
+    function formatPriceAr(value) {
+        if (value === null || value === undefined || value === '' || isNaN(value)) return '';
+
+        const num = parseFloat(value);
+
+        // Separar parte entera y decimal (siempre 2 decimales)
+        let [integerPart, decimalPart] = num.toFixed(2).split('.');
+
+        // Formatear parte entera con separador de miles
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+        // Construir resultado con 2 decimales siempre
+        return `${integerPart},${decimalPart}`;
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        const costInput = document.getElementById('cost');
         const salePriceInput = document.getElementById('sale_price');
         const minStockInput = document.getElementById('min_stock_qty');
+
+        // Formatear costo al perder el foco
+        if (costInput) {
+            costInput.addEventListener('blur', function () {
+                if (this.value && this.value !== '') {
+                    const numValue = parseFloat(this.value);
+                    if (!isNaN(numValue) && numValue > 0) {
+                        // Mostrar formato visual temporalmente
+                        const formatted = formatPriceAr(numValue);
+                        this.setAttribute('data-raw-value', this.value);
+                        this.value = formatted;
+                        this.type = 'text';
+                    } else if (this.value === '') {
+                        this.value = '0,00';
+                    }
+                }
+            });
+
+            costInput.addEventListener('focus', function () {
+                // Restaurar valor numérico para edición
+                const rawValue = this.getAttribute('data-raw-value');
+                if (rawValue) {
+                    this.type = 'number';
+                    this.value = rawValue;
+                    this.removeAttribute('data-raw-value');
+                }
+                // Limpiar si es 0,00 o 0
+                if (this.value === '0,00' || this.value === '0') {
+                    this.value = '';
+                }
+            });
+        }
 
         // Formatear precio de venta al perder el foco
         if (salePriceInput) {
@@ -290,12 +361,12 @@
                     const numValue = parseFloat(this.value);
                     if (!isNaN(numValue) && numValue > 0) {
                         // Mostrar formato visual temporalmente
-                        const formatted = formatSmartAr(numValue);
+                        const formatted = formatPriceAr(numValue);
                         this.setAttribute('data-raw-value', this.value);
                         this.value = formatted;
                         this.type = 'text';
                     } else if (this.value === '') {
-                        this.value = '0.00';
+                        this.value = '0,00';
                     }
                 }
             });
@@ -308,8 +379,8 @@
                     this.value = rawValue;
                     this.removeAttribute('data-raw-value');
                 }
-                // Limpiar si es 0 o 0.00
-                if (this.value === '0.00' || this.value === '0') {
+                // Limpiar si es 0,00 o 0
+                if (this.value === '0,00' || this.value === '0') {
                     this.value = '';
                 }
             });
@@ -345,6 +416,18 @@
         const form = document.querySelector('form');
         if (form) {
             form.addEventListener('submit', function (e) {
+                if (costInput && costInput.type === 'text') {
+                    const rawValue = costInput.getAttribute('data-raw-value');
+                    if (rawValue) {
+                        costInput.type = 'number';
+                        costInput.value = rawValue;
+                    } else {
+                        // Convertir formato argentino a número
+                        costInput.value = parseArToNumber(costInput.value);
+                        costInput.type = 'number';
+                    }
+                }
+
                 if (salePriceInput && salePriceInput.type === 'text') {
                     const rawValue = salePriceInput.getAttribute('data-raw-value');
                     if (rawValue) {
