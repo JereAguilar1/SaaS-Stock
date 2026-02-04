@@ -247,22 +247,18 @@ function handlePaymentMethodChange(selectElement, isInit = false) {
  * Ejemplos: 1000 -> "1.000", 1250.5 -> "1.250,5", 1250.05 -> "1.250,05"
  */
 function formatSmartAr(value) {
-    if (value === null || value === undefined || isNaN(value)) return '0';
+    if (value === null || value === undefined || isNaN(value)) return '0,00';
 
     const num = parseFloat(value);
-    if (num === 0) return '0';
 
     // Separar parte entera y decimal
     let [integerPart, decimalPart] = num.toFixed(2).split('.');
 
-    // Eliminar ceros finales en decimales
-    decimalPart = decimalPart.replace(/0+$/, '');
-
     // Formatear parte entera con separador de miles
     integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-    // Construir resultado
-    return decimalPart ? `${integerPart},${decimalPart}` : integerPart;
+    // Construir resultado siempre con coma y decimales
+    return `${integerPart},${decimalPart}`;
 }
 
 /**
