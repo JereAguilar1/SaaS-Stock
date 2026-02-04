@@ -19,14 +19,14 @@
                     style="margin-bottom: var(--spacing-6); display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-size: var(--font-size-xs); text-transform: uppercase;">Total Boleta</div>
-                        <div style="font-weight: bold;">${{ invoice.total_amount|money_ar }}</div>
+                        <div style="font-weight: bold;">${{ invoice.total_amount|money_ar_2 }}</div>
                     </div>
                     <div style="text-align: right;">
                         <div
                             style="font-size: var(--font-size-xs); text-transform: uppercase; color: var(--color-danger);">
                             Saldo Pendiente</div>
                         <div style="font-weight: bold; font-size: var(--font-size-lg); color: var(--color-danger);">${{
-                            (invoice.total_amount - invoice.paid_amount)|money_ar }}</div>
+                            (invoice.total_amount - invoice.paid_amount)|money_ar_2 }}</div>
                     </div>
                 </div>
 
@@ -44,9 +44,11 @@
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control form-input-custom"
-                                    id="amount_modal" name="amount" value="{{ pending_amount }}"
-                                    max="{{ pending_amount }}" min="0.01" required>
+                                <input type="text" class="form-control form-input-custom" id="amount_modal"
+                                    name="amount_display"
+                                    value="{{ '{:,.2f}'.format(pending_amount).replace(',', 'X').replace('.', ',').replace('X', '.') }}"
+                                    inputmode="decimal" required placeholder="1.000,00">
+                                <input type="hidden" id="amount_hidden" name="amount" value="{{ pending_amount }}">
                             </div>
                         </div>
 
@@ -116,6 +118,70 @@
                 if (amountInput) {
                     amountInput.focus();
                     amountInput.select();
+
+                    // Formateo argentino para el monto
+                    function formatAmountAR(value) {
+                        // Eliminar todo excepto números y coma
+                        let cleaned = value.replace(/[^\d,]/g, '');
+
+                        // Separar parte entera y decimal
+                        let parts = cleaned.split(',');
+                        let integerPart = parts[0];
+                        let decimalPart = parts[1] || '';
+
+                        // Limitar decimales a 2
+                        if (decimalPart.length > 2) {
+                            decimalPart = decimalPart.substring(0, 2);
+                        }
+
+                        // Agregar separadores de miles (punto)
+                        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+                        // Reconstruir
+                        return decimalPart ? `${integerPart},${decimalPart}` : integerPart;
+                    }
+
+                    function parseAmountAR(value) {
+                        // Convertir formato argentino a número
+                        return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+                    }
+
+                    // Aplicar formateo al escribir
+                    amountInput.addEventListener('input', function (e) {
+                        const cursorPos = this.selectionStart;
+                        const oldLength = this.value.length;
+
+                        this.value = formatAmountAR(this.value);
+
+                        // Ajustar cursor
+                        const newLength = this.value.length;
+                        const newCursorPos = cursorPos + (newLength - oldLength);
+                        this.setSelectionRange(newCursorPos, newCursorPos);
+
+                        // Actualizar campo oculto
+                        const hiddenInput = document.getElementById('amount_hidden');
+                        if (hiddenInput) {
+                            hiddenInput.value = parseAmountAR(this.value);
+                        }
+                    });
+
+                    // Validar al perder foco
+                    amountInput.addEventListener('blur', function () {
+                        const parsed = parseAmountAR(this.value);
+                        if (parsed > 0) {
+                            // Formatear con 2 decimales
+                            this.value = parsed.toLocaleString('es-AR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+
+                            // Actualizar campo oculto
+                            const hiddenInput = document.getElementById('amount_hidden');
+                            if (hiddenInput) {
+                                hiddenInput.value = parsed.toFixed(2);
+                            }
+                        }
+                    });
                 }
             }, 500);
 
