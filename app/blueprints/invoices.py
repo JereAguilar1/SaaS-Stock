@@ -1,12 +1,12 @@
 """Invoices blueprint for purchase invoice management - Multi-Tenant."""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, g, abort
-from decimal import Decimal
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, g, abort, make_response
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, or_, func
 from app.database import get_session
-from app.models import PurchaseInvoice, Supplier, Product, InvoiceStatus, ProductStock
+from app.models import PurchaseInvoice, Supplier, Product, InvoiceStatus, PurchaseInvoicePayment, ProductStock
 from app.services.invoice_service import create_invoice_with_lines
-from app.services.payment_service import pay_invoice
+from app.services.payment_service import register_invoice_payment
 from app.services.invoice_alerts_service import is_invoice_overdue
 from app.middleware import require_login, require_tenant
 from app.utils.number_format import parse_ar_decimal, parse_ar_number
@@ -77,7 +77,7 @@ def list_invoices():
             else:
                 supplier_id = None  # Reset if invalid
         
-        if status and status in ['PENDING', 'PAID']:
+        if status and status in ['PENDING', 'PAID', 'PARTIALLY_PAID']:
             query = query.filter(PurchaseInvoice.status == InvoiceStatus[status])
         
         # Filter by due soon (tomorrow)
@@ -524,13 +524,15 @@ def pay_invoice_preview(invoice_id):
         if not invoice:
             return '<div class="alert alert-danger">Boleta no encontrada.</div>'
         
-        if invoice.status != InvoiceStatus.PENDING:
-            return f'<div class="alert alert-danger">Solo se pueden pagar boletas PENDING. Estado actual: {invoice.status.value}</div>'
+        if invoice.status == InvoiceStatus.PAID:
+             return f'<div class="alert alert-danger">La boleta ya está pagada.</div>'
         
         today = date.today().strftime('%Y-%m-%d')
+        pending_amount = invoice.total_amount - invoice.paid_amount
         
         return render_template('invoices/_pay_confirm_modal.html',
                              invoice=invoice,
+                             pending_amount=pending_amount,
                              today=today)
         
     except Exception as e:
@@ -538,92 +540,132 @@ def pay_invoice_preview(invoice_id):
         return f'<div class="alert alert-danger">Error al generar vista previa: {str(e)}</div>'
 
 
-@invoices_bp.route('/<int:invoice_id>/pay', methods=['POST'])
+@invoices_bp.route('/<int:invoice_id>/payments', methods=['POST'])
 @require_login
 @require_tenant
-def pay_invoice_route(invoice_id):
-    """Mark invoice as PAID and register EXPENSE (tenant-scoped)."""
+def register_payment_route(invoice_id):
+    """Register a payment for an invoice (HTMX, tenant-scoped)."""
     db_session = get_session()
+    
+    current_app.logger.info(f"[PAYMENT] Starting payment registration for invoice {invoice_id}")
+    current_app.logger.info(f"[PAYMENT] Form data: {dict(request.form)}")
     
     try:
         # Get form data
         paid_at_str = request.form.get('paid_at', '').strip()
         payment_method = request.form.get('payment_method', 'CASH').upper()
+        amount_str = request.form.get('amount', '').strip()
+        notes = request.form.get('notes', '').strip() or None
+        
+        current_app.logger.info(f"[PAYMENT] Parsed data - amount_str: '{amount_str}', method: {payment_method}, date: {paid_at_str}")
         
         if not paid_at_str:
-            flash('La fecha de pago es requerida', 'danger')
-            return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+            raise ValueError('La fecha de pago es requerida')
         
         if payment_method not in ['CASH', 'TRANSFER']:
-            flash('Método de pago inválido.', 'danger')
-            return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+             raise ValueError('Método de pago inválido. Permitidos: CASH, TRANSFER')
+            
+        try:
+            # Use utility for flexible AR number format parsing
+            amount = parse_ar_number(amount_str)
+            if amount <= 0:
+                raise ValueError("El monto debe ser positivo")
+        except ValueError as e:
+             raise ValueError(f'Monto inválido: {str(e)}')
+        except Exception:
+             raise ValueError(f'Monto inválido: {amount_str}')
         
         # Parse date
         try:
-            paid_at = datetime.strptime(paid_at_str, '%Y-%m-%d').date()
+            paid_at_date = datetime.strptime(paid_at_str, '%Y-%m-%d')
+            # If it's today, use current time. Else use start of day.
+            if paid_at_date.date() == date.today():
+                 paid_at = datetime.now()
+            else:
+                 paid_at = datetime.combine(paid_at_date.date(), datetime.min.time())
         except ValueError:
-            flash('Formato de fecha inválido', 'danger')
-            return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+            raise ValueError('Formato de fecha inválido. Use AAAA-MM-DD')
         
-        # Call payment service with tenant_id
-        pay_invoice(invoice_id, paid_at, db_session, payment_method, g.tenant_id)
+        # Call payment service
+        register_invoice_payment(
+            tenant_id=g.tenant_id,
+            invoice_id=invoice_id,
+            amount=amount,
+            payment_method=payment_method,
+            paid_at=paid_at,
+            notes=notes,
+            user_id=g.user.id,
+            session=db_session
+        )
         
-        payment_label = 'Efectivo' if payment_method == 'CASH' else 'Transferencia'
-        flash(f'Boleta #{invoice_id} marcada como pagada ({payment_label}). Egreso registrado en el libro mayor.', 'success')
+        # COMMIT THE TRANSACTION
+        current_app.logger.info(f"[PAYMENT] Committing transaction for invoice {invoice_id}")
+        db_session.commit()
+        current_app.logger.info(f"[PAYMENT] Payment registered successfully: ${amount}")
+        
+        # Check if HTMX request
+        if request.headers.get('HX-Request'):
+             current_app.logger.info(f"[PAYMENT] HTMX request detected, preparing response")
+             
+             referer = request.headers.get('Referer', '')
+             if f'/invoices/{invoice_id}' in referer:
+                 # Detail view: Update via OOB swaps
+                 db_session.expire_all()
+                 invoice = db_session.query(PurchaseInvoice).get(invoice_id)
+                 
+                 # Render updated payments section
+                 payments_html = render_template('invoices/_payments.html', invoice=invoice)
+                 # Inject OOB attribute to replace the section in the background
+                 payments_html = payments_html.replace('id="invoice-payments-section"', 'id="invoice-payments-section" hx-swap-oob="true"')
+                 
+                 # Create success alert with OOB swap
+                 alert_html = f'''<div id="payment-alerts" hx-swap-oob="true">
+                     <div class="alert-custom alert-success" role="alert">
+                         <i class="alert-custom-icon bi bi-check-circle-fill"></i>
+                         <div class="alert-custom-content">Pago de ${amount} registrado exitosamente.</div>
+                         <button type="button" class="alert-custom-close" onclick="this.parentElement.remove()">
+                             <i class="bi bi-x-lg"></i>
+                         </button>
+                     </div>
+                 </div>'''
+                 
+                 return payments_html + alert_html
+             else:
+                 # List view: Force full page refresh to update status/badges in table
+                 response = make_response('', 200)
+                 response.headers['HX-Refresh'] = 'true'
+                 return response
+             
+        flash(f'Pago de ${amount} registrado exitosamente.', 'success')
         return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
         
     except ValueError as e:
         db_session.rollback()
+        current_app.logger.warning(f"[PAYMENT] Validation error for invoice {invoice_id}: {str(e)}")
+        if request.headers.get('HX-Request'):
+             # Return error to the modal using HX-Retarget
+             error_html = f'''<div class="alert alert-danger" style="margin: 0; padding: var(--spacing-3); font-size: var(--font-size-sm);">
+                 <i class="bi bi-exclamation-circle me-2"></i>{str(e)}
+             </div>'''
+             response = make_response(error_html)
+             response.headers['HX-Retarget'] = '#modal-errors'
+             response.headers['HX-Reswap'] = 'innerHTML'
+             return response
         flash(str(e), 'danger')
         return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
         
     except Exception as e:
         db_session.rollback()
+        current_app.logger.error(f"[PAYMENT] CRITICAL ERROR for invoice {invoice_id}: {str(e)}")
+        import traceback
+        current_app.logger.error(f"[PAYMENT] Traceback:\n{traceback.format_exc()}")
+        if request.headers.get('HX-Request'):
+             error_html = f'''<div class="alert alert-danger" style="margin: 0; padding: var(--spacing-3); font-size: var(--font-size-sm);">
+                 <i class="bi bi-exclamation-octagon me-2"></i>Error interno al procesar pago. Por favor, contacte al administrador.
+             </div>'''
+             response = make_response(error_html)
+             response.headers['HX-Retarget'] = '#modal-errors'
+             response.headers['HX-Reswap'] = 'innerHTML'
+             return response
         flash(f'Error al procesar pago: {str(e)}', 'danger')
         return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
-
-
-@invoices_bp.route('/products/search', methods=['GET'])
-@require_login
-@require_tenant
-def search_products():
-    """Search products for autocomplete (JSON)."""
-    db_session = get_session()
-    
-    try:
-        query = request.args.get('q', '').strip()
-        
-        # Base query
-        base_query = db_session.query(Product).filter(
-            Product.tenant_id == g.tenant_id,
-            Product.active == True
-        )
-        
-        if query:
-            # Search by name, SKU or barcode (case insensitive)
-            products = base_query.filter(
-                or_(
-                    Product.name.ilike(f'%{query}%'),
-                    Product.sku.ilike(f'%{query}%'),
-                    Product.barcode.ilike(f'%{query}%')
-                )
-            ).limit(20).all()
-        else:
-            # Return top 50 products if no query (Show All behavior)
-            products = base_query.order_by(Product.name).limit(50).all()
-        
-        results = []
-        for p in products:
-            results.append({
-                'id': p.id,
-                'name': p.name,
-                'sku': p.sku or '',
-                'sale_price': str(p.sale_price),
-                'uom_symbol': p.uom.symbol if p.uom else ''
-            })
-            
-        return jsonify(results)
-        
-    except Exception as e:
-        current_app.logger.error(f"Error searching products: {e}")
-        return jsonify({'error': str(e)}), 500

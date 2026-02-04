@@ -11,125 +11,74 @@
 {% endblock %}
 
 {% block content %}
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
-    <!-- Left: Info -->
-    <div class="card-custom">
-        <div class="card-header-custom" style="background-color: var(--color-bg-muted);">
-            <h5 class="card-title" style="font-size: var(--font-size-sm);">
-                <i class="bi bi-info-circle"></i> Información General
-            </h5>
-        </div>
-        <div class="card-body-custom">
-            <dl style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4); margin: 0;">
-                <div>
-                    <dt style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">Proveedor</dt>
-                    <dd style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);">{{
-                        invoice.supplier.name }}</dd>
-                </div>
-                <div>
-                    <dt style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">Nº Boleta</dt>
-                    <dd>{{ invoice.invoice_number }}</dd>
-                </div>
-                <div>
-                    <dt style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">Fecha</dt>
-                    <dd>{{ invoice.invoice_date|date_ar }}</dd>
-                </div>
-                <div>
-                    <dt style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">Vencimiento</dt>
-                    <dd>
-                        {% if invoice.due_date %}
-                        {{ invoice.due_date|date_ar }}
-                        {% if invoice.is_overdue %}
-                        <span class="badge-custom badge-danger" title="Esta boleta está vencida"
-                            style="margin-left: var(--spacing-2);">
-                            Vencida
-                        </span>
-                        {% endif %}
-                        {% else %}
-                        <span style="color: var(--color-text-muted);">-</span>
-                        {% endif %}
-                    </dd>
-                </div>
-                <div>
-                    <dt style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">Estado</dt>
-                    <dd>
-                        {% if invoice.is_overdue %}
-                        <span class="badge-custom badge-danger">Caducada</span>
-                        {% elif invoice.status.value == 'PENDING' %}
-                        <span class="badge-custom badge-warning">Pendiente</span>
-                        {% else %}
-                        <span class="badge-custom badge-success">Pagada</span>
-                        {% endif %}
-                    </dd>
-                </div>
-                {% if invoice.paid_at %}
-                <div>
-                    <dt style="font-size: var(--font-size-xs); color: var(--color-text-secondary);">Fecha de Pago</dt>
-                    <dd>{{ invoice.paid_at|date_ar }}</dd>
-                </div>
-                {% endif %}
-            </dl>
-        </div>
+<!-- Info Section -->
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
+    <div class="card-header-custom" style="background-color: var(--color-bg-muted);">
+        <h5 class="card-title" style="font-size: var(--font-size-sm);">
+            <i class="bi bi-info-circle"></i> Información General
+        </h5>
     </div>
-
-    <!-- Right: Total & Payment -->
-    <div style="display: flex; flex-direction: column; gap: var(--spacing-6);">
-        <div class="card-custom">
-            <div class="card-header-custom" style="background-color: var(--color-success); color: white;">
-                <h5 class="card-title" style="color: white; margin: 0;">Total</h5>
+    <div class="card-body-custom">
+        <dl
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-6); margin: 0;">
+            <div>
+                <dt
+                    style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase;">
+                    Proveedor</dt>
+                <dd
+                    style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); margin-top: var(--spacing-1);">
+                    {{ invoice.supplier.name }}
+                </dd>
             </div>
-            <div class="card-body-custom" style="text-align: center; padding: var(--spacing-8) var(--spacing-6);">
-                <div
-                    style="font-size: 3rem; font-weight: var(--font-weight-bold); color: var(--color-success); line-height: 1;">
-                    ${{ invoice.total_amount|money_ar }}
-                </div>
-                <div style="color: var(--color-text-secondary); margin-top: var(--spacing-2);">
-                    {{ invoice.lines|length }} ítem(s)
-                </div>
+            <div>
+                <dt
+                    style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase;">
+                    Nº Boleta</dt>
+                <dd style="font-size: var(--font-size-md); margin-top: var(--spacing-1);">{{ invoice.invoice_number }}
+                </dd>
             </div>
-        </div>
-
-        {% if invoice.status.value == 'PENDING' %}
-        <!-- Payment Button for PENDING invoices -->
-        <div class="card-custom" style="border: 1px solid var(--color-warning);">
-            <div class="card-body-custom" style="text-align: center;">
-                <h6 style="margin-bottom: var(--spacing-4); color: var(--color-text-primary);">
-                    Registrar Pago
-                </h6>
-                <button type="button" class="btn-custom btn-success-custom"
-                    style="width: 100%; justify-content: center; padding: var(--spacing-3); font-size: var(--font-size-lg);"
-                    hx-get="{{ url_for('invoices.pay_invoice_preview', invoice_id=invoice.id) }}"
-                    hx-target="#invoice-modal-container" hx-swap="innerHTML" hx-indicator="#pay-loading">
-                    <i class="bi bi-check-circle"></i> Pagar Boleta
-                </button>
-                <div id="pay-loading" class="htmx-indicator"
-                    style="justify-content: center; margin-top: var(--spacing-2); color: var(--color-success);">
-                    <div class="spinner-border spinner-border-sm" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                </div>
+            <div>
+                <dt
+                    style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase;">
+                    Fecha</dt>
+                <dd style="font-size: var(--font-size-md); margin-top: var(--spacing-1);">{{
+                    invoice.invoice_date|date_ar }}</dd>
             </div>
-        </div>
-        {% else %}
-        <!-- Payment Info for PAID invoices -->
-        <div class="alert-custom alert-success">
-            <i class="alert-custom-icon bi bi-check-circle-fill"></i>
-            <div class="alert-custom-content">
-                <strong>Boleta Pagada</strong>
-                <p style="margin: var(--spacing-1) 0 0 0;">
-                    Pago registrado el {{ invoice.paid_at|date_ar if invoice.paid_at else 'No disponible' }}
-                </p>
-                <div style="font-size: var(--font-size-xs); opacity: 0.8; margin-top: var(--spacing-1);">
-                    Egreso registrado en el libro mayor.
-                </div>
+            <div>
+                <dt
+                    style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase;">
+                    Vencimiento</dt>
+                <dd style="margin-top: var(--spacing-1);">
+                    {% if invoice.due_date %}
+                    {{ invoice.due_date|date_ar }}
+                    {% if invoice.is_overdue and invoice.status.value != 'PAID' %}
+                    <span class="badge-custom badge-danger" style="margin-left: var(--spacing-2);">Vencida</span>
+                    {% endif %}
+                    {% else %}
+                    -
+                    {% endif %}
+                </dd>
             </div>
-        </div>
-        {% endif %}
+            <div>
+                <dt
+                    style="font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase;">
+                    Estado</dt>
+                <dd style="margin-top: var(--spacing-1);">
+                    {% if invoice.status.value == 'PAID' %}
+                    <span class="badge-custom badge-success">Pagada</span>
+                    {% elif invoice.status.value == 'PARTIALLY_PAID' %}
+                    <span class="badge-custom badge-info">Pago Parcial</span>
+                    {% else %}
+                    <span class="badge-custom badge-warning">Pendiente</span>
+                    {% endif %}
+                </dd>
+            </div>
+        </dl>
     </div>
 </div>
 
 <!-- Items Table -->
-<div class="card-custom">
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
     <div class="card-header-custom">
         <h5 class="card-title">Detalle de Ítems</h5>
     </div>
@@ -162,17 +111,25 @@
                 <tr>
                     <td colspan="5"
                         style="text-align: right; padding: var(--spacing-4); font-weight: var(--font-weight-bold);">
-                        TOTAL:</td>
+                        TOTAL BOLETA:
+                    </td>
                     <td style="text-align: right; padding: var(--spacing-4);">
                         <span
-                            style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-success);">${{
-                            invoice.total_amount|money_ar }}</span>
+                            style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-success);">
+                            ${{ invoice.total_amount|money_ar }}
+                        </span>
                     </td>
                 </tr>
             </tfoot>
         </table>
     </div>
 </div>
+
+<!-- Payment Alerts Container (for HTMX OOB swaps) -->
+<div id="payment-alerts"></div>
+
+<!-- Payments Section (HTMX Target) -->
+{% include "invoices/_payments.html" %}
 
 <!-- Modal Container -->
 <div id="invoice-modal-container"></div>

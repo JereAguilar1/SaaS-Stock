@@ -20,6 +20,7 @@ from app.models.stock_move_line import StockMoveLine
 from app.models.finance_ledger import FinanceLedger, LedgerType, LedgerReferenceType, PaymentMethod, normalize_payment_method
 from app.models.supplier import Supplier
 from app.models.purchase_invoice import PurchaseInvoice, InvoiceStatus
+from app.models.purchase_invoice_payment import PurchaseInvoicePayment
 from app.models.purchase_invoice_line import PurchaseInvoiceLine
 from app.models.quote import Quote, QuoteStatus
 from app.models.quote_line import QuoteLine
@@ -38,7 +39,7 @@ __all__ = [
     'Sale', 'SaleStatus', 'SaleLine', 'SaleDraft', 'SaleDraftLine', 'SalePayment',
     'StockMove', 'StockMoveType', 'StockReferenceType', 'StockMoveLine',
     'FinanceLedger', 'LedgerType', 'LedgerReferenceType', 'PaymentMethod', 'normalize_payment_method',
-    'Supplier', 'PurchaseInvoice', 'InvoiceStatus', 'PurchaseInvoiceLine',
+    'Supplier', 'PurchaseInvoice', 'InvoiceStatus', 'PurchaseInvoicePayment', 'PurchaseInvoiceLine',
     'Quote', 'QuoteStatus', 'QuoteLine',
     'MissingProductRequest', 'normalize_missing_product_name',
     'AuditLog', 'AuditAction',  # PASO 6
