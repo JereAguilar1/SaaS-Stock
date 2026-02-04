@@ -669,3 +669,11 @@ def register_payment_route(invoice_id):
              return response
         flash(f'Error al procesar pago: {str(e)}', 'danger')
         return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+
+
+@invoices_bp.route('/<int:invoice_id>/pay', methods=['POST'])
+@require_login
+@require_tenant
+def pay_invoice_route(invoice_id):
+    """Legacy route compatibility."""
+    return register_payment_route(invoice_id)
