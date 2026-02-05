@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Nueva Venta - POS{% endblock %}
+{% block title %}Nueva Venta{% endblock %}
 
 {% block page_title %}Punto de Venta{% endblock %}
 
@@ -8,6 +8,11 @@
 
 
 {% block content %}
+
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+
+</head>
 <!-- Main POS Container -->
 <div class="pos-container">
     <!-- Load POS Logic System -->
@@ -15,9 +20,9 @@
 
 
     <!-- LEFT PANEL: CART (Draft-based) -->
-    <div class="pos-cart-panel">
-        <div class="cart-header">
-            <h5 class="m-0"><i class="bi bi-cart3 me-2"></i> Nueva Venta</h5>
+    <div class="card-custom">
+        <div class="card-header-custom" style="background-color: var(--color-primary); color: white;">
+            <h5 class="card-title" style="color: white; margin: 0;"><i class="bi bi-cart3 me-2"></i> Nueva Venta</h5>
         </div>
 
         <!-- Cart Content (HTMX Target) - Now using draft -->
@@ -129,12 +134,11 @@
     {% block extra_css %}
     <style>
         /* Full Page Layout Reset for POS */
-        .app-content {
+        /* .app-content {
             padding: 0 !important;
-            /* Remove default padding to maximize space */
             height: calc(100vh - var(--topbar-height));
             overflow: hidden;
-        }
+        } */
 
         .pos-container {
             display: grid;
@@ -343,10 +347,10 @@
                 order: 1;
             }
 
-            .app-content {
+            /* .app-content {
                 height: auto;
                 overflow: auto;
-            }
+            } */
         }
     </style>
     {% endblock %}
