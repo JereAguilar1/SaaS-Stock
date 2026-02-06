@@ -144,13 +144,25 @@
                             </div>
                         </div>
 
+                        {% if action == 'new' %}
+                        <div class="form-group">
+                            <label for="initial_stock" class="form-label-custom">
+                                Stock Actual (Inicial)
+                            </label>
+                            <input type="number" class="form-input-custom" id="initial_stock" name="initial_stock"
+                                value="{{ product.initial_stock if product and product.initial_stock else '' }}"
+                                step="1" min="0" autocomplete="off" placeholder="0"
+                                oninput="if(this.value < 0) this.value = 0;">
+                        </div>
+                        {% endif %}
+
                         <div class="form-group">
                             <label for="min_stock_qty" class="form-label-custom">
                                 Stock Mínimo
                             </label>
                             <input type="number" class="form-input-custom" id="min_stock_qty" name="min_stock_qty"
                                 value="{{ product.min_stock_qty | int if (product and product.min_stock_qty) else '' }}"
-                                step="1" min="0" autocomplete="off">
+                                step="1" min="0" autocomplete="off" oninput="if(this.value < 0) this.value = 0;">
                         </div>
                     </div>
 

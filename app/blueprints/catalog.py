@@ -4,8 +4,12 @@ from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 import time
+from datetime import datetime
 from app.database import get_session
-from app.models import Product, ProductStock, UOM, Category
+from app.models import (
+    Product, ProductStock, UOM, Category,
+    StockMove, StockMoveLine, StockMoveType, StockReferenceType
+)
 from app.middleware import require_login, require_tenant
 from app.services.storage_service import get_storage_service
 from app.services.cache_service import get_cache
@@ -360,6 +364,7 @@ def create_product():
         cost = clean_cost
         
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
+        initial_stock = request.form.get('initial_stock', '0').strip()
         active = request.form.get('active') == 'on'
         
         # Server-side validations
@@ -411,14 +416,38 @@ def create_product():
         except ValueError:
             errors.append('El stock mínimo debe ser un número válido')
             min_stock_qty_decimal = 0
+            
+        try:
+            initial_stock_decimal = float(initial_stock) if initial_stock else 0
+            if initial_stock_decimal < 0:
+                errors.append('El stock inicial debe ser mayor o igual a 0')
+        except ValueError:
+            errors.append('El stock inicial debe ser un número válido')
+            initial_stock_decimal = 0
         
         if errors:
             for error in errors:
                 flash(error, 'danger')
             uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
             categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
+            
+            # Preserve form data including initial_stock
+            form_product = {
+                'name': name,
+                'sku': sku,
+                'barcode': barcode,
+                'category_id': int(category_id) if category_id else None,
+                'uom_id': int(uom_id) if uom_id else None,
+                'sale_price': sale_price_decimal if 'sale_price_decimal' in locals() else 0,
+                'cost': cost_decimal if 'cost_decimal' in locals() else 0,
+                'min_stock_qty': min_stock_qty_decimal,
+                'active': active,
+                'image_path': None,
+                'initial_stock': initial_stock_decimal
+            }
+            
             return render_template('products/form.html',
-                                 product=None,
+                                 product=form_product,
                                  uoms=uoms,
                                  categories=categories,
                                  action='new')
@@ -445,6 +474,55 @@ def create_product():
         )
         
         session.add(product)
+        session.flush()  # Get product.id
+        
+        # HANDLE INITIAL STOCK
+        # 1. Create ProductStock record (initialize with 0 or initial value)
+        # We start with 0 and let logic handle increment if needed, 
+        # OR set it directly if we want to be sure.
+        # Given we add a StockMove, strictly speaking checking if trigger exists is best.
+        # But we will set it to initial_stock to be safe, assuming no double-trigger 
+        # (or accepting we fixed it if it happens).
+        # Actually safer: Set to 0. Create Move. Check if updated. If not, update.
+        
+        product_stock = ProductStock(
+            product_id=product.id,
+            on_hand_qty=0
+        )
+        session.add(product_stock)
+        session.flush()
+        
+        if initial_stock_decimal > 0:
+            # Create Stock Move (IN / MANUAL)
+            stock_move = StockMove(
+                tenant_id=g.tenant_id,
+                date=datetime.now(),
+                type=StockMoveType.IN,
+                reference_type=StockReferenceType.MANUAL,
+                reference_id=None,  # No specific reference ID for initial stock
+                notes='Inventario Inicial'
+            )
+            session.add(stock_move)
+            session.flush()
+            
+            stock_move_line = StockMoveLine(
+                stock_move_id=stock_move.id,
+                product_id=product.id,
+                qty=initial_stock_decimal,
+                uom_id=int(uom_id),
+                unit_cost=cost_decimal  # Initial stock valued at cost
+            )
+            session.add(stock_move_line)
+            session.flush()
+            
+            # Update ProductStock manually to ensure it reflects the move
+            # (In case there is no DB trigger)
+            # We refresh to see if it was updated by a trigger
+            session.refresh(product_stock)
+            if product_stock.on_hand_qty == 0:
+                product_stock.on_hand_qty = initial_stock_decimal
+                session.add(product_stock)
+
         session.commit()
         
         # PASO 8: Invalidate products cache
@@ -478,7 +556,8 @@ def create_product():
             'cost': cost_decimal,
             'min_stock_qty': min_stock_qty_decimal,
             'active': active,
-            'image_path': None 
+            'image_path': None,
+            'initial_stock': initial_stock_decimal if 'initial_stock_decimal' in locals() else 0
         }
             
         uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
