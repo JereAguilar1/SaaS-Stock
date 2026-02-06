@@ -1,8 +1,10 @@
-"""Balance service for financial reporting - Multi-Tenant."""
+"""Balance service - Financial reporting."""
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from sqlalchemy import func, case, extract
 from app.models import FinanceLedger, LedgerType
+from app.models.product import Product
+from app.models.product_stock import ProductStock
 import logging
 
 logger = logging.getLogger(__name__)
@@ -294,3 +296,34 @@ def get_year_date_range(year: int):
     end = date(year, 12, 31)
     
     return start, end
+
+
+def get_total_stock_value(db_session, tenant_id):
+    """
+    Calcula el valor total del inventario (Fondo de Comercio).
+    
+    Retorna la suma de (stock * cost) para todos los productos activos.
+    
+    Args:
+        db_session: SQLAlchemy session
+        tenant_id: Tenant ID (REQUIRED for multi-tenant filtering)
+        
+    Returns:
+        Decimal: Valor total del inventario
+    """
+    try:
+        # Join Product con ProductStock
+        result = db_session.query(
+            func.sum(ProductStock.on_hand_qty * Product.cost)
+        ).join(
+            Product, ProductStock.product_id == Product.id
+        ).filter(
+            Product.tenant_id == tenant_id,  # CRITICAL: tenant filter
+            Product.active == True
+        ).scalar()
+        
+        return Decimal(str(result)) if result else Decimal('0.00')
+    except Exception as e:
+        logger.error(f"Error calculating stock value for tenant {tenant_id}: {e}")
+        return Decimal('0.00')
+

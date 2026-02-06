@@ -218,6 +218,7 @@ CREATE TABLE IF NOT EXISTS product (
   uom_id      BIGINT NOT NULL REFERENCES uom(id) ON UPDATE RESTRICT ON DELETE RESTRICT,
   active      BOOLEAN NOT NULL DEFAULT TRUE,
   sale_price  NUMERIC(12,2) NOT NULL CHECK (sale_price >= 0),
+  cost        NUMERIC(10,2) NOT NULL DEFAULT 0.00 CHECK (cost >= 0),
   image_path  VARCHAR(255),
   min_stock_qty INTEGER NOT NULL DEFAULT 0 CHECK (min_stock_qty >= 0),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),

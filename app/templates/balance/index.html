@@ -317,7 +317,7 @@
     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
     <div class="stat-card" style="border-left: 4px solid var(--color-success);">
         <div class="stat-label">Ingresos Totales</div>
-        <div class="stat-value" style="color: var(--color-success);">${{ totals.total_income|money_ar }}</div>
+        <div class="stat-value" style="color: var(--color-success);">${{ totals.total_income|money_ar_2 }}</div>
         <div class="stat-change positive">
             <i class="bi bi-arrow-down-circle"></i> Entradas
         </div>
@@ -325,7 +325,7 @@
 
     <div class="stat-card" style="border-left: 4px solid var(--color-danger);">
         <div class="stat-label">Egresos Totales</div>
-        <div class="stat-value" style="color: var(--color-danger);">${{ totals.total_expense|money_ar }}</div>
+        <div class="stat-value" style="color: var(--color-danger);">${{ totals.total_expense|money_ar_2 }}</div>
         <div class="stat-change negative">
             <i class="bi bi-arrow-up-circle"></i> Salidas
         </div>
@@ -336,10 +336,20 @@
         <div class="stat-label">Neto (Ganancia/Pérdida)</div>
         <div class="stat-value"
             style="color: {% if totals.total_net >= 0 %}var(--color-primary){% else %}var(--color-warning){% endif %};">
-            ${{ totals.total_net|money_ar }}
+            ${{ totals.total_net|money_ar_2 }}
         </div>
         <div class="stat-change">
             <i class="bi bi-calculator"></i> Resultado
+        </div>
+    </div>
+
+    <div class="stat-card" style="border-left: 4px solid var(--color-info);">
+        <div class="stat-label">Fondo de Comercio</div>
+        <div class="stat-value" style="color: var(--color-info);">
+            ${{ stock_value|money_ar_2 }}
+        </div>
+        <div class="stat-change">
+            <i class="bi bi-boxes"></i> Valor del Inventario
         </div>
     </div>
 </div>

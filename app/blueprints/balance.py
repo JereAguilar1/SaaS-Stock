@@ -8,7 +8,7 @@ from app.models import FinanceLedger, LedgerType, LedgerReferenceType, PaymentMe
 from app.services.balance_service import (
     get_balance_series, get_default_date_range, get_totals,
     get_available_years, get_available_months, get_month_date_range,
-    get_year_date_range
+    get_year_date_range, get_total_stock_value
 )
 from app.middleware import require_login, require_tenant
 
@@ -247,6 +247,9 @@ def index():
         # Calculate totals
         totals = get_totals(series)
         
+        # Calculate Fondo de Comercio (stock value)
+        stock_value = get_total_stock_value(db_session, g.tenant_id)
+        
         # Format dates for input fields
         start_str = start.strftime('%Y-%m-%d')
         end_str = end.strftime('%Y-%m-%d')
@@ -256,6 +259,7 @@ def index():
             view=view,
             series=series,
             totals=totals,
+            stock_value=stock_value,
             start=start_str,
             end=end_str,
             available_years=available_years,
