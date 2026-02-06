@@ -128,6 +128,7 @@ def create_app(config_object='config.Config'):
     from app.blueprints.suppliers import suppliers_bp
     from app.blueprints.invoices import invoices_bp
     from app.blueprints.balance import balance_bp
+    from app.blueprints.ledger import ledger_bp
     from app.blueprints.settings import settings_bp
     from app.blueprints.quotes import quotes_bp  # MEJORA 13
     from app.blueprints.missing_products import missing_products_bp  # MEJORA 18
@@ -148,6 +149,7 @@ def create_app(config_object='config.Config'):
     app.register_blueprint(suppliers_bp)
     app.register_blueprint(invoices_bp)
     app.register_blueprint(balance_bp)
+    app.register_blueprint(ledger_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(quotes_bp)  # MEJORA 13
     app.register_blueprint(missing_products_bp)  # MEJORA 18
