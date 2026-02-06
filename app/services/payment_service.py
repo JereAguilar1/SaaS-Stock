@@ -62,7 +62,13 @@ def register_invoice_payment(
         # Allow a small epsilon for float precision issues if needed, but Decimal handles this well.
         # Check if amount > pending_amount
         if amount > pending_amount:
-            raise ValueError(f'El monto ({amount}) excede el saldo pendiente ({pending_amount}).')
+            # Format amounts in Argentine format for error message
+            from app.utils.formatters import money_ar_2
+            amount_formatted = money_ar_2(amount)
+            pending_formatted = money_ar_2(pending_amount)
+            raise ValueError(
+                f'El monto a pagar (${amount_formatted}) no puede ser mayor al saldo pendiente (${pending_formatted}).'
+            )
             
         # Step 4: Create payment record
         from app.models import normalize_payment_method

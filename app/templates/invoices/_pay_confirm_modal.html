@@ -168,7 +168,41 @@
                     // Validar al perder foco
                     amountInput.addEventListener('blur', function () {
                         const parsed = parseAmountAR(this.value);
+                        const pendingAmount = parseFloat('{{ pending_amount }}');
+                        const errorDiv = document.getElementById('modal-errors');
+                        const submitBtn = document.getElementById('confirmPayBtn');
+
                         if (parsed > 0) {
+                            // Validar que no exceda el saldo pendiente
+                            if (parsed > pendingAmount) {
+                                // Mostrar error
+                                if (errorDiv) {
+                                    errorDiv.innerHTML = '<div class="alert alert-danger" style="margin: 0; padding: var(--spacing-3); font-size: var(--font-size-sm);"><i class="bi bi-exclamation-circle me-2"></i>El monto a pagar ($' + parsed.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ') no puede ser mayor al saldo pendiente (${{ (invoice.total_amount - invoice.paid_amount)|money_ar_2 }}).</div>';
+                                }
+
+                                // Deshabilitar botón de envío
+                                if (submitBtn) {
+                                    submitBtn.disabled = true;
+                                }
+
+                                // Marcar input como inválido
+                                this.classList.add('is-invalid');
+                                return;
+                            } else {
+                                // Limpiar error si existe
+                                if (errorDiv) {
+                                    errorDiv.innerHTML = '';
+                                }
+
+                                // Habilitar botón de envío
+                                if (submitBtn) {
+                                    submitBtn.disabled = false;
+                                }
+
+                                // Quitar marca de inválido
+                                this.classList.remove('is-invalid');
+                            }
+
                             // Formatear con 2 decimales
                             this.value = parsed.toLocaleString('es-AR', {
                                 minimumFractionDigits: 2,
@@ -217,6 +251,31 @@
 
             form.addEventListener('htmx:beforeRequest', function (evt) {
                 console.log('[PAYMENT] beforeRequest - sending data:', new FormData(form));
+
+                // Validar monto antes de enviar
+                const amountInput = document.getElementById('amount_modal');
+                const pendingAmount = parseFloat('{{ pending_amount }}');
+
+                if (amountInput) {
+                    const parsed = parseFloat(amountInput.value.replace(/\./g, '').replace(',', '.')) || 0;
+
+                    if (parsed > pendingAmount) {
+                        // Prevenir el envío
+                        evt.preventDefault();
+
+                        // Mostrar error
+                        const errorDiv = document.getElementById('modal-errors');
+                        if (errorDiv) {
+                            errorDiv.innerHTML = '<div class="alert alert-danger" style="margin: 0; padding: var(--spacing-3); font-size: var(--font-size-sm);"><i class="bi bi-exclamation-circle me-2"></i>El monto a pagar ($' + parsed.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ') no puede ser mayor al saldo pendiente (${{ (invoice.total_amount - invoice.paid_amount)|money_ar_2 }}).</div>';
+                        }
+
+                        // Marcar input como inválido
+                        amountInput.classList.add('is-invalid');
+                        amountInput.focus();
+                        return false;
+                    }
+                }
+
                 const btn = document.getElementById('confirmPayBtn');
                 if (btn) {
                     btn.disabled = true;
