@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Movimiento Manual - Sistema de Gestión{% endblock %}
+
+{% block page_title %}Nuevo Movimiento Manual{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('ledger.list_ledger') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i> Volver al Libro Mayor
+</a>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; gap: var(--spacing-6); flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 300px;">
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom">Datos del Movimiento</h5>
+            </div>
+            <div class="card-body-custom">
+                <form method="POST" action="{{ url_for('ledger.create_ledger') }}">
+                    <!-- Type -->
+                    <div class="form-group">
+                        <label for="type" class="form-label-custom">
+                            Tipo de Movimiento <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select-custom" id="type" name="type" required>
+                            <option value="">Seleccione...</option>
+                            <option value="INCOME">Ingreso</option>
+                            <option value="EXPENSE">Egreso</option>
+                        </select>
+                        <small class="form-text-custom">
+                            Ingreso: entrada de dinero | Egreso: salida de dinero
+                        </small>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="form-group">
+                        <label for="payment_method" class="form-label-custom">
+                            Método de Pago/Cobro <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select-custom" id="payment_method" name="payment_method" required>
+                            <option value="CASH" selected>
+                                <i class="bi bi-cash"></i> Efectivo
+                            </option>
+                            <option value="TRANSFER">
+                                <i class="bi bi-bank"></i> Transferencia
+                            </option>
+                        </select>
+                        <small class="form-text-custom">
+                            Forma en que se realizó el ingreso o egreso
+                        </small>
+                    </div>
+
+                    <!-- Amount -->
+                    <div class="form-group">
+                        <label for="amount" class="form-label-custom">
+                            Monto <span class="text-danger">*</span>
+                        </label>
+                        <div style="display: flex; align-items: center;">
+                            <span
+                                style="padding: var(--spacing-2) var(--spacing-3); background: var(--color-background-secondary); border: 1px solid var(--color-border); border-right: none; border-radius: var(--radius-md) 0 0 var(--radius-md);">$</span>
+                            <input type="number" class="form-input-custom" id="amount" name="amount" min="0.01"
+                                step="0.01" style="border-radius: 0 var(--radius-md) var(--radius-md) 0;" required>
+                        </div>
+                        <small class="form-text-custom">
+                            El monto debe ser mayor a 0
+                        </small>
+                    </div>
+
+                    <!-- DateTime -->
+                    <div class="form-group">
+                        <label for="datetime" class="form-label-custom">
+                            Fecha y Hora
+                        </label>
+                        <input type="datetime-local" class="form-input-custom" id="datetime" name="datetime"
+                            value="{{ today }}T{{ '%H:%M'|format() }}">
+                        <small class="form-text-custom">
+                            Si no se especifica, se usa la fecha/hora actual
+                        </small>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="form-group">
+                        <label for="category" class="form-label-custom">Categoría</label>
+                        <input type="text" class="form-input-custom" id="category" name="category" maxlength="100"
+                            placeholder="Ej: Servicios, Impuestos, Otros ingresos, etc.">
+                        <small class="form-text-custom">
+                            Opcional. Categoría o concepto del movimiento
+                        </small>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-group">
+                        <label for="notes" class="form-label-custom">Notas</label>
+                        <textarea class="form-input-custom" id="notes" name="notes" rows="3"
+                            placeholder="Descripción del movimiento..."></textarea>
+                        <small class="form-text-custom">
+                            Opcional. Descripción o detalle adicional
+                        </small>
+                    </div>
+
+                    <!-- Actions -->
+                    <div
+                        style="display: flex; justify-content: space-between; gap: var(--spacing-3); margin-top: var(--spacing-5);">
+                        <a href="{{ url_for('ledger.list_ledger') }}" class="btn-custom btn-secondary-custom">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn-custom btn-primary-custom">
+                            <i class="bi bi-save"></i> Registrar Movimiento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div style="flex: 0 0 350px; min-width: 300px;">
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h6 class="card-title-custom">
+                    <i class="bi bi-question-circle"></i> Ayuda
+                </h6>
+            </div>
+            <div class="card-body-custom">
+                <h6 style="margin-bottom: var(--spacing-3);">¿Cuándo usar movimientos manuales?</h6>
+                <ul class="small" style="padding-left: var(--spacing-4);">
+                    <li><strong>Ingresos:</strong> Otros ingresos que no provienen de ventas (ej: préstamos, aportes de
+                        capital, intereses recibidos)</li>
+                    <li><strong>Egresos:</strong> Otros gastos que no son pagos a proveedores (ej: servicios, sueldos,
+                        impuestos, alquileres)</li>
+                </ul>
+
+                <hr style="margin: var(--spacing-4) 0; border-color: var(--color-border);">
+
+                <h6 style="margin-bottom: var(--spacing-3);">Movimientos automáticos:</h6>
+                <ul class="small mb-0" style="padding-left: var(--spacing-4);">
+                    <li><strong>Ventas:</strong> Se registran automáticamente al confirmar una venta</li>
+                    <li><strong>Pagos a proveedores:</strong> Se registran automáticamente al pagar una boleta</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card-custom" style="margin-top: var(--spacing-4);">
+            <div class="card-header-custom"
+                style="background-color: var(--color-warning); color: var(--color-text-inverse);">
+                <h6 class="card-title-custom" style="margin: 0;">
+                    <i class="bi bi-exclamation-triangle"></i> Importante
+                </h6>
+            </div>
+            <div class="card-body-custom">
+                <p class="small mb-0">
+                    Los movimientos manuales NO afectan el stock. Solo se registran en el libro mayor para el balance
+                    financiero.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -2,40 +2,35 @@
 
 {% block title %}Movimientos - Sistema de Gestión{% endblock %}
 
-{% block content %}
-<div class="row mb-3">
-    <div class="col">
-        <h1 class="h2">
-            <i class="bi bi-journal-text"></i> Movimientos
-        </h1>
-    </div>
-    <div class="col text-end">
-        <a href="{{ url_for('balance.new_ledger') }}" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Movimiento Manual
-        </a>
-        <a href="{{ url_for('balance.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-graph-up-arrow"></i> Ver Balance
-        </a>
-    </div>
-</div>
+{% block page_title %}Movimientos{% endblock %}
 
+{% block topbar_actions %}
+<a href="{{ url_for('ledger.new_ledger') }}" class="btn-custom btn-primary-custom">
+    <i class="bi bi-plus-circle"></i> Movimiento Manual
+</a>
+<a href="{{ url_for('balance.index') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-graph-up-arrow"></i> Ver Balance
+</a>
+{% endblock %}
+
+{% block content %}
 <!-- Filters -->
-<div class="card mb-3">
-    <div class="card-body">
-        <form method="GET" action="{{ url_for('balance.list_ledger') }}" class="row g-3">
-            <div class="col-md-2">
-                <label for="type" class="form-label">Tipo</label>
-                <select class="form-select" id="type" name="type">
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
+    <div class="card-body-custom">
+        <form method="GET" action="{{ url_for('ledger.list_ledger') }}" class="form-row form-row-5">
+            <div class="form-group">
+                <label for="type" class="form-label-custom">Tipo</label>
+                <select class="form-select-custom" id="type" name="type">
                     <option value="">Todos</option>
                     <option value="INCOME" {% if entry_type=='INCOME' %}selected{% endif %}>Ingreso</option>
                     <option value="EXPENSE" {% if entry_type=='EXPENSE' %}selected{% endif %}>Egreso</option>
                 </select>
             </div>
 
-            <!-- MEJORA 12: Payment Method Filter -->
-            <div class="col-md-2">
-                <label for="method" class="form-label">Método</label>
-                <select class="form-select" id="method" name="method">
+            <!-- Payment Method Filter -->
+            <div class="form-group">
+                <label for="method" class="form-label-custom">Método</label>
+                <select class="form-select-custom" id="method" name="method">
                     <option value="all" {% if selected_method=='all' %}selected{% endif %}>Todos</option>
                     <option value="cash" {% if selected_method=='cash' %}selected{% endif %}>Efectivo</option>
                     <option value="transfer" {% if selected_method=='transfer' %}selected{% endif %}>Transferencia
@@ -43,21 +38,21 @@
                 </select>
             </div>
 
-            <div class="col-md-3">
-                <label for="start" class="form-label">Fecha Desde</label>
-                <input type="date" class="form-control" id="start" name="start" value="{{ start }}">
+            <div class="form-group">
+                <label for="start" class="form-label-custom">Fecha Desde</label>
+                <input type="date" class="form-input-custom" id="start" name="start" value="{{ start }}">
             </div>
 
-            <div class="col-md-2">
-                <label for="end" class="form-label">Fecha Hasta</label>
-                <input type="date" class="form-control" id="end" name="end" value="{{ end }}">
+            <div class="form-group">
+                <label for="end" class="form-label-custom">Fecha Hasta</label>
+                <input type="date" class="form-input-custom" id="end" name="end" value="{{ end }}">
             </div>
 
-            <div class="col-md-3 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">
+            <div class="form-group" style="display: flex; align-items: flex-end; gap: var(--spacing-2);">
+                <button type="submit" class="btn-custom btn-primary-custom">
                     <i class="bi bi-funnel"></i> Filtrar
                 </button>
-                <a href="{{ url_for('balance.list_ledger') }}" class="btn btn-outline-secondary">
+                <a href="{{ url_for('ledger.list_ledger') }}" class="btn-custom btn-secondary-custom">
                     <i class="bi bi-x-circle"></i> Limpiar
                 </a>
             </div>
@@ -66,11 +61,11 @@
 </div>
 
 <!-- Ledger Table -->
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h5 class="card-title mb-0">Asientos Contables</h5>
+<div class="card-custom">
+    <div class="card-header-custom">
+        <h5 class="card-title-custom">Asientos Contables</h5>
     </div>
-    <div class="card-body">
+    <div class="card-body-custom">
         {% if entries %}
         <div class="table-responsive">
             <table class="table table-hover table-sm">
@@ -143,22 +138,24 @@
             </p>
         </div>
         {% else %}
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i>
-            No hay asientos contables para los filtros seleccionados.
+        <div class="alert-custom alert-info">
+            <i class="alert-custom-icon bi bi-info-circle"></i>
+            <div class="alert-custom-content">
+                No hay asientos contables para los filtros seleccionados.
+            </div>
         </div>
         {% endif %}
     </div>
 </div>
 
 <!-- Help -->
-<div class="card mt-3">
-    <div class="card-header bg-light">
-        <h6 class="card-title mb-0">
+<div class="card-custom" style="margin-top: var(--spacing-6);">
+    <div class="card-header-custom">
+        <h6 class="card-title-custom">
             <i class="bi bi-question-circle"></i> Ayuda
         </h6>
     </div>
-    <div class="card-body">
+    <div class="card-body-custom">
         <ul class="mb-0 small ps-3">
             <li><strong>Origen "Venta":</strong> Ingreso generado al confirmar una venta (automático)</li>
             <li><strong>Origen "Pago Boleta":</strong> Egreso generado al pagar una boleta de proveedor (automático)
