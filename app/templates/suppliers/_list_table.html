@@ -1,0 +1,104 @@
+<div class="card-custom">
+    {% if suppliers %}
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th>Nombre</th>
+                    <th>RFC/RUT</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                <tr>
+                    <td>{{ supplier.id }}</td>
+                    <td><strong style="color: var(--color-text-primary);">{{ supplier.name }}</strong></td>
+                    <td>
+                        {% if supplier.tax_id %}
+                        <span style="font-family: monospace;">{{ supplier.tax_id }}</span>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if supplier.phone %}
+                        <a href="tel:{{ supplier.phone }}"
+                            style="color: var(--color-text-secondary); text-decoration: none;">
+                            <i class="bi bi-telephone" style="font-size: var(--font-size-xs);"></i> {{ supplier.phone }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if supplier.email %}
+                        <a href="mailto:{{ supplier.email }}"
+                            style="color: var(--color-primary); text-decoration: none;">
+                            {{ supplier.email }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="table-actions" style="justify-content: center;">
+                            <a href="{{ url_for('suppliers.view_supplier', supplier_id=supplier.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Ver Detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('suppliers.edit_supplier', supplier_id=supplier.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
+                                data-bs-toggle="modal" data-bs-target="#deleteSupplierModal"
+                                data-supplier-id="{{ supplier.id }}" data-supplier-name="{{ supplier.name }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-footer-custom">
+        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+            <strong>{{ suppliers|length }}</strong> proveedor(es) registrado(s)
+            {% if search_query %}
+            para la búsqueda: <strong>"{{ search_query }}"</strong>
+            {% endif %}
+        </p>
+    </div>
+    {% else %}
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-truck"></i>
+            <div class="empty-state-title">
+                {% if search_query %}
+                No se encontraron proveedores
+                {% else %}
+                No hay proveedores registrados
+                {% endif %}
+            </div>
+            <p class="empty-state-description">
+                {% if search_query %}
+                No hay resultados para <strong>"{{ search_query }}"</strong>
+                {% else %}
+                Registre los proveedores para asociar boletas de compra y llevar el control de stock.
+                {% endif %}
+            </p>
+            {% if not search_query %}
+            <a href="{{ url_for('suppliers.new_supplier') }}" class="btn-custom btn-primary-custom">
+                <i class="bi bi-plus-circle"></i> Crear primer proveedor
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -5,7 +5,7 @@
 {% block page_title %}Boletas de Compra{% endblock %}
 
 {% block topbar_actions %}
-<a href="{{ url_for('invoices.new_invoice') }}" class="btn-custom btn-success-custom">
+<a href="{{ url_for('invoices.new_invoice') }}" class="btn-custom btn-primary-custom">
     <i class="bi bi-plus-circle"></i> Nueva Boleta
 </a>
 {% endblock %}
@@ -42,7 +42,7 @@
                 <div style="position: relative;">
                     <i class="bi bi-search"
                         style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
-                    <input type="text" name="q" class="form-input-custom" placeholder="Buscar por número..."
+                    <input type="text" name="q" class="form-input-custom" placeholder="Buscar por número, proveedor..."
                         value="{{ search_query or '' }}" style="padding-left: 36px;"
                         hx-get="{{ url_for('invoices.list_invoices') }}" hx-trigger="input changed delay:350ms, search"
                         hx-target="#invoices-list-container" hx-swap="innerHTML"
@@ -95,4 +95,65 @@
 
 <!-- Modal Container for HTMX -->
 <div id="modal-container"></div>
+
+<!-- Delete Invoice Modal -->
+<div class="modal fade" id="deleteInvoiceModal" tabindex="-1" aria-labelledby="deleteInvoiceModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--color-danger); color: var(--color-text-inverse);">
+                <h5 class="modal-title" id="deleteInvoiceModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="filter: brightness(0) invert(1);"></button>
+            </div>
+            <form method="POST" id="deleteInvoiceForm">
+                <div class="modal-body">
+                    <p><strong>¿Está seguro de eliminar esta boleta?</strong></p>
+                    <div class="alert-custom alert-warning">
+                        <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                        <div class="alert-custom-content">
+                            <strong>Advertencia:</strong> Esta acción es irreversible.
+                        </div>
+                    </div>
+                    <dl
+                        style="display: grid; grid-template-columns: auto 1fr; gap: var(--spacing-2); margin-bottom: 0;">
+                        <dt style="font-weight: var(--font-weight-semibold);">Proveedor:</dt>
+                        <dd id="deleteSupplierName" style="margin: 0;"></dd>
+
+                        <dt style="font-weight: var(--font-weight-semibold);">Boleta Nº:</dt>
+                        <dd id="deleteInvoiceNumber" style="margin: 0;"></dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-custom btn-secondary-custom"
+                        data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-custom btn-danger-custom">
+                        <i class="bi bi-trash"></i> Eliminar Boleta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deleteModal = document.getElementById('deleteInvoiceModal');
+
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const invoiceId = button.getAttribute('data-invoice-id');
+            const supplierName = button.getAttribute('data-supplier-name');
+            const invoiceNumber = button.getAttribute('data-invoice-number');
+
+            document.getElementById('deleteSupplierName').textContent = supplierName;
+            document.getElementById('deleteInvoiceNumber').textContent = invoiceNumber;
+            document.getElementById('deleteInvoiceForm').action = `/invoices/${invoiceId}/delete`;
+        });
+    });
+</script>
 {% endblock %}

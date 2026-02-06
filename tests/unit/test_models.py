@@ -3,6 +3,7 @@ Unit tests for SQLAlchemy models.
 """
 
 import pytest
+import uuid
 from app.models import Tenant, AppUser, UserTenant, Product, Sale
 
 
@@ -11,17 +12,20 @@ class TestTenantModel:
     
     def test_create_tenant(self, session):
         """Test creating a tenant."""
+        suffix = str(uuid.uuid4())[:8]
+        slug = f'test-tenant-{suffix}'
+        name = f'Test Tenant {suffix}'
         tenant = Tenant(
-            slug='test-tenant',
-            name='Test Tenant',
+            slug=slug,
+            name=name,
             active=True
         )
         session.add(tenant)
         session.commit()
         
         assert tenant.id is not None
-        assert tenant.slug == 'test-tenant'
-        assert tenant.name == 'Test Tenant'
+        assert tenant.slug == slug
+        assert tenant.name == name
         assert tenant.active is True
     
     def test_tenant_slug_unique(self, session, tenant1):
@@ -41,8 +45,10 @@ class TestAppUserModel:
     
     def test_create_user(self, session):
         """Test creating a user."""
+        suffix = str(uuid.uuid4())[:8]
+        email = f'test_{suffix}@example.com'
         user = AppUser(
-            email='test@example.com',
+            email=email,
             full_name='Test User',
             active=True
         )
@@ -51,7 +57,7 @@ class TestAppUserModel:
         session.commit()
         
         assert user.id is not None
-        assert user.email == 'test@example.com'
+        assert user.email == email
         assert user.password_hash is not None
         assert user.password_hash != 'securepassword'
     
@@ -113,10 +119,12 @@ class TestProductModel:
     
     def test_create_product(self, session, tenant1, uom):
         """Test creating a product."""
+        suffix = str(uuid.uuid4())[:8]
+        sku = f'TEST-{suffix}'
         product = Product(
             tenant_id=tenant1.id,
             name='Test Product',
-            sku='TEST-001',
+            sku=sku,
             uom_id=uom.id,
             sale_price=50.00,
             min_stock_qty=5,
@@ -130,15 +138,18 @@ class TestProductModel:
         assert product.name == 'Test Product'
         assert product.sale_price == 50.00
     
-    def test_product_sku_unique_per_tenant(self, session, tenant1, tenant2, uom):
+    def test_product_sku_unique_per_tenant(self, session, tenant1, tenant2, uom, uom2):
         """Test that SKU must be unique within a tenant."""
+        suffix = str(uuid.uuid4())[:8]
+        sku = f'UNIQUE-SKU-{suffix}'
         # Create product in tenant1
         product1 = Product(
             tenant_id=tenant1.id,
             name='Product 1',
-            sku='UNIQUE-SKU',
+            sku=sku,
             uom_id=uom.id,
             sale_price=100.00,
+            min_stock_qty=0,
             active=True
         )
         session.add(product1)
@@ -148,9 +159,10 @@ class TestProductModel:
         product2 = Product(
             tenant_id=tenant2.id,
             name='Product 2',
-            sku='UNIQUE-SKU',
-            uom_id=uom.id,
+            sku=sku,
+            uom_id=uom2.id,
             sale_price=200.00,
+            min_stock_qty=0,
             active=True
         )
         session.add(product2)
@@ -163,9 +175,10 @@ class TestProductModel:
         product3 = Product(
             tenant_id=tenant1.id,
             name='Product 3',
-            sku='UNIQUE-SKU',
+            sku=sku,
             uom_id=uom.id,
             sale_price=300.00,
+            min_stock_qty=0,
             active=True
         )
         session.add(product3)

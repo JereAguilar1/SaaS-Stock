@@ -17,116 +17,74 @@
         <form method="GET" action="{{ url_for('sales.list_sales') }}" class="form-row">
             <div style="flex: 1; display: flex; gap: var(--spacing-4); align-items: flex-end;">
                 <div style="flex: 1;">
-                    <label for="id" class="form-label-custom">Buscar por ID de Venta</label>
+                    <label for="q" class="form-label-custom">Buscar Ventas</label>
                     <div style="position: relative;">
                         <i class="bi bi-search"
                             style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
-                        <input type="number" class="form-input-custom" id="id" name="id"
-                            value="{{ sale_id_search or '' }}" placeholder="Ej: 123" min="1"
-                            style="padding-left: 36px;">
+                        <input type="text" class="form-input-custom" id="q" name="q" value="{{ search_query or '' }}"
+                            placeholder="Buscar por ID o monto total" style="padding-left: 36px;"
+                            hx-get="{{ url_for('sales.list_sales') }}" hx-trigger="input changed delay:350ms, search"
+                            hx-target="#sales-list-container" hx-swap="innerHTML" hx-push-url="true" autocomplete="off">
                     </div>
-                </div>
-                <div style="display: flex; gap: var(--spacing-2);">
-                    <button type="submit" class="btn-custom btn-primary-custom">
-                        <i class="bi bi-search"></i> Buscar
-                    </button>
-                    {% if sale_id_search %}
-                    <a href="{{ url_for('sales.list_sales') }}" class="btn-custom btn-secondary-custom">
-                        <i class="bi bi-x-circle"></i> Limpiar
-                    </a>
-                    {% endif %}
                 </div>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Sales Table -->
-<div class="card-custom">
-    <div class="card-header-custom">
-        <h2 class="card-title">
-            <i class="bi bi-receipt" style="color: var(--color-success);"></i> Ventas Confirmadas
-        </h2>
-    </div>
+<!-- Sales Table Container -->
+<div id="sales-list-container">
+    {% include 'sales/_list_table.html' %}
+</div>
+{% endblock %}
 
-    {% if sales %}
-    <div class="table-container">
-        <table class="table-custom">
-            <thead>
-                <tr>
-                    <th style="width: 80px;">ID</th>
-                    <th>Fecha y Hora</th>
-                    <th style="text-align: right;">Total</th>
-                    <th>Estado</th>
-                    <th style="text-align: center;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sale in sales %}
-                <tr>
-                    <td>
-                        <span class="badge-custom badge-secondary">#{{ sale.id }}</span>
-                    </td>
-                    <td>
-                        <i class="bi bi-calendar3" style="color: var(--color-text-muted);"></i>
-                        {{ sale.datetime|datetime_ar }}
-                    </td>
-                    <td style="text-align: right;">
-                        <strong style="color: var(--color-success); font-weight: var(--font-weight-semibold);">${{
-                            sale.total|money_ar }}</strong>
-                    </td>
-                    <td>
-                        {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
-                        <span class="badge-custom badge-success">Confirmada</span>
-                        {% elif sale.status.value == 'CANCELLED' or sale.status == 'CANCELLED' %}
-                        <span class="badge-custom badge-danger">Cancelada</span>
-                        {% else %}
-                        <span class="badge-custom badge-secondary">{{ sale.status.value if sale.status.value else
-                            sale.status }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="table-actions" style="justify-content: center;">
-                            <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}"
-                                class="btn-custom btn-secondary-custom btn-sm" title="Ver Detalle">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
-                            <a href="{{ url_for('sales.edit_sale_form', sale_id=sale.id) }}"
-                                class="btn-custom btn-warning-custom btn-sm" title="Editar/Ajustar esta venta"
-                                style="background-color: var(--color-warning-light); color: var(--color-warning-dark); border-color: var(--color-warning);">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            {% else %}
-                            <span class="badge-custom badge-secondary" style="opacity: 0.7;">No editable</span>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="card-body-custom">
-        <div class="empty-state">
-            <i class="empty-state-icon bi bi-receipt"></i>
-            <div class="empty-state-title">
-                {% if sale_id_search %}
-                No se encontraron ventas
-                {% else %}
-                Sin ventas registradas
-                {% endif %}
+{% block extra_js %}
+<!-- Delete Sale Modal -->
+<div class="modal fade" id="deleteSaleModal" tabindex="-1" aria-labelledby="deleteSaleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--color-danger); color: var(--color-text-inverse);">
+                <h5 class="modal-title" id="deleteSaleModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="filter: brightness(0) invert(1);"></button>
             </div>
-            <p class="empty-state-description">
-                {% if sale_id_search %}
-                No hay ventas con ID: <strong>{{ sale_id_search }}</strong>
-                {% else %}
-                Aún no hay ventas confirmadas en el sistema.
-                {% endif %}
-            </p>
+            <form method="POST" id="deleteSaleForm">
+                <div class="modal-body">
+                    <p><strong>¿Está seguro de eliminar esta venta?</strong></p>
+                    <div class="alert-custom alert-warning">
+                        <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                        <div class="alert-custom-content">
+                            <strong>Advertencia:</strong> Esta acción es irreversible.
+                            Si la venta tiene movimientos de stock o pagos asociados que no pueden eliminarse en
+                            cascada, la operación fallará por seguridad.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-custom btn-secondary-custom"
+                        data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-custom btn-danger-custom">
+                        <i class="bi bi-trash"></i> Eliminar Venta
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-    {% endif %}
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deleteModal = document.getElementById('deleteSaleModal');
+
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const saleId = button.getAttribute('data-sale-id');
+            const saleNumber = button.getAttribute('data-sale-number');
+
+            document.getElementById('deleteSaleForm').action = `/sales/${saleId}/delete`;
+        });
+    });
+</script>
 {% endblock %}

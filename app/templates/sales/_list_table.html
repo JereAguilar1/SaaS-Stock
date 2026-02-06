@@ -1,0 +1,92 @@
+<div class="card-custom">
+    <div class="card-header-custom">
+        <h2 class="card-title">
+            <i class="bi bi-receipt" style="color: var(--color-success);"></i> Ventas Confirmadas
+        </h2>
+    </div>
+
+    {% if sales %}
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">ID</th>
+                    <th>Fecha y Hora</th>
+                    <th style="text-align: right;">Total</th>
+                    <th>Estado</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td>
+                        <span class="badge-custom badge-secondary">#{{ sale.id }}</span>
+                    </td>
+                    <td>
+                        <i class="bi bi-calendar3" style="color: var(--color-text-muted);"></i>
+                        {{ sale.datetime|datetime_ar }}
+                    </td>
+                    <td style="text-align: right;">
+                        <strong style="color: var(--color-success); font-weight: var(--font-weight-semibold);">${{
+                            sale.total|money_ar }}</strong>
+                    </td>
+                    <td>
+                        {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
+                        <span class="badge-custom badge-success">Confirmada</span>
+                        {% elif sale.status.value == 'CANCELLED' or sale.status == 'CANCELLED' %}
+                        <span class="badge-custom badge-danger">Cancelada</span>
+                        {% else %}
+                        <span class="badge-custom badge-secondary">{{ sale.status.value if sale.status.value else
+                            sale.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="table-actions" style="justify-content: center;">
+                            <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Ver Detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
+                            <a href="{{ url_for('sales.edit_sale_form', sale_id=sale.id) }}"
+                                class="btn-custom btn-warning-custom btn-sm" title="Editar/Ajustar esta venta"
+                                style="background-color: var(--color-warning-light); color: var(--color-warning-dark); border-color: var(--color-warning);">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            {% else %}
+                            <span class="badge-custom badge-secondary" style="opacity: 0.7;">No editable</span>
+                            {% endif %}
+
+                            <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
+                                data-bs-toggle="modal" data-bs-target="#deleteSaleModal" data-sale-id="{{ sale.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-receipt"></i>
+            <div class="empty-state-title">
+                {% if search_query %}
+                No se encontraron ventas para "{{ search_query }}"
+                {% else %}
+                Sin ventas registradas
+                {% endif %}
+            </div>
+            <p class="empty-state-description">
+                {% if search_query %}
+                Intente con otro ID o monto total.
+                {% else %}
+                Aún no hay ventas confirmadas en el sistema.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -5,7 +5,7 @@
 {% block page_title %}Proveedores{% endblock %}
 
 {% block topbar_actions %}
-<a href="{{ url_for('suppliers.new_supplier') }}" class="btn-custom btn-success-custom">
+<a href="{{ url_for('suppliers.new_supplier') }}" class="btn-custom btn-primary-custom">
     <i class="bi bi-plus-circle"></i> Nuevo Proveedor
 </a>
 {% endblock %}
@@ -15,82 +15,83 @@
     <p style="color: var(--color-text-secondary); margin: 0;">Gestión de proveedores y contactos</p>
 </div>
 
-<div class="card-custom">
-    {% if suppliers %}
-    <div class="table-container">
-        <table class="table-custom">
-            <thead>
-                <tr>
-                    <th style="width: 60px;">ID</th>
-                    <th>Nombre</th>
-                    <th>RFC/RUT</th>
-                    <th>Teléfono</th>
-                    <th>Email</th>
-                    <th style="text-align: center;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for supplier in suppliers %}
-                <tr>
-                    <td>{{ supplier.id }}</td>
-                    <td><strong style="color: var(--color-text-primary);">{{ supplier.name }}</strong></td>
-                    <td>
-                        {% if supplier.tax_id %}
-                        <span style="font-family: monospace;">{{ supplier.tax_id }}</span>
-                        {% else %}
-                        <span style="color: var(--color-text-muted);">-</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if supplier.phone %}
-                        <a href="tel:{{ supplier.phone }}"
-                            style="color: var(--color-text-secondary); text-decoration: none;">
-                            <i class="bi bi-telephone" style="font-size: var(--font-size-xs);"></i> {{ supplier.phone }}
-                        </a>
-                        {% else %}
-                        <span style="color: var(--color-text-muted);">-</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if supplier.email %}
-                        <a href="mailto:{{ supplier.email }}"
-                            style="color: var(--color-primary); text-decoration: none;">
-                            {{ supplier.email }}
-                        </a>
-                        {% else %}
-                        <span style="color: var(--color-text-muted);">-</span>
-                        {% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        <a href="{{ url_for('suppliers.edit_supplier', supplier_id=supplier.id) }}"
-                            class="btn-custom btn-secondary-custom btn-sm" title="Editar">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <div class="card-footer-custom">
-        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
-            <strong>{{ suppliers|length }}</strong> proveedor(es) registrado(s)
-        </p>
-    </div>
-    {% else %}
+<!-- Search Form -->
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
     <div class="card-body-custom">
-        <div class="empty-state">
-            <i class="empty-state-icon bi bi-truck"></i>
-            <div class="empty-state-title">No hay proveedores registrados</div>
-            <p class="empty-state-description">
-                Registre los proveedores para asociar boletas de compra y llevar el control de stock.
-            </p>
-            <a href="{{ url_for('suppliers.new_supplier') }}" class="btn-custom btn-success-custom">
-                <i class="bi bi-plus-circle"></i> Crear primer proveedor
-            </a>
+        <form method="GET" action="{{ url_for('suppliers.list_suppliers') }}" class="form-row">
+            <div style="flex: 1;">
+                <label for="q" class="form-label-custom">Buscar</label>
+                <div style="position: relative;">
+                    <i class="bi bi-search"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
+                    <input type="text" class="form-input-custom" id="q" name="q" value="{{ search_query or '' }}"
+                        placeholder="Nombre, RUT, Email, Teléfono..." style="padding-left: 36px;"
+                        hx-get="{{ url_for('suppliers.list_suppliers') }}"
+                        hx-trigger="input changed delay:350ms, search" hx-target="#suppliers-list-container"
+                        hx-swap="innerHTML" hx-push-url="true" autocomplete="off">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="suppliers-list-container">
+    {% include 'suppliers/_list_table.html' %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Delete Supplier Modal -->
+<div class="modal fade" id="deleteSupplierModal" tabindex="-1" aria-labelledby="deleteSupplierModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--color-danger); color: var(--color-text-inverse);">
+                <h5 class="modal-title" id="deleteSupplierModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="filter: brightness(0) invert(1);"></button>
+            </div>
+            <form method="POST" id="deleteSupplierForm">
+                <div class="modal-body">
+                    <p><strong>¿Está seguro de eliminar este proveedor?</strong></p>
+                    <div class="alert-custom alert-warning">
+                        <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                        <div class="alert-custom-content">
+                            <strong>Advertencia:</strong> Esta acción es irreversible.
+                        </div>
+                    </div>
+                    <dl
+                        style="display: grid; grid-template-columns: auto 1fr; gap: var(--spacing-2); margin-bottom: 0;">
+                        <dt style="font-weight: var(--font-weight-semibold);">Proveedor:</dt>
+                        <dd id="deleteSupplierNameIndex" style="margin: 0;"></dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-custom btn-secondary-custom"
+                        data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-custom btn-danger-custom">
+                        <i class="bi bi-trash"></i> Eliminar Proveedor
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-    {% endif %}
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deleteModal = document.getElementById('deleteSupplierModal');
+
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const supplierId = button.getAttribute('data-supplier-id');
+            const supplierName = button.getAttribute('data-supplier-name');
+
+            document.getElementById('deleteSupplierNameIndex').textContent = supplierName;
+            document.getElementById('deleteSupplierForm').action = `/suppliers/${supplierId}/delete`;
+        });
+    });
+</script>
 {% endblock %}

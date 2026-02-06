@@ -11,84 +11,28 @@
 {% endblock %}
 
 {% block content %}
-<!-- Users Table -->
+<!-- Search Form -->
 <div class="card-custom" style="margin-bottom: var(--spacing-6);">
-    <div class="card-header-custom">
-        <h2 class="card-title">
-            <i class="bi bi-list-ul"></i> Usuarios del Negocio
-        </h2>
+    <div class="card-body-custom">
+        <form method="GET" action="{{ url_for('users.list_users') }}" class="form-row">
+            <div style="flex: 1;">
+                <label for="q" class="form-label-custom">Buscar Usuarios</label>
+                <div style="position: relative;">
+                    <i class="bi bi-search"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
+                    <input type="text" class="form-input-custom" id="q" name="q" value="{{ search_query or '' }}"
+                        placeholder="Nombre, Email..." style="padding-left: 36px;"
+                        hx-get="{{ url_for('users.list_users') }}" hx-trigger="input changed delay:350ms, search"
+                        hx-target="#users-list-container" hx-swap="innerHTML" hx-push-url="true" autocomplete="off">
+                </div>
+            </div>
+        </form>
     </div>
-    <div class="table-container">
-        <table class="table-custom">
-            <thead>
-                <tr>
-                    <th>Usuario</th>
-                    <th>Email</th>
-                    <th>Rol</th>
-                    <th>Fecha de Alta</th>
-                    <th style="text-align: center;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user_tenant, user in user_tenants %}
-                <tr>
-                    <td>
-                        <strong style="color: var(--color-text-primary);">{{ user.full_name or 'Sin nombre' }}</strong>
-                        {% if user.id == g.user.id %}
-                        <span class="badge-custom badge-info" style="margin-left: var(--spacing-2);">Tú</span>
-                        {% endif %}
-                    </td>
-                    <td style="color: var(--color-text-secondary);">{{ user.email }}</td>
-                    <td>
-                        {% if user_tenant.role == 'OWNER' %}
-                        <span class="badge-custom badge-danger">
-                            <i class="bi bi-shield-fill-check"></i> OWNER
-                        </span>
-                        {% elif user_tenant.role == 'ADMIN' %}
-                        <span class="badge-custom badge-warning">
-                            <i class="bi bi-shield-fill"></i> ADMIN
-                        </span>
-                        {% elif user_tenant.role == 'STAFF' %}
-                        <span class="badge-custom badge-secondary">
-                            <i class="bi bi-person-badge"></i> STAFF
-                        </span>
-                        {% else %}
-                        <span class="badge-custom badge-secondary">{{ user_tenant.role }}</span>
-                        {% endif %}
-                    </td>
-                    <td style="color: var(--color-text-muted);">
-                        <i class="bi bi-calendar3"></i>
-                        {{ user_tenant.created_at|datetime_ar }}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if user.id != g.user.id and user_tenant.role != 'OWNER' %}
-                        <div class="table-actions" style="justify-content: center;">
-                            <a href="{{ url_for('users.edit_user', id=user_tenant.id) }}"
-                                class="btn-custom btn-secondary-custom btn-sm" title="Editar rol">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form action="{{ url_for('users.remove_user', id=user_tenant.id) }}" method="POST"
-                                style="display: inline;"
-                                onsubmit="return confirm('¿Seguro que deseas remover a {{ user.email }} del negocio?');">
-                                <button type="submit" class="btn-custom btn-danger-custom btn-sm" title="Remover">
-                                    <i class="bi bi-person-x"></i>
-                                </button>
-                            </form>
-                        </div>
-                        {% else %}
-                        <span style="color: var(--color-text-muted);">-</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <div class="card-footer-custom">
-        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
-            Total: <strong>{{ user_tenants|length }}</strong> usuario(s)
-        </p>
-    </div>
+</div>
+
+<!-- Users Table -->
+<div id="users-list-container">
+    {% include 'users/_list_table.html' %}
 </div>
 
 <!-- Roles Guide -->

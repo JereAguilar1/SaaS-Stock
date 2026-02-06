@@ -23,7 +23,7 @@ class TestProductIsolation:
         assert tenant1_products[0].id == product_tenant1.id
         assert all(p.tenant_id == product_tenant1.tenant_id for p in tenant1_products)
     
-    def test_products_with_same_sku_different_tenants(self, session, tenant1, tenant2, uom):
+    def test_products_with_same_sku_different_tenants(self, session, tenant1, tenant2, uom, uom2):
         """Test that different tenants can have products with the same SKU."""
         # Create products with same SKU in different tenants
         product1 = Product(
@@ -32,14 +32,16 @@ class TestProductIsolation:
             sku='SHARED-SKU',
             uom_id=uom.id,
             sale_price=100,
+            min_stock_qty=0,
             active=True
         )
         product2 = Product(
             tenant_id=tenant2.id,
             name='Product B',
             sku='SHARED-SKU',
-            uom_id=uom.id,
+            uom_id=uom2.id,
             sale_price=200,
+            min_stock_qty=0,
             active=True
         )
         
@@ -78,6 +80,29 @@ class TestSaleIsolation:
         )
         
         session.add_all([sale1, sale2])
+        session.flush()
+
+        # Add lines to sales (required by trigger)
+        # We need a product first, let's assume we can reuse fixtures or just mock usage
+        # Ideally we need a product for the line. The test doesn't inject 'product_tenant1' but 'tenant1'.
+        # We need to create dummy products or use fixtures if added.
+        # Let's create dummy products attached to these tenants.
+        from app.models import UOM
+        uom = session.query(UOM).first()
+        if not uom:
+             uom = UOM(name='Unit', symbol='u')
+             session.add(uom)
+             session.flush()
+
+        p1 = Product(tenant_id=tenant1.id, name='P1', sku=f'SKU-T1-{sale1.id}', uom_id=uom.id, sale_price=10, min_stock_qty=0)
+        p2 = Product(tenant_id=tenant2.id, name='P2', sku=f'SKU-T2-{sale2.id}', uom_id=uom.id, sale_price=20, min_stock_qty=0)
+        session.add_all([p1, p2])
+        session.flush()
+
+        line1 = SaleLine(sale_id=sale1.id, product_id=p1.id, qty=1, unit_price=100, line_total=100)
+        line2 = SaleLine(sale_id=sale2.id, product_id=p2.id, qty=1, unit_price=200, line_total=200)
+        session.add_all([line1, line2])
+        
         session.commit()
         
         # Query sales for tenant1
@@ -198,7 +223,7 @@ class TestDashboardIsolation:
         assert data_t1['income_today'] != data_t2['income_today']
 
 
-class TestCrossT TenantAccessPrevention:
+class TestCrossTenantAccessPrevention:
     """Test that cross-tenant access is prevented."""
     
     def test_accessing_other_tenant_product_by_id_fails(self, session, product_tenant1, product_tenant2):
@@ -212,7 +237,7 @@ class TestCrossT TenantAccessPrevention:
         # Should not find the product
         assert product is None
     
-    def test_bulk_queries_respect_tenant_filter(self, session, tenant1, tenant2, uom):
+    def test_bulk_queries_respect_tenant_filter(self, session, tenant1, tenant2, uom, uom2):
         """Test that bulk queries always respect tenant filter."""
         # Create multiple products for each tenant
         for i in range(5):
@@ -222,14 +247,16 @@ class TestCrossT TenantAccessPrevention:
                 sku=f'SKU-T1-{i}',
                 uom_id=uom.id,
                 sale_price=100.00,
+                min_stock_qty=0,
                 active=True
             )
             product_t2 = Product(
                 tenant_id=tenant2.id,
                 name=f'Product T2-{i}',
                 sku=f'SKU-T2-{i}',
-                uom_id=uom.id,
+                uom_id=uom2.id,
                 sale_price=200.00,
+                min_stock_qty=0,
                 active=True
             )
             session.add_all([product_t1, product_t2])

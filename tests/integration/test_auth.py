@@ -4,6 +4,7 @@ Integration tests for authentication and authorization.
 
 import pytest
 from flask import session as flask_session
+import uuid
 
 
 class TestRegistration:
@@ -11,25 +12,28 @@ class TestRegistration:
     
     def test_register_new_user_and_tenant(self, client, session):
         """Test successful user registration creates user + tenant."""
+        suffix = str(uuid.uuid4())[:8]
+        email = f'newuser_{suffix}@test.com'
+        business_name = f'New Business {suffix}'
         response = client.post('/register', data={
-            'email': 'newuser@test.com',
+            'email': email,
             'password': 'securepass123',
             'password_confirm': 'securepass123',
             'full_name': 'New User',
-            'business_name': 'New Business'
+            'business_name': business_name
         }, follow_redirects=True)
         
         assert response.status_code == 200
         
         # Verify user was created
         from app.models import AppUser
-        user = session.query(AppUser).filter_by(email='newuser@test.com').first()
+        user = session.query(AppUser).filter_by(email=email).first()
         assert user is not None
         assert user.full_name == 'New User'
         
         # Verify tenant was created
         from app.models import Tenant
-        tenant = session.query(Tenant).filter_by(name='New Business').first()
+        tenant = session.query(Tenant).filter_by(name=business_name).first()
         assert tenant is not None
         
         # Verify user-tenant relationship
@@ -56,12 +60,13 @@ class TestRegistration:
     
     def test_register_with_mismatched_passwords_fails(self, client):
         """Test that registration with mismatched passwords fails."""
+        suffix = str(uuid.uuid4())[:8]
         response = client.post('/register', data={
-            'email': 'test@test.com',
+            'email': f'test_{suffix}@test.com',
             'password': 'password123',
             'password_confirm': 'differentpassword',
             'full_name': 'Test User',
-            'business_name': 'Test Business'
+            'business_name': f'Test Business {suffix}'
         })
         
         assert response.status_code == 400
@@ -93,8 +98,9 @@ class TestLogin:
     
     def test_login_with_nonexistent_email(self, client):
         """Test login with non-existent email fails."""
+        suffix = str(uuid.uuid4())[:8]
         response = client.post('/login', data={
-            'email': 'nonexistent@test.com',
+            'email': f'nonexistent_{suffix}@test.com',
             'password': 'password123'
         })
         

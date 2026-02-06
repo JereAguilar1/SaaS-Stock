@@ -150,10 +150,16 @@ def list_products():
         
         # Apply search filter if provided
         if search_query:
+            # Join for search (if not already joined implicitly or explicitly)
+            # Query already joins ProductStock. We need Category and UOM.
+            query = query.outerjoin(Category).outerjoin(UOM)
+            
             search_filter = or_(
                 func.lower(Product.name).like(f'%{search_query.lower()}%'),
                 func.lower(Product.sku).like(f'%{search_query.lower()}%'),
-                func.lower(Product.barcode).like(f'%{search_query.lower()}%')
+                func.lower(Product.barcode).like(f'%{search_query.lower()}%'),
+                Category.name.ilike(f'%{search_query}%'),
+                UOM.name.ilike(f'%{search_query}%')
             )
             query = query.filter(search_filter)
         

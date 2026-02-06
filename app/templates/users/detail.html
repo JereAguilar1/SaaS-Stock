@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle del Usuario - {{ user.full_name or user.email }}{% endblock %}
+
+{% block page_title %}Detalle del Usuario{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('users.list_users') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i>
+    Volver a Usuarios
+</a>
+<a href="{{ url_for('users.edit_user', id=user_tenant.id) }}" class="btn-custom btn-primary-custom" {% if
+    user_tenant.role=='OWNER' or user.id==g.user.id %}style="display:none;" {% endif %}>
+    <i class="bi bi-pencil"></i>
+    Editar Rol
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card-custom">
+    <div class="card-body-custom">
+        <h2
+            style="margin-bottom: var(--spacing-6); color: var(--color-text-primary); font-weight: var(--font-weight-bold); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--spacing-4);">
+            <i class="bi bi-person-circle" style="margin-right: var(--spacing-2); color: var(--color-primary);"></i>
+            {{ user.full_name or 'Sin Nombre' }}
+        </h2>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-6);">
+            <!-- Información de Contacto -->
+            <div>
+                <h3
+                    style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-4);">
+                    <i class="bi bi-person-badge"></i> Información Personal
+                </h3>
+                <dl style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-3); margin: 0;">
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Email:
+                    </dt>
+                    <dd style="margin: 0;">
+                        <a href="mailto:{{ user.email }}" style="text-decoration: none; color: var(--color-primary);">
+                            {{ user.email }}
+                        </a>
+                    </dd>
+
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Nombre
+                        Completo:</dt>
+                    <dd style="margin: 0;">{{ user.full_name or '-' }}</dd>
+
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">ID
+                        Usuario:</dt>
+                    <dd style="margin: 0;">{{ user.id }}</dd>
+                </dl>
+            </div>
+
+            <!-- Rol y Permisos -->
+            <div>
+                <h3
+                    style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-4);">
+                    <i class="bi bi-shield-lock"></i> Rol y Permisos
+                </h3>
+                <dl style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-3); margin: 0;">
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Rol
+                        Actual:</dt>
+                    <dd style="margin: 0;">
+                        {% if user_tenant.role == 'OWNER' %}
+                        <span class="badge-custom badge-danger">
+                            <i class="bi bi-shield-fill-check"></i> OWNER
+                        </span>
+                        {% elif user_tenant.role == 'ADMIN' %}
+                        <span class="badge-custom badge-warning">
+                            <i class="bi bi-shield-fill"></i> ADMIN
+                        </span>
+                        {% elif user_tenant.role == 'STAFF' %}
+                        <span class="badge-custom badge-secondary">
+                            <i class="bi bi-person-badge"></i> STAFF
+                        </span>
+                        {% else %}
+                        <span class="badge-custom badge-secondary">{{ user_tenant.role }}</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Estado:
+                    </dt>
+                    <dd style="margin: 0;">
+                        {% if user_tenant.active %}
+                        <span class="badge-custom badge-success">Activo</span>
+                        {% else %}
+                        <span class="badge-custom badge-danger">Inactivo</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Miembro
+                        desde:</dt>
+                    <dd style="margin: 0;">
+                        <i class="bi bi-calendar3"></i> {{ user_tenant.created_at.strftime('%d/%m/%Y') }}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Zona de Peligro (Solo si no es uno mismo y si no es OWNER) -->
+        {% if user.id != g.user.id and user_tenant.role != 'OWNER' %}
+        <div
+            style="margin-top: var(--spacing-6); padding-top: var(--spacing-4); border-top: 1px solid var(--color-border-light);">
+            <div class="alert-custom alert-warning"
+                style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="alert-custom-content">
+                    <strong>Zona de Peligro</strong><br>
+                    Remover al usuario le quitará el acceso a este negocio inmediatamente.
+                </div>
+                <form action="{{ url_for('users.remove_user', id=user_tenant.id) }}" method="POST"
+                    style="display: inline;"
+                    onsubmit="return confirm('¿Seguro que deseas remover a {{ user.email }} del negocio?');">
+                    <button type="submit" class="btn-custom btn-danger-custom">
+                        <i class="bi bi-person-x"></i> Remover Usuario
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

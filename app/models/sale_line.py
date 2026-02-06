@@ -12,7 +12,7 @@ class SaleLine(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     sale_id = Column(BigInteger, ForeignKey('sale.id'), nullable=False)
     product_id = Column(BigInteger, ForeignKey('product.id'), nullable=False)
-    qty = Column(Numeric(10, 2), nullable=False)
+    qty = Column(BigInteger, nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
     line_total = Column(Numeric(10, 2), nullable=False)
     
