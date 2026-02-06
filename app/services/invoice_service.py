@@ -190,8 +190,13 @@ def create_invoice_with_lines(payload: dict, session) -> int:
         
         # Step 7: Create StockMoveLines (no tenant_id, parent is StockMove)
         # Trigger on stock_move_line will update product_stock automatically
+        # ALSO: Update Product.cost with the new unit_cost from this purchase
         for line_data in validated_lines:
             product = line_data['product']
+            
+            # Update product cost with the new purchase price
+            product.cost = line_data['unit_cost']
+            
             stock_move_line = StockMoveLine(
                 stock_move_id=stock_move.id,
                 product_id=line_data['product_id'],

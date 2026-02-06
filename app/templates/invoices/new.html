@@ -363,16 +363,15 @@
 
             // Auto-fill cost if empty or zero
             if (unitCostInput && (unitCostInput.value === "0.00" || unitCostInput.value === "0" || unitCostInput.value === "")) {
-                // Ensure formatSmartAr is available or implement simplified version
-                // Assuming formatSmartAr is globally available or defined below
+                // Use product.cost instead of product.sale_price
                 if (typeof formatSmartAr === 'function') {
-                    unitCostInput.value = formatSmartAr(product.sale_price);
+                    unitCostInput.value = formatSmartAr(product.cost);
 
-                    // Also trigger trigger input event to update hidden cost input logic if presents
+                    // Also trigger input event to update hidden cost input logic if present
                     unitCostInput.dispatchEvent(new Event('input', { bubbles: true }));
                     unitCostInput.dispatchEvent(new Event('blur', { bubbles: true }));
                 } else {
-                    unitCostInput.value = product.sale_price;
+                    unitCostInput.value = product.cost;
                 }
             }
 

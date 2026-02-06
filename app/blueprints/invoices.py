@@ -713,7 +713,8 @@ def search_products():
                 'name': p.name,
                 'sku': p.sku,
                 'uom_symbol': p.uom.symbol if p.uom else '',
-                'sale_price': float(p.sale_price) if p.sale_price else 0
+                'sale_price': float(p.sale_price) if p.sale_price else 0,
+                'cost': float(p.cost) if p.cost else 0
             })
             
         return jsonify(results)
