@@ -1,13 +1,16 @@
 <!-- Product Results Partial (usado por HTMX para búsqueda) -->
-{% if products or top_products %}
 {% set display_products = products if products else top_products %}
 
-{% if not display_products and search_query %}
+{% if search_query and not products %}
 <div class="empty-search">
     <i class="bi bi-search"></i>
     <p>No se encontraron productos para "{{ search_query }}"</p>
+
+    <a href="{{ url_for('catalog.new_product', name=search_query) }}" class="btn btn-primary mt-3">
+        <i class="bi bi-plus-circle"></i> Crear producto "{{ search_query }}"
+    </a>
 </div>
-{% else %}
+{% elif display_products %}
 <div class="product-grid">
     {% for product in display_products %}
     {% set is_in_cart = false %}
@@ -60,7 +63,6 @@
     </div>
     {% endfor %}
 </div>
-{% endif %}
 {% else %}
 <div class="empty-catalog">
     <i class="bi bi-basket"></i>

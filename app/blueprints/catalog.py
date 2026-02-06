@@ -4,50 +4,13 @@ from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 import time
-from datetime import datetime
 from app.database import get_session
-from app.models import (
-    Product, ProductStock, UOM, Category,
-    StockMove, StockMoveLine, StockMoveType, StockReferenceType
-)
+from app.models import Product, ProductStock, UOM, Category
 from app.middleware import require_login, require_tenant
 from app.services.storage_service import get_storage_service
 from app.services.cache_service import get_cache
 
 catalog_bp = Blueprint('catalog', __name__, url_prefix='/products')
-
-
-
-@catalog_bp.route('/check-sku', methods=['POST'])
-@require_login
-@require_tenant
-def check_sku():
-    """Check if SKU already exists in the tenant."""
-    session = get_session()
-    sku = request.form.get('sku', '').strip()
-    product_id = request.form.get('product_id', '').strip()
-    
-    if not sku:
-        return render_template('products/_check_sku.html', error=None)
-        
-    query = session.query(Product).filter(
-        Product.tenant_id == g.tenant_id,
-        Product.sku == sku
-    )
-    
-    # If editing, exclude current product
-    if product_id:
-        try:
-            query = query.filter(Product.id != int(product_id))
-        except ValueError:
-            pass
-            
-    exists = query.first()
-    
-    if exists:
-        return render_template('products/_check_sku.html', error=f"El SKU '{sku}' ya existe")
-    
-    return render_template('products/_check_sku.html', error=None)
 
 
 def invalidate_products_cache(tenant_id: int):
@@ -187,20 +150,10 @@ def list_products():
         
         # Apply search filter if provided
         if search_query:
-            from sqlalchemy import cast, String
-            # Join for search (if not already joined implicitly or explicitly)
-            # Query already joins ProductStock. We need Category and UOM.
-            query = query.outerjoin(Category).outerjoin(UOM)
-            
             search_filter = or_(
                 func.lower(Product.name).like(f'%{search_query.lower()}%'),
                 func.lower(Product.sku).like(f'%{search_query.lower()}%'),
-                func.lower(Product.barcode).like(f'%{search_query.lower()}%'),
-                Category.name.ilike(f'%{search_query}%'),
-                UOM.name.ilike(f'%{search_query}%'),
-                cast(Product.id, String).like(f'%{search_query}%'),
-                cast(Product.sale_price, String).like(f'%{search_query}%'),
-                cast(Product.cost, String).like(f'%{search_query}%')
+                func.lower(Product.barcode).like(f'%{search_query.lower()}%')
             )
             query = query.filter(search_filter)
         
@@ -368,7 +321,6 @@ def create_product():
         cost = clean_cost
         
         min_stock_qty = request.form.get('min_stock_qty', '0').strip()
-        initial_stock = request.form.get('initial_stock', '0').strip()
         active = request.form.get('active') == 'on'
         
         # Server-side validations
@@ -420,38 +372,14 @@ def create_product():
         except ValueError:
             errors.append('El stock mínimo debe ser un número válido')
             min_stock_qty_decimal = 0
-            
-        try:
-            initial_stock_decimal = float(initial_stock) if initial_stock else 0
-            if initial_stock_decimal < 0:
-                errors.append('El stock inicial debe ser mayor o igual a 0')
-        except ValueError:
-            errors.append('El stock inicial debe ser un número válido')
-            initial_stock_decimal = 0
         
         if errors:
             for error in errors:
                 flash(error, 'danger')
             uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
             categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
-            
-            # Preserve form data including initial_stock
-            form_product = {
-                'name': name,
-                'sku': sku,
-                'barcode': barcode,
-                'category_id': int(category_id) if category_id else None,
-                'uom_id': int(uom_id) if uom_id else None,
-                'sale_price': sale_price_decimal if 'sale_price_decimal' in locals() else 0,
-                'cost': cost_decimal if 'cost_decimal' in locals() else 0,
-                'min_stock_qty': min_stock_qty_decimal,
-                'active': active,
-                'image_path': None,
-                'initial_stock': initial_stock_decimal
-            }
-            
             return render_template('products/form.html',
-                                 product=form_product,
+                                 product=None,
                                  uoms=uoms,
                                  categories=categories,
                                  action='new')
@@ -478,55 +406,6 @@ def create_product():
         )
         
         session.add(product)
-        session.flush()  # Get product.id
-        
-        # HANDLE INITIAL STOCK
-        # 1. Create ProductStock record (initialize with 0 or initial value)
-        # We start with 0 and let logic handle increment if needed, 
-        # OR set it directly if we want to be sure.
-        # Given we add a StockMove, strictly speaking checking if trigger exists is best.
-        # But we will set it to initial_stock to be safe, assuming no double-trigger 
-        # (or accepting we fixed it if it happens).
-        # Actually safer: Set to 0. Create Move. Check if updated. If not, update.
-        
-        product_stock = ProductStock(
-            product_id=product.id,
-            on_hand_qty=0
-        )
-        session.add(product_stock)
-        session.flush()
-        
-        if initial_stock_decimal > 0:
-            # Create Stock Move (IN / MANUAL)
-            stock_move = StockMove(
-                tenant_id=g.tenant_id,
-                date=datetime.now(),
-                type=StockMoveType.IN,
-                reference_type=StockReferenceType.MANUAL,
-                reference_id=None,  # No specific reference ID for initial stock
-                notes='Inventario Inicial'
-            )
-            session.add(stock_move)
-            session.flush()
-            
-            stock_move_line = StockMoveLine(
-                stock_move_id=stock_move.id,
-                product_id=product.id,
-                qty=initial_stock_decimal,
-                uom_id=int(uom_id),
-                unit_cost=cost_decimal  # Initial stock valued at cost
-            )
-            session.add(stock_move_line)
-            session.flush()
-            
-            # Update ProductStock manually to ensure it reflects the move
-            # (In case there is no DB trigger)
-            # We refresh to see if it was updated by a trigger
-            session.refresh(product_stock)
-            if product_stock.on_hand_qty == 0:
-                product_stock.on_hand_qty = initial_stock_decimal
-                session.add(product_stock)
-
         session.commit()
         
         # PASO 8: Invalidate products cache
@@ -549,25 +428,10 @@ def create_product():
         else:
             flash(f'Error de integridad al crear producto: {error_msg}', 'danger')
         
-        # Preserve form data
-        form_product = {
-            'name': name,
-            'sku': sku,
-            'barcode': barcode,
-            'category_id': int(category_id) if category_id else None,
-            'uom_id': int(uom_id) if uom_id else None,
-            'sale_price': sale_price_decimal,
-            'cost': cost_decimal,
-            'min_stock_qty': min_stock_qty_decimal,
-            'active': active,
-            'image_path': None,
-            'initial_stock': initial_stock_decimal if 'initial_stock_decimal' in locals() else 0
-        }
-            
         uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
         categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
         return render_template('products/form.html',
-                             product=form_product,
+                             product=None,
                              uoms=uoms,
                              categories=categories,
                              action='new')
@@ -779,25 +643,10 @@ def update_product(product_id):
         else:
             flash(f'Error de integridad al actualizar producto: {error_msg}', 'danger')
         
-        # Preserve form data
-        form_product = {
-            'id': product_id,
-            'name': name,
-            'sku': sku,
-            'barcode': barcode,
-            'category_id': int(category_id) if category_id else None,
-            'uom_id': int(uom_id) if uom_id else None,
-            'sale_price': sale_price_decimal,
-            'cost': cost_decimal,
-            'min_stock_qty': min_stock_qty_decimal,
-            'active': active,
-            'image_path': product.image_path if product else None
-        }
-        
         uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
         categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
         return render_template('products/form.html',
-                             product=form_product,
+                             product=product,
                              uoms=uoms,
                              categories=categories,
                              action='edit')
