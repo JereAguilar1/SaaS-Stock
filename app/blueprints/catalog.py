@@ -13,6 +13,39 @@ from app.services.cache_service import get_cache
 catalog_bp = Blueprint('catalog', __name__, url_prefix='/products')
 
 
+
+@catalog_bp.route('/check-sku', methods=['POST'])
+@require_login
+@require_tenant
+def check_sku():
+    """Check if SKU already exists in the tenant."""
+    session = get_session()
+    sku = request.form.get('sku', '').strip()
+    product_id = request.form.get('product_id', '').strip()
+    
+    if not sku:
+        return render_template('products/_check_sku.html', error=None)
+        
+    query = session.query(Product).filter(
+        Product.tenant_id == g.tenant_id,
+        Product.sku == sku
+    )
+    
+    # If editing, exclude current product
+    if product_id:
+        try:
+            query = query.filter(Product.id != int(product_id))
+        except ValueError:
+            pass
+            
+    exists = query.first()
+    
+    if exists:
+        return render_template('products/_check_sku.html', error=f"El SKU '{sku}' ya existe")
+    
+    return render_template('products/_check_sku.html', error=None)
+
+
 def invalidate_products_cache(tenant_id: int):
     """Invalidate all products cache for a tenant (PASO 8)."""
     try:
@@ -434,10 +467,24 @@ def create_product():
         else:
             flash(f'Error de integridad al crear producto: {error_msg}', 'danger')
         
+        # Preserve form data
+        form_product = {
+            'name': name,
+            'sku': sku,
+            'barcode': barcode,
+            'category_id': int(category_id) if category_id else None,
+            'uom_id': int(uom_id) if uom_id else None,
+            'sale_price': sale_price_decimal,
+            'cost': cost_decimal,
+            'min_stock_qty': min_stock_qty_decimal,
+            'active': active,
+            'image_path': None 
+        }
+            
         uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
         categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
         return render_template('products/form.html',
-                             product=None,
+                             product=form_product,
                              uoms=uoms,
                              categories=categories,
                              action='new')
@@ -649,10 +696,25 @@ def update_product(product_id):
         else:
             flash(f'Error de integridad al actualizar producto: {error_msg}', 'danger')
         
+        # Preserve form data
+        form_product = {
+            'id': product_id,
+            'name': name,
+            'sku': sku,
+            'barcode': barcode,
+            'category_id': int(category_id) if category_id else None,
+            'uom_id': int(uom_id) if uom_id else None,
+            'sale_price': sale_price_decimal,
+            'cost': cost_decimal,
+            'min_stock_qty': min_stock_qty_decimal,
+            'active': active,
+            'image_path': product.image_path if product else None
+        }
+        
         uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
         categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
         return render_template('products/form.html',
-                             product=product,
+                             product=form_product,
                              uoms=uoms,
                              categories=categories,
                              action='edit')

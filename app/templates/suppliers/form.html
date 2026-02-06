@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if action == 'new' %}Nuevo Proveedor{% else %}Editar Proveedor{% endif %} - Sistema Ferretería
+{% if action == 'new' %}Nuevo Proveedor{% else %}Editar Proveedor{% endif %} - Sistema de Gestión
 {% endblock %}
 
 {% block page_title %}{% if action == 'new' %}Nuevo Proveedor{% else %}Editar Proveedor{% endif %}{% endblock %}
@@ -32,7 +32,11 @@
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
                             value="{{ supplier.name if supplier else '' }}" required maxlength="255"
-                            placeholder="Razón Social o Nombre Fantasía" autofocus autocomplete="off">
+                            placeholder="Razón Social o Nombre Fantasía" autofocus autocomplete="off"
+                            hx-post="{{ url_for('suppliers.check_name') }}" hx-trigger="keyup changed delay:500ms"
+                            hx-target="#name-error-container" hx-swap="outerHTML" hx-include="[name='supplier_id']">
+                        <input type="hidden" name="supplier_id" value="{{ supplier.id if supplier else '' }}">
+                        <div id="name-error-container"></div>
                     </div>
 
                     <!-- Tax ID and Phone -->
@@ -72,7 +76,7 @@
                         <a href="{{ url_for('suppliers.list_suppliers') }}" class="btn-custom btn-secondary-custom">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn-custom btn-primary-custom">
+                        <button type="submit" id="save-supplier-btn" class="btn-custom btn-primary-custom">
                             <i class="bi bi-save"></i>
                             {% if action == 'new' %}Crear Proveedor{% else %}Guardar Cambios{% endif %}
                         </button>

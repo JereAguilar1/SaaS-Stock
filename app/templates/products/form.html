@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %} - Sistema Ferretería
+{% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %} - Sistema de Gestión
 {% endblock %}
 
 {% block page_title %}{% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %}{% endblock %}
@@ -49,7 +49,7 @@
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
                             value="{{ product.name if product else '' }}" required maxlength="255"
-                            placeholder="Ej: Martillo Galponero 25mm" autocomplete="off"
+                            placeholder="Ej: Producto A" autocomplete="off"
                             style="font-size: var(--font-size-lg); font-weight: var(--font-weight-medium);">
                     </div>
 
@@ -59,7 +59,11 @@
                             <label for="sku" class="form-label-custom">SKU</label>
                             <input type="text" class="form-input-custom" id="sku" name="sku"
                                 value="{{ product.sku if product else '' }}" maxlength="100"
-                                placeholder="Código interno" autocomplete="off">
+                                placeholder="Código interno" autocomplete="off"
+                                hx-post="{{ url_for('catalog.check_sku') }}" hx-trigger="keyup changed delay:500ms"
+                                hx-target="#sku-error-container" hx-swap="outerHTML" hx-include="[name='product_id']">
+                            <input type="hidden" name="product_id" value="{{ product.id if product else '' }}">
+                            <div id="sku-error-container"></div>
                         </div>
                         <div class="form-group">
                             <label for="barcode" class="form-label-custom">Código de Barras</label>
@@ -191,7 +195,7 @@
                         </small>
                     </div>
 
-                    {% if product %}
+                    {% if product and product.id %}
                     <!-- Stock Info (read-only) -->
                     <div class="alert-custom alert-info" style="margin-top: var(--spacing-6);">
                         <i class="alert-custom-icon bi bi-info-circle"></i>
@@ -208,8 +212,8 @@
                         <a href="{{ url_for('catalog.list_products') }}" class="btn-custom btn-secondary-custom">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn-custom btn-primary-custom" {% if not uoms or uoms|length==0
-                            %}disabled style="opacity: 0.5; cursor: not-allowed;" {% endif %}>
+                        <button type="submit" id="save-product-btn" class="btn-custom btn-primary-custom" {% if not uoms
+                            or uoms|length==0 %}disabled style="opacity: 0.5; cursor: not-allowed;" {% endif %}>
                             <i class="bi bi-save"></i>
                             {% if action == 'new' %}Crear Producto{% else %}Guardar Cambios{% endif %}
                         </button>
@@ -371,19 +375,8 @@
                     this.value = formatSmartAr(numValue);
                 } else {
                     this.value = '0,00';
-                    if (this.value && this.value !== '') {
-                        const numValue = parseFloat(this.value);
-                        if (!isNaN(numValue) && numValue > 0) {
-                            // Mostrar formato visual temporalmente
-                            const formatted = formatPriceAr(numValue);
-                            this.setAttribute('data-raw-value', this.value);
-                            this.value = formatted;
-                            this.type = 'text';
-                        } else if (this.value === '') {
-                            this.value = '0,00';
-                        }
-                    }
-                });
+                }
+            });
 
             salePriceInput.addEventListener('focus', function () {
                 let val = this.value;
@@ -410,11 +403,13 @@
                 // Evitar múltiples comas
                 if ((this.value.match(/,/g) || []).length > 1) {
                     this.value = this.value.replace(/,$/, '');
-                    // Limpiar si es 0,00 o 0
-                    if (this.value === '0,00' || this.value === '0') {
-                        this.value = '';
-                    }
-                });
+                }
+
+                // Limpiar si es 0,00 o 0
+                if (this.value === '0,00' || this.value === '0') {
+                    this.value = '';
+                }
+            });
         }
 
         // Formatear stock mínimo al perder el foco

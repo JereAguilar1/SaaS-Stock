@@ -37,6 +37,25 @@ def generate_slug(name):
     
     return slug
 
+from sqlalchemy import func
+
+@auth_bp.route('/check-email', methods=['POST'])
+def check_email():
+    """Check if email already exists."""
+    email = request.form.get('email', '').strip()
+    
+    if not email or not is_valid_email(email):
+        return render_template('auth/_check_email.html', error=None)
+        
+    user = db_session.query(AppUser).filter(
+        func.lower(AppUser.email) == email.lower()
+    ).first()
+    
+    if user:
+        return render_template('auth/_check_email.html', error="Este email ya está registrado")
+    
+    return render_template('auth/_check_email.html', error=None)
+
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -83,7 +102,8 @@ def register():
         if errors:
             for error in errors:
                 flash(error, 'danger')
-            return render_template('auth/register.html'), 400
+            return render_template('auth/register.html',
+                                 email=email, full_name=full_name, business_name=business_name), 400
         
         try:
             # 1. Create Tenant
@@ -140,14 +160,16 @@ def register():
                 flash('Este email ya está registrado. Usa otro o inicia sesión.', 'danger')
             else:
                 flash('Error al crear la cuenta. Intenta nuevamente.', 'danger')
-            return render_template('auth/register.html'), 400
+            return render_template('auth/register.html',
+                                 email=email, full_name=full_name, business_name=business_name), 400
         except Exception as e:
             db_session.rollback()
             flash(f'Error inesperado: {str(e)}', 'danger')
-            return render_template('auth/register.html'), 500
+            return render_template('auth/register.html',
+                                 email=email, full_name=full_name, business_name=business_name), 500
     
     # GET request - show registration form
-    return render_template('auth/register.html')
+    return render_template('auth/register.html', email='', full_name='', business_name='')
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -307,7 +329,7 @@ def create_business():
         
         if not business_name:
             flash('El nombre del negocio es requerido.', 'danger')
-            return render_template('auth/create_business.html'), 400
+            return render_template('auth/create_business.html', business_name=business_name), 400
             
         try:
             # Create Tenant
@@ -348,13 +370,13 @@ def create_business():
         except IntegrityError:
             db_session.rollback()
             flash('Error al crear el negocio. Intenta nuevamente.', 'danger')
-            return render_template('auth/create_business.html'), 400
+            return render_template('auth/create_business.html', business_name=business_name), 400
         except Exception as e:
             db_session.rollback()
             flash(f'Error inesperado: {str(e)}', 'danger')
-            return render_template('auth/create_business.html'), 500
+            return render_template('auth/create_business.html', business_name=business_name), 500
 
-    return render_template('auth/create_business.html')
+    return render_template('auth/create_business.html', business_name='')
 
 
 @auth_bp.route('/')

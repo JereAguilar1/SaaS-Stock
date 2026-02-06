@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Invitar Usuario - Sistema Ferretería{% endblock %}
+{% block title %}Invitar Usuario - Sistema de Gestión{% endblock %}
 
 {% block content %}
 <div class="container py-5">
@@ -14,7 +14,7 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted mb-4">
-                        Completa el formulario para generar un link de invitación. 
+                        Completa el formulario para generar un link de invitación.
                         El usuario recibirá un email con instrucciones para crear su cuenta.
                     </p>
 
@@ -22,12 +22,8 @@
                         <!-- Email -->
                         <div class="mb-3">
                             <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" 
-                                   class="form-control" 
-                                   id="email" 
-                                   name="email" 
-                                   required 
-                                   placeholder="usuario@ejemplo.com">
+                            <input type="email" class="form-control" id="email" name="email" required
+                                value="{{ email if email else '' }}" placeholder="usuario@ejemplo.com">
                             <small class="form-text text-muted">
                                 El usuario recibirá la invitación en este email.
                             </small>
@@ -35,13 +31,10 @@
 
                         <!-- Full Name -->
                         <div class="mb-3">
-                            <label for="full_name" class="form-label">Nombre Completo <span class="text-danger">*</span></label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="full_name" 
-                                   name="full_name" 
-                                   required 
-                                   placeholder="Juan Pérez">
+                            <label for="full_name" class="form-label">Nombre Completo <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="full_name" name="full_name" required
+                                value="{{ full_name if full_name else '' }}" placeholder="Juan Pérez">
                         </div>
 
                         <!-- Role -->
@@ -49,8 +42,10 @@
                             <label for="role" class="form-label">Rol <span class="text-danger">*</span></label>
                             <select class="form-select" id="role" name="role" required>
                                 <option value="">Selecciona un rol...</option>
-                                <option value="ADMIN">ADMIN - Administrador</option>
-                                <option value="STAFF">STAFF - Personal</option>
+                                <option value="ADMIN" {% if role=='ADMIN' %}selected{% endif %}>ADMIN - Administrador
+                                </option>
+                                <option value="STAFF" {% if role=='STAFF' %}selected{% endif %}>STAFF - Personal
+                                </option>
                             </select>
                             <small class="form-text text-muted">
                                 No puedes invitar usuarios con rol OWNER.
@@ -63,8 +58,10 @@
                                 <i class="bi bi-info-circle me-2"></i>Permisos por Rol:
                             </h6>
                             <ul class="mb-0 small">
-                                <li><strong>ADMIN:</strong> Gestionar productos, ventas, proveedores, facturas, ver finanzas.</li>
-                                <li><strong>STAFF:</strong> Registrar ventas, crear presupuestos, ver catálogo (sin acceso a finanzas).</li>
+                                <li><strong>ADMIN:</strong> Gestionar productos, ventas, proveedores, facturas, ver
+                                    finanzas.</li>
+                                <li><strong>STAFF:</strong> Registrar ventas, crear presupuestos, ver catálogo (sin
+                                    acceso a finanzas).</li>
                             </ul>
                         </div>
 

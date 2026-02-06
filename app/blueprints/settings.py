@@ -47,6 +47,38 @@ def invalidate_products_cache(tenant_id: int):
 # UOM (Unidades de Medida) Routes - TENANT-SCOPED
 # ============================================================================
 
+@settings_bp.route('/uoms/check-name', methods=['POST'])
+@require_login
+@require_tenant
+def check_uom_name():
+    """Check if UOM name already exists in the tenant."""
+    session = get_session()
+    name = request.form.get('name', '').strip()
+    uom_id = request.form.get('uom_id', '').strip()
+    
+    if not name:
+        return render_template('settings/_check_uom_name.html', error=None)
+        
+    query = session.query(UOM).filter(
+        UOM.tenant_id == g.tenant_id,
+        func.lower(UOM.name) == func.lower(name)
+    )
+    
+    # If editing, exclude current uom
+    if uom_id:
+        try:
+            query = query.filter(UOM.id != int(uom_id))
+        except ValueError:
+            pass
+            
+    exists = query.first()
+    
+    if exists:
+        return render_template('settings/_check_uom_name.html', error=f"Ya existe una UOM con este nombre")
+    
+    return render_template('settings/_check_uom_name.html', error=None)
+
+
 @settings_bp.route('/uoms')
 @require_login
 @require_tenant
@@ -83,15 +115,15 @@ def new_uom():
         
         if len(name) > 80:
             flash('El nombre debe tener máximo 80 caracteres.', 'danger')
-            return render_template('settings/uoms_form.html', uom=None)
+            return render_template('settings/uoms_form.html', uom={'name': name, 'symbol': symbol})
         
         if not symbol:
             flash('El símbolo es obligatorio.', 'danger')
-            return render_template('settings/uoms_form.html', uom=None)
+            return render_template('settings/uoms_form.html', uom={'name': name, 'symbol': symbol})
         
         if len(symbol) > 16:
             flash('El símbolo debe tener máximo 16 caracteres.', 'danger')
-            return render_template('settings/uoms_form.html', uom=None)
+            return render_template('settings/uoms_form.html', uom={'name': name, 'symbol': symbol})
         
         session = get_session()
         
@@ -103,7 +135,7 @@ def new_uom():
         
         if existing_name:
             flash(f'Ya existe una unidad de medida con el nombre "{name}" en su negocio.', 'danger')
-            return render_template('settings/uoms_form.html', uom=None)
+            return render_template('settings/uoms_form.html', uom={'name': name, 'symbol': symbol})
         
         # Create UOM with tenant_id
         try:
@@ -123,7 +155,7 @@ def new_uom():
         except Exception as e:
             session.rollback()
             flash(f'Error al crear unidad de medida: {str(e)}', 'danger')
-            return render_template('settings/uoms_form.html', uom=None)
+            return render_template('settings/uoms_form.html', uom={'name': name, 'symbol': symbol})
     
     # GET request
     return render_template('settings/uoms_form.html', uom=None)
@@ -154,15 +186,15 @@ def edit_uom(uom_id):
         
         if len(name) > 80:
             flash('El nombre debe tener máximo 80 caracteres.', 'danger')
-            return render_template('settings/uoms_form.html', uom=uom)
+            return render_template('settings/uoms_form.html', uom={'id': uom.id, 'name': name, 'symbol': symbol})
         
         if not symbol:
             flash('El símbolo es obligatorio.', 'danger')
-            return render_template('settings/uoms_form.html', uom=uom)
+            return render_template('settings/uoms_form.html', uom={'id': uom.id, 'name': name, 'symbol': symbol})
         
         if len(symbol) > 16:
             flash('El símbolo debe tener máximo 16 caracteres.', 'danger')
-            return render_template('settings/uoms_form.html', uom=uom)
+            return render_template('settings/uoms_form.html', uom={'id': uom.id, 'name': name, 'symbol': symbol})
         
         # Check if name already exists in tenant (excluding current UOM)
         existing_name = session.query(UOM).filter(
@@ -173,7 +205,7 @@ def edit_uom(uom_id):
         
         if existing_name:
             flash(f'Ya existe otra unidad de medida con el nombre "{name}" en su negocio.', 'danger')
-            return render_template('settings/uoms_form.html', uom=uom)
+            return render_template('settings/uoms_form.html', uom={'id': uom.id, 'name': name, 'symbol': symbol})
         
         # Update UOM
         try:
@@ -189,7 +221,7 @@ def edit_uom(uom_id):
         except Exception as e:
             session.rollback()
             flash(f'Error al actualizar unidad de medida: {str(e)}', 'danger')
-            return render_template('settings/uoms_form.html', uom=uom)
+            return render_template('settings/uoms_form.html', uom={'id': uom.id, 'name': name, 'symbol': symbol})
     
     # GET request
     return render_template('settings/uoms_form.html', uom=uom)
@@ -243,6 +275,38 @@ def delete_uom(uom_id):
 # Category Routes - TENANT-SCOPED
 # ============================================================================
 
+@settings_bp.route('/categories/check-name', methods=['POST'])
+@require_login
+@require_tenant
+def check_category_name():
+    """Check if category name already exists in the tenant."""
+    session = get_session()
+    name = request.form.get('name', '').strip()
+    category_id = request.form.get('category_id', '').strip()
+    
+    if not name:
+        return render_template('settings/_check_category_name.html', error=None)
+        
+    query = session.query(Category).filter(
+        Category.tenant_id == g.tenant_id,
+        func.lower(Category.name) == func.lower(name)
+    )
+    
+    # If editing, exclude current category
+    if category_id:
+        try:
+            query = query.filter(Category.id != int(category_id))
+        except ValueError:
+            pass
+            
+    exists = query.first()
+    
+    if exists:
+        return render_template('settings/_check_category_name.html', error=f"Ya existe una categoría con este nombre")
+    
+    return render_template('settings/_check_category_name.html', error=None)
+
+
 @settings_bp.route('/categories')
 @require_login
 @require_tenant
@@ -278,7 +342,7 @@ def new_category():
         
         if len(name) > 120:
             flash('El nombre debe tener máximo 120 caracteres.', 'danger')
-            return render_template('settings/categories_form.html', category=None)
+            return render_template('settings/categories_form.html', category={'name': name})
         
         session = get_session()
         
@@ -290,7 +354,7 @@ def new_category():
         
         if existing:
             flash(f'Ya existe una categoría con el nombre "{name}" en su negocio.', 'danger')
-            return render_template('settings/categories_form.html', category=None)
+            return render_template('settings/categories_form.html', category={'name': name})
         
         # Create category with tenant_id
         try:
@@ -310,7 +374,7 @@ def new_category():
         except Exception as e:
             session.rollback()
             flash(f'Error al crear categoría: {str(e)}', 'danger')
-            return render_template('settings/categories_form.html', category=None)
+            return render_template('settings/categories_form.html', category={'name': name})
     
     # GET request
     return render_template('settings/categories_form.html', category=None)
@@ -340,7 +404,7 @@ def edit_category(category_id):
         
         if len(name) > 120:
             flash('El nombre debe tener máximo 120 caracteres.', 'danger')
-            return render_template('settings/categories_form.html', category=category)
+            return render_template('settings/categories_form.html', category={'id': category.id, 'name': name})
         
         # Check if name already exists in tenant (excluding current category)
         existing = session.query(Category).filter(
@@ -351,7 +415,7 @@ def edit_category(category_id):
         
         if existing:
             flash(f'Ya existe otra categoría con el nombre "{name}" en su negocio.', 'danger')
-            return render_template('settings/categories_form.html', category=category)
+            return render_template('settings/categories_form.html', category={'id': category.id, 'name': name})
         
         # Update category
         try:
@@ -367,7 +431,7 @@ def edit_category(category_id):
         except Exception as e:
             session.rollback()
             flash(f'Error al actualizar categoría: {str(e)}', 'danger')
-            return render_template('settings/categories_form.html', category=category)
+            return render_template('settings/categories_form.html', category={'id': category.id, 'name': name})
     
     # GET request
     return render_template('settings/categories_form.html', category=category)

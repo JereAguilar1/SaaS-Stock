@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ 'Editar' if uom else 'Nueva' }} Unidad de Medida - Sistema Ferretería{% endblock %}
+{% block title %}{{ 'Editar' if uom else 'Nueva' }} Unidad de Medida - Sistema de Gestión{% endblock %}
 
 {% block page_title %}{{ 'Editar' if uom else 'Nueva' }} Unidad de Medida{% endblock %}
 
@@ -27,7 +27,11 @@
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
                             value="{{ uom.name if uom else '' }}" placeholder="Ej: Unidad, Metro, Kilogramo, Litro"
-                            maxlength="80" required autofocus autocomplete="off">
+                            maxlength="80" required autofocus autocomplete="off"
+                            hx-post="{{ url_for('settings.check_uom_name') }}" hx-trigger="keyup changed delay:500ms"
+                            hx-target="#uom-name-error-container" hx-swap="outerHTML" hx-include="[name='uom_id']">
+                        <input type="hidden" name="uom_id" value="{{ uom.id if uom else '' }}">
+                        <div id="uom-name-error-container"></div>
                         <small
                             style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
                             Nombre completo de la unidad de medida (máx. 80 caracteres)
@@ -66,7 +70,7 @@
                         <a href="{{ url_for('settings.list_uoms') }}" class="btn-custom btn-secondary-custom">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn-custom btn-primary-custom">
+                        <button type="submit" id="save-uom-btn" class="btn-custom btn-primary-custom">
                             <i class="bi bi-save"></i> {{ 'Actualizar' if uom else 'Crear' }}
                         </button>
                     </div>

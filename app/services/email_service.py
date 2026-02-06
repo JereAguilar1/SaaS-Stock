@@ -60,7 +60,7 @@ def send_invitation_email(
             return True  # NO romper el flujo de la app
 
         # Subject con acentos y emojis (Flask-Mail maneja UTF-8)
-        subject = f"🎉 Invitación a {tenant_name} - Sistema Ferretería"
+        subject = f"🎉 Invitación a {tenant_name} - Sistema de Gestión"
 
         badge_bg = "#ffc107" if role == "ADMIN" else "#6c757d"
         badge_color = "#000" if role == "ADMIN" else "#fff"

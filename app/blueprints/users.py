@@ -106,15 +106,15 @@ def invite():
         # Validations
         if not email or '@' not in email:
             flash('Email inválido.', 'danger')
-            return render_template('users/invite.html')
+            return render_template('users/invite.html', email=email, full_name=full_name, role=role)
         
         if not full_name:
             flash('El nombre completo es requerido.', 'danger')
-            return render_template('users/invite.html')
+            return render_template('users/invite.html', email=email, full_name=full_name, role=role)
         
         if role not in ['ADMIN', 'STAFF']:
             flash('Rol inválido. Solo puedes invitar ADMIN o STAFF.', 'danger')
-            return render_template('users/invite.html')
+            return render_template('users/invite.html', email=email, full_name=full_name, role=role)
         
         session = get_session()
         
@@ -151,7 +151,7 @@ def invite():
         try:
             from app.services.email_service import send_invitation_email
             tenant = session.query(Tenant).filter_by(id=g.tenant_id).first()
-            tenant_name = tenant.name if tenant else "Sistema Ferretería"
+            tenant_name = tenant.name if tenant else "Sistema de Gestión"
             
             email_sent = send_invitation_email(
                 to_email=email,
@@ -175,7 +175,7 @@ def invite():
         return redirect(url_for('users.list_users'))
     
     # GET request
-    return render_template('users/invite.html')
+    return render_template('users/invite.html', email='', full_name='', role='STAFF')
 
 
 @users_bp.route('/accept-invite/<token>', methods=['GET', 'POST'])

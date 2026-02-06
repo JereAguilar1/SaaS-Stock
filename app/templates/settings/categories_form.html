@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ 'Editar' if category else 'Nueva' }} Categoría - Sistema Ferretería{% endblock %}
+{% block title %}{{ 'Editar' if category else 'Nueva' }} Categoría - Sistema de Gestión{% endblock %}
 
 {% block page_title %}{{ 'Editar' if category else 'Nueva' }} Categoría{% endblock %}
 
@@ -27,8 +27,12 @@
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
                             value="{{ category.name if category else '' }}"
-                            placeholder="Ej: Herramientas Manuales, Pintura, Electricidad" maxlength="120" required
-                            autofocus autocomplete="off">
+                            placeholder="Ej: Ropa, Bebidas, Herramientas" maxlength="120" required autofocus
+                            autocomplete="off" hx-post="{{ url_for('settings.check_category_name') }}"
+                            hx-trigger="keyup changed delay:500ms" hx-target="#category-name-error-container"
+                            hx-swap="outerHTML" hx-include="[name='category_id']">
+                        <input type="hidden" name="category_id" value="{{ category.id if category else '' }}">
+                        <div id="category-name-error-container"></div>
                         <small
                             style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
                             Nombre de la categoría (máx. 120 caracteres)
@@ -40,12 +44,10 @@
                         <div class="alert-custom-content">
                             <strong>Ejemplos de categorías:</strong>
                             <ul style="margin: var(--spacing-2) 0 0 0; padding-left: var(--spacing-4);">
-                                <li><strong>Herramientas Manuales</strong> - Martillos, destornilladores, llaves, etc.
-                                </li>
-                                <li><strong>Herramientas Eléctricas</strong> - Taladros, amoladoras, sierras, etc.</li>
-                                <li><strong>Pintura y Accesorios</strong> - Pinturas, pinceles, rodillos, etc.</li>
-                                <li><strong>Electricidad</strong> - Cables, interruptores, tomas, etc.</li>
-                                <li><strong>Plomería</strong> - Caños, llaves, grifos, etc.</li>
+                                <li><strong>Ropa</strong> - Remeras, Pantalones, Vestidos.</li>
+                                <li><strong>Bebidas</strong> - Gaseosas, Aguas, Jugos.</li>
+                                <li><strong>Herramientas</strong> - Manuales, Eléctricas.</li>
+                                <li><strong>Almacén</strong> - Comestibles, Limpieza.</li>
                             </ul>
                         </div>
                     </div>
@@ -55,7 +57,7 @@
                         <a href="{{ url_for('settings.list_categories') }}" class="btn-custom btn-secondary-custom">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn-custom btn-primary-custom">
+                        <button type="submit" id="save-category-btn" class="btn-custom btn-primary-custom">
                             <i class="bi bi-save"></i> {{ 'Actualizar' if category else 'Crear' }}
                         </button>
                     </div>

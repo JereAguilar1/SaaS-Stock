@@ -8,6 +8,46 @@ from app.middleware import require_login, require_tenant
 
 suppliers_bp = Blueprint('suppliers', __name__, url_prefix='/suppliers')
 
+@suppliers_bp.route('/check-name', methods=['POST'])
+@require_login
+@require_tenant
+def check_name():
+    """Check if supplier name already exists in the tenant."""
+    session = get_session()
+    name = request.form.get('name', '').strip()
+    supplier_id = request.form.get('supplier_id', '').strip()
+    
+    if not name:
+        return render_template('suppliers/_check_name.html', error=None)
+        
+    query = session.query(Supplier).filter(
+        Supplier.tenant_id == g.tenant_id,
+        func.lower(Supplier.name) == name.lower()
+    )
+    
+    # If editing, exclude current supplier
+    if supplier_id:
+        try:
+            query = query.filter(Supplier.id != int(supplier_id))
+        except ValueError:
+            pass
+            
+    exists = query.first()
+    
+    if exists:
+        return render_template('suppliers/_check_name.html', error=f"El proveedor '{name}' ya existe")
+    
+    return render_template('suppliers/_check_name.html', error=None)
+
+
+@suppliers_bp.route('/list')
+@require_login
+@require_tenant
+def list_suppliers_alt():
+    """List all suppliers (alias)."""
+    return list_suppliers()
+
+
 @suppliers_bp.route('/')
 @require_login
 @require_tenant
@@ -96,12 +136,29 @@ def create_supplier():
             flash(f'El proveedor "{name}" ya existe en su negocio. Use otro nombre.', 'danger')
         else:
             flash(f'Error al crear proveedor: {str(e)}', 'danger')
-        return render_template('suppliers/form.html', supplier=None, action='new')
+            
+        # Preserve form data
+        form_supplier = {
+            'name': name,
+            'tax_id': tax_id,
+            'phone': phone,
+            'email': email,
+            'notes': notes
+        }
+        return render_template('suppliers/form.html', supplier=form_supplier, action='new')
         
     except Exception as e:
         session.rollback()
         flash(f'Error al crear proveedor: {str(e)}', 'danger')
-        return redirect(url_for('suppliers.list_suppliers'))
+        # Preserve form data on general error too
+        form_supplier = {
+            'name': name,
+            'tax_id': tax_id,
+            'phone': phone,
+            'email': email,
+            'notes': notes
+        }
+        return render_template('suppliers/form.html', supplier=form_supplier, action='new')
 
 
 @suppliers_bp.route('/<int:supplier_id>/edit', methods=['GET'])
@@ -174,8 +231,20 @@ def update_supplier(supplier_id):
             flash(f'El proveedor "{name}" ya existe en su negocio. Use otro nombre.', 'danger')
         else:
             flash(f'Error al actualizar proveedor: {str(e)}', 'danger')
-        return render_template('suppliers/form.html', supplier=supplier, action='edit')
+            
+        # Preserve form data
+        form_supplier = {
+            'id': supplier_id,
+            'name': name,
+            'tax_id': tax_id,
+            'phone': phone,
+            'email': email,
+            'notes': notes
+        }
+        return render_template('suppliers/form.html', supplier=form_supplier, action='edit')
         
+    except Exception as e:
+        session.rollback()
         flash(f'Error al actualizar proveedor: {str(e)}', 'danger')
         return redirect(url_for('suppliers.list_suppliers'))
 
