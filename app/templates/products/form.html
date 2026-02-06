@@ -48,8 +48,13 @@
                             Nombre <span style="color: var(--color-danger);">*</span>
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
+<<<<<<< HEAD
                             value="{{ product.name if product else (request.args.get('name', '') if action == 'new' else '') }}"
                             required maxlength="255" placeholder="Ej: Martillo Galponero 25mm" autocomplete="off"
+=======
+                            value="{{ product.name or '' if product else '' }}" required maxlength="255"
+                            placeholder="Ej: Producto A" autocomplete="off"
+>>>>>>> fix-none
                             style="font-size: var(--font-size-lg); font-weight: var(--font-weight-medium);">
                     </div>
 
@@ -58,13 +63,22 @@
                         <div class="form-group">
                             <label for="sku" class="form-label-custom">SKU</label>
                             <input type="text" class="form-input-custom" id="sku" name="sku"
+<<<<<<< HEAD
                                 value="{{ product.sku if product else '' }}" maxlength="100"
                                 placeholder="Código interno" autocomplete="off">
+=======
+                                value="{{ product.sku or '' if product else '' }}" maxlength="100"
+                                placeholder="Código interno" autocomplete="off"
+                                hx-post="{{ url_for('catalog.check_sku') }}" hx-trigger="keyup changed delay:500ms"
+                                hx-target="#sku-error-container" hx-swap="outerHTML" hx-include="[name='product_id']">
+                            <input type="hidden" name="product_id" value="{{ product.id or '' if product else '' }}">
+                            <div id="sku-error-container"></div>
+>>>>>>> fix-none
                         </div>
                         <div class="form-group">
                             <label for="barcode" class="form-label-custom">Código de Barras</label>
                             <input type="text" class="form-input-custom" id="barcode" name="barcode"
-                                value="{{ product.barcode if product else '' }}" maxlength="100"
+                                value="{{ product.barcode or '' if product else '' }}" maxlength="100"
                                 placeholder="EAN-13 / UPC" autocomplete="off">
                         </div>
                     </div>
@@ -140,13 +154,33 @@
                             </div>
                         </div>
 
+<<<<<<< HEAD
+=======
+                        {% if action == 'new' %}
+                        <div class="form-group">
+                            <label for="initial_stock" class="form-label-custom">
+                                Stock Actual (Inicial)
+                            </label>
+                            <input type="number" class="form-input-custom" id="initial_stock" name="initial_stock"
+                                value="{{ product.initial_stock or '' if product and product.initial_stock is not none else '' }}"
+                                step="1" min="0" autocomplete="off" placeholder="0"
+                                oninput="if(this.value < 0) this.value = 0;">
+                        </div>
+                        {% endif %}
+
+>>>>>>> fix-none
                         <div class="form-group">
                             <label for="min_stock_qty" class="form-label-custom">
                                 Stock Mínimo
                             </label>
                             <input type="number" class="form-input-custom" id="min_stock_qty" name="min_stock_qty"
+<<<<<<< HEAD
                                 value="{{ product.min_stock_qty | int if (product and product.min_stock_qty) else '' }}"
                                 step="1" min="0" autocomplete="off">
+=======
+                                value="{{ product.min_stock_qty | int if product and product.min_stock_qty is not none else '' }}"
+                                step="1" min="0" autocomplete="off" oninput="if(this.value < 0) this.value = 0;">
+>>>>>>> fix-none
                         </div>
                     </div>
 

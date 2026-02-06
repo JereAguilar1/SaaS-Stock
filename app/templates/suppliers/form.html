@@ -31,11 +31,11 @@
                             Nombre <span style="color: var(--color-danger);">*</span>
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
-                            value="{{ supplier.name if supplier else '' }}" required maxlength="255"
+                            value="{{ supplier.name or '' if supplier else '' }}" required maxlength="255"
                             placeholder="Razón Social o Nombre Fantasía" autofocus autocomplete="off"
                             hx-post="{{ url_for('suppliers.check_name') }}" hx-trigger="keyup changed delay:500ms"
                             hx-target="#name-error-container" hx-swap="outerHTML" hx-include="[name='supplier_id']">
-                        <input type="hidden" name="supplier_id" value="{{ supplier.id if supplier else '' }}">
+                        <input type="hidden" name="supplier_id" value="{{ supplier.id or '' if supplier else '' }}">
                         <div id="name-error-container"></div>
                     </div>
 
@@ -44,13 +44,14 @@
                         <div class="form-group">
                             <label for="tax_id" class="form-label-custom">RFC/RUT/CUIT</label>
                             <input type="text" class="form-input-custom" id="tax_id" name="tax_id"
-                                value="{{ supplier.tax_id if supplier else '' }}" maxlength="50"
+                                value="{{ supplier.tax_id or '' if supplier else '' }}" maxlength="50"
                                 placeholder="Identificación fiscal">
                         </div>
                         <div class="form-group">
                             <label for="phone" class="form-label-custom">Teléfono</label>
                             <input type="text" class="form-input-custom" id="phone" name="phone"
-                                value="{{ supplier.phone if supplier else '' }}" maxlength="50" placeholder="+54 9 ...">
+                                value="{{ supplier.phone or '' if supplier else '' }}" maxlength="50"
+                                placeholder="+54 9 ...">
                         </div>
                     </div>
 
@@ -58,7 +59,7 @@
                     <div class="form-group">
                         <label for="email" class="form-label-custom">Email</label>
                         <input type="email" class="form-input-custom" id="email" name="email"
-                            value="{{ supplier.email if supplier else '' }}" maxlength="255"
+                            value="{{ supplier.email or '' if supplier else '' }}" maxlength="255"
                             placeholder="contacto@proveedor.com">
                     </div>
 
@@ -67,7 +68,7 @@
                         <label for="notes" class="form-label-custom">Notas</label>
                         <textarea class="form-input-custom" id="notes" name="notes" rows="3"
                             placeholder="Información adicional, horarios de atención, etc."
-                            style="resize: vertical; min-height: 100px;">{{ supplier.notes if supplier else '' }}</textarea>
+                            style="resize: vertical; min-height: 100px;">{{ supplier.notes or '' if supplier else '' }}</textarea>
                     </div>
 
                     <!-- Actions -->
