@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 
+from sqlalchemy import or_, func
 
 @users_bp.route('/')
 @require_login
@@ -30,18 +31,62 @@ def list_users():
     session = get_session()
     tenant_id = g.tenant_id
     
+    # Get search params
+    search_query = request.args.get('q', '').strip()
+    
     # Get all user-tenant relationships for this tenant
-    user_tenants = session.query(UserTenant, AppUser).join(
+    query = session.query(UserTenant, AppUser).join(
         AppUser, AppUser.id == UserTenant.user_id
     ).filter(
         UserTenant.tenant_id == tenant_id,
         UserTenant.active == True
-    ).order_by(
+    )
+    
+    if search_query:
+        search_filter = or_(
+            AppUser.full_name.ilike(f'%{search_query}%'),
+            AppUser.email.ilike(f'%{search_query}%')
+        )
+        query = query.filter(search_filter)
+    
+    user_tenants = query.order_by(
         UserTenant.role.desc(),  # OWNER first, then ADMIN, then STAFF
         UserTenant.created_at.asc()
     ).all()
     
-    return render_template('users/list.html', user_tenants=user_tenants)
+    is_htmx = request.headers.get('HX-Request') == 'true'
+    template = 'users/_list_table.html' if is_htmx else 'users/list.html'
+    
+    return render_template(template, user_tenants=user_tenants, search_query=search_query)
+
+
+@users_bp.route('/<int:id>')
+@require_login
+@require_tenant
+@owner_only
+def view_user(id):
+    """
+    View user detail in tenant.
+    Only accessible by OWNER.
+    """
+    session = get_session()
+    tenant_id = g.tenant_id
+    
+    # Get user-tenant relationship
+    user_tenant = session.query(UserTenant, AppUser).join(
+        AppUser, AppUser.id == UserTenant.user_id
+    ).filter(
+        UserTenant.id == id,
+        UserTenant.tenant_id == tenant_id
+    ).first()
+    
+    if not user_tenant:
+        flash('Usuario no encontrado.', 'danger')
+        return redirect(url_for('users.list_users'))
+    
+    ut, user = user_tenant
+    
+    return render_template('users/detail.html', user_tenant=ut, user=user)
 
 
 @users_bp.route('/invite', methods=['GET', 'POST'])

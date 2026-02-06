@@ -3,6 +3,7 @@ Additional tests for Google OAuth logout message bug fix.
 """
 import pytest
 from flask import session as flask_session
+import uuid
 
 
 class TestGoogleOAuthLogoutMessage:
@@ -15,12 +16,14 @@ class TestGoogleOAuthLogoutMessage:
         from app.database import db_session
         
         # Create test user and tenant
-        user = AppUser(email='test@example.com', full_name='Test User', active=True)
+        suffix = str(uuid.uuid4())[:8]
+        email = f'test_{suffix}@example.com'
+        user = AppUser(email=email, full_name='Test User', active=True)
         user.set_password('password123')
         db_session.add(user)
         db_session.flush()
         
-        tenant = Tenant(slug='test-tenant', name='Test Tenant', active=True)
+        tenant = Tenant(slug=f'test-tenant-{suffix}', name=f'Test Tenant {suffix}', active=True)
         db_session.add(tenant)
         db_session.flush()
         
@@ -30,7 +33,7 @@ class TestGoogleOAuthLogoutMessage:
         
         # Login
         client.post('/login', data={
-            'email': 'test@example.com',
+            'email': email,
             'password': 'password123'
         })
         
@@ -83,11 +86,15 @@ class TestGoogleOAuthLogoutMessage:
         from app.models import AppUser, Tenant, UserTenant
         from app.database import db_session
         
-        user = AppUser(email='oauth@example.com', full_name='OAuth User', active=True)
+        suffix = str(uuid.uuid4())[:8]
+        email = f'oauth_{suffix}@example.com'
+        suffix = str(uuid.uuid4())[:8]
+        email = f'oauth_cb_{suffix}@example.com'
+        user = AppUser(email=email, full_name='OAuth User', active=True)
         db_session.add(user)
         db_session.flush()
         
-        tenant = Tenant(slug='oauth-tenant', name='OAuth Tenant', active=True)
+        tenant = Tenant(slug=f'oauth-tenant-{suffix}', name=f'OAuth Tenant {suffix}', active=True)
         db_session.add(tenant)
         db_session.flush()
         

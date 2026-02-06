@@ -1,9 +1,11 @@
-"""
-Pytest configuration and fixtures for SaaS Stock testing.
-"""
-
 import pytest
 from datetime import datetime
+import os
+import uuid
+
+# Force test configuration to use localhost instead of docker service name
+os.environ['DB_HOST'] = 'localhost'
+
 from app import create_app
 from app.database import db_session, get_session
 from app.models import (
@@ -39,9 +41,10 @@ def session():
 @pytest.fixture(scope='function')
 def tenant1(session):
     """Create first test tenant."""
+    suffix = str(uuid.uuid4())[:8]
     tenant = Tenant(
-        slug='test-tenant-1',
-        name='Test Tenant 1',
+        slug=f'test-tenant-1-{suffix}',
+        name=f'Test Tenant 1 {suffix}',
         active=True
     )
     session.add(tenant)
@@ -52,9 +55,10 @@ def tenant1(session):
 @pytest.fixture(scope='function')
 def tenant2(session):
     """Create second test tenant for isolation tests."""
+    suffix = str(uuid.uuid4())[:8]
     tenant = Tenant(
-        slug='test-tenant-2',
-        name='Test Tenant 2',
+        slug=f'test-tenant-2-{suffix}',
+        name=f'Test Tenant 2 {suffix}',
         active=True
     )
     session.add(tenant)
@@ -65,8 +69,9 @@ def tenant2(session):
 @pytest.fixture(scope='function')
 def user1(session, tenant1):
     """Create test user for tenant1."""
+    suffix = str(uuid.uuid4())[:8]
     user = AppUser(
-        email='user1@test.com',
+        email=f'user1-{suffix}@test.com',
         full_name='User One',
         active=True
     )
@@ -89,8 +94,9 @@ def user1(session, tenant1):
 @pytest.fixture(scope='function')
 def user2(session, tenant2):
     """Create test user for tenant2."""
+    suffix = str(uuid.uuid4())[:8]
     user = AppUser(
-        email='user2@test.com',
+        email=f'user2-{suffix}@test.com',
         full_name='User Two',
         active=True
     )
@@ -111,9 +117,18 @@ def user2(session, tenant2):
 
 
 @pytest.fixture(scope='function')
-def uom(session):
-    """Create test UOM (global, not tenant-scoped)."""
-    uom = UOM(name='Unidad', symbol='un')
+def uom(session, tenant1):
+    """Create test UOM for tenant1."""
+    uom = UOM(name='Unidad', symbol='un', tenant_id=tenant1.id)
+    session.add(uom)
+    session.commit()
+    return uom
+
+
+@pytest.fixture(scope='function')
+def uom2(session, tenant2):
+    """Create test UOM for tenant2."""
+    uom = UOM(name='Unidad', symbol='un', tenant_id=tenant2.id)
     session.add(uom)
     session.commit()
     return uom
@@ -158,7 +173,7 @@ def product_tenant1(session, tenant1, category_tenant1, uom):
 
 
 @pytest.fixture(scope='function')
-def product_tenant2(session, tenant2, uom):
+def product_tenant2(session, tenant2, uom2):
     """Create test product for tenant2."""
     category = Category(
         tenant_id=tenant2.id,
@@ -172,7 +187,7 @@ def product_tenant2(session, tenant2, uom):
         name='Product T2',
         sku='SKU-T2-001',
         category_id=category.id,
-        uom_id=uom.id,
+        uom_id=uom2.id,
         sale_price=200.00,
         min_stock_qty=5,
         active=True

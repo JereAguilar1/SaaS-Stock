@@ -1,0 +1,100 @@
+<div class="card-custom">
+    <div class="card-header-custom">
+        <h2 class="card-title">
+            <i class="bi bi-list-ul"></i> Usuarios del Negocio
+        </h2>
+    </div>
+    {% if user_tenants %}
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Fecha de Alta</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user_tenant, user in user_tenants %}
+                <tr>
+                    <td>
+                        <strong style="color: var(--color-text-primary);">{{ user.full_name or 'Sin nombre' }}</strong>
+                        {% if user.id == g.user.id %}
+                        <span class="badge-custom badge-info" style="margin-left: var(--spacing-2);">Tú</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--color-text-secondary);">{{ user.email }}</td>
+                    <td>
+                        {% if user_tenant.role == 'OWNER' %}
+                        <span class="badge-custom badge-danger">
+                            <i class="bi bi-shield-fill-check"></i> OWNER
+                        </span>
+                        {% elif user_tenant.role == 'ADMIN' %}
+                        <span class="badge-custom badge-warning">
+                            <i class="bi bi-shield-fill"></i> ADMIN
+                        </span>
+                        {% elif user_tenant.role == 'STAFF' %}
+                        <span class="badge-custom badge-secondary">
+                            <i class="bi bi-person-badge"></i> STAFF
+                        </span>
+                        {% else %}
+                        <span class="badge-custom badge-secondary">{{ user_tenant.role }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--color-text-muted);">
+                        <i class="bi bi-calendar3"></i>
+                        {{ user_tenant.created_at|datetime_ar }}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if user.id != g.user.id and user_tenant.role != 'OWNER' %}
+                        <div class="table-actions" style="justify-content: center;">
+                            <a href="{{ url_for('users.view_user', id=user_tenant.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Ver Detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('users.edit_user', id=user_tenant.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Editar rol">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form action="{{ url_for('users.remove_user', id=user_tenant.id) }}" method="POST"
+                                style="display: inline;"
+                                onsubmit="return confirm('¿Seguro que deseas remover a {{ user.email }} del negocio?');">
+                                <button type="submit" class="btn-custom btn-danger-custom btn-sm" title="Remover">
+                                    <i class="bi bi-person-x"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer-custom">
+        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+            Total: <strong>{{ user_tenants|length }}</strong> usuario(s)
+            {% if search_query %}
+            para la búsqueda: <strong>"{{ search_query }}"</strong>
+            {% endif %}
+        </p>
+    </div>
+    {% else %}
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-person"></i>
+            <div class="empty-state-title">
+                {% if search_query %}
+                No se encontraron usuarios
+                {% else %}
+                No hay usuarios registrados
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>

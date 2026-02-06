@@ -11,7 +11,7 @@ class ProductStock(Base):
     __tablename__ = 'product_stock'
     
     product_id = Column(BigInteger, ForeignKey('product.id'), primary_key=True)
-    on_hand_qty = Column(Numeric(10, 2), nullable=False, default=0)
+    on_hand_qty = Column(BigInteger, nullable=False, default=0)
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     
     # Relationship

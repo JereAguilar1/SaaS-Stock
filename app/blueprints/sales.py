@@ -1,6 +1,7 @@
 """Sales blueprint for POS and cart management - Multi-Tenant."""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file, current_app, g, abort
 from sqlalchemy import or_, func, and_, desc
+from sqlalchemy.exc import IntegrityError
 from decimal import Decimal, InvalidOperation
 import decimal
 from datetime import datetime
@@ -709,7 +710,7 @@ def list_sales():
     
     try:
         # Get search params
-        sale_id_search = request.args.get('id', '').strip()
+        search_query = request.args.get('q', '').strip()
         
         # Build query (tenant-scoped)
         query = db_session.query(Sale).filter(
@@ -717,20 +718,30 @@ def list_sales():
             Sale.status == SaleStatus.CONFIRMED
         )
         
-        # Search by ID
-        if sale_id_search:
-            try:
-                sale_id = int(sale_id_search)
-                query = query.filter(Sale.id == sale_id)
-            except ValueError:
-                flash('ID de venta inválido', 'warning')
+        # Search by ID or Date (string match)
+        if search_query:
+            # Try to match ID if it looks like a number
+            if search_query.isdigit():
+                query = query.filter(Sale.id == int(search_query))
+            else:
+                # Basic date matching implementation or total amount
+                # For sqlite/dates strings, this might be tricky. 
+                # Let's try to match total amount if it looks like a number
+                try:
+                    amount = float(search_query)
+                    query = query.filter(Sale.total == amount)
+                except ValueError:
+                    pass
         
         # Order by most recent first
         sales = query.order_by(Sale.datetime.desc()).all()
         
-        return render_template('sales/list.html', 
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        template = 'sales/_list_table.html' if is_htmx else 'sales/list.html'
+        
+        return render_template(template, 
                              sales=sales,
-                             sale_id_search=sale_id_search)
+                             search_query=search_query)
         
     except Exception as e:
         flash(f'Error al cargar ventas: {str(e)}', 'danger')
@@ -787,6 +798,54 @@ def edit_sale_form(sale_id):
         return redirect(url_for('sales.list_sales'))
     except Exception as e:
         flash(f'Error al cargar formulario de edición: {str(e)}', 'danger')
+        flash(f'Error al cargar formulario de edición: {str(e)}', 'danger')
+        return redirect(url_for('sales.list_sales'))
+
+
+@sales_bp.route('/<int:sale_id>/delete', methods=['POST'])
+@require_login
+@require_tenant
+def delete_sale(sale_id):
+    """
+    Delete a sale (tenant-scoped).
+    Note: Ideally we should use Cancel/Void, but requirement asks for Delete.
+    This will attempt hard delete. If FKs are set to restrict, it will fail (safe).
+    If FKs cascade, it will delete (also acceptable if desired).
+    """
+    db_session = get_session()
+    
+    try:
+        sale = db_session.query(Sale).filter(
+            Sale.id == sale_id,
+            Sale.tenant_id == g.tenant_id
+        ).first()
+        
+        if not sale:
+            abort(404)
+        
+        # Optional: Business rule - Don't allow deleting confirmed sales easily?
+        # For now, we follow the pattern of other modules: Try to delete, handle error.
+        
+        sale_id_val = sale.id
+        
+        try:
+            db_session.delete(sale)
+            db_session.commit()
+            flash(f'Venta #{sale_id_val} eliminada exitosamente', 'success')
+            
+        except IntegrityError:
+            db_session.rollback()
+            flash(
+                f'No se puede eliminar la venta #{sale_id_val} debido a registros relacionados '
+                '(movimientos de stock, pagos, etc.).',
+                'warning'
+            )
+            
+        return redirect(url_for('sales.list_sales'))
+        
+    except Exception as e:
+        db_session.rollback()
+        flash(f'Error al eliminar venta: {str(e)}', 'danger')
         return redirect(url_for('sales.list_sales'))
 
 

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Boleta de Compra - Sistema Ferretería{% endblock %}
+
+{% block page_title %}Editar Boleta #{{ invoice.id }}{% endblock %}
+
+{% block content %}
+<form method="POST">
+    <div class="card-custom" style="max-width: 800px; margin: 0 auto;">
+        <div class="card-header-custom" style="background-color: var(--color-primary); color: white;">
+            <h5 class="card-title" style="color: white; margin: 0;">
+                <i class="bi bi-pencil"></i> Editar Datos de la Boleta
+            </h5>
+        </div>
+        <div class="card-body-custom">
+            <!-- Supplier (Read-only for now as changing it affects complex logic) -->
+            <div class="form-group">
+                <label class="form-label-custom">Proveedor</label>
+                <input type="text" class="form-input-custom" value="{{ invoice.supplier.name }}" disabled
+                    style="background-color: var(--color-bg-muted);">
+                <small style="color: var(--color-text-muted);">El proveedor no se puede cambiar una vez creada la
+                    boleta.</small>
+            </div>
+
+            <!-- Invoice Number -->
+            <div class="form-group">
+                <label for="invoice_number" class="form-label-custom">
+                    Número de Boleta <span style="color: var(--color-danger);">*</span>
+                </label>
+                <input type="text" class="form-input-custom" id="invoice_number" name="invoice_number"
+                    value="{{ invoice.invoice_number }}" required placeholder="000-00000000" autocomplete="off">
+            </div>
+
+            <!-- Dates -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                <div class="form-group">
+                    <label for="invoice_date" class="form-label-custom">
+                        Fecha Boleta <span style="color: var(--color-danger);">*</span>
+                    </label>
+                    <input type="date" class="form-input-custom" id="invoice_date" name="invoice_date"
+                        value="{{ invoice.invoice_date.strftime('%Y-%m-%d') }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="due_date" class="form-label-custom">Vencimiento</label>
+                    <input type="date" class="form-input-custom" id="due_date" name="due_date"
+                        value="{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '' }}">
+                </div>
+            </div>
+
+            <!-- Warning about items -->
+            <div class="alert-custom alert-info" style="margin-top: var(--spacing-4);">
+                <i class="alert-custom-icon bi bi-info-circle"></i>
+                <div class="alert-custom-content">
+                    Para modificar los ítems de la boleta, por favor anule esta boleta y crea una nueva, o realice
+                    ajustes de stock manuales.
+                </div>
+            </div>
+
+            <div style="display: flex; gap: var(--spacing-4); margin-top: var(--spacing-6); justify-content: flex-end;">
+                <a href="{{ url_for('invoices.view_invoice', invoice_id=invoice.id) }}"
+                    class="btn-custom btn-secondary-custom">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-custom btn-primary-custom">
+                    <i class="bi bi-check-lg"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
