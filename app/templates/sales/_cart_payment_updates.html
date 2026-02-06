@@ -7,11 +7,7 @@
             inputmode="numeric" value="{{ session.get('cash_amount')|int|num_ar }}"
             onfocus="if(this.value === '0' || this.value === '0.00') this.value = '';" placeholder="Monto recibido">
 
-        <button class="btn btn-success" type="button" id="apply-amount-btn"
-            hx-post="{{ url_for('sales.draft_payment_update_cash') }}" hx-include="#amount_received" hx-swap="none"
-            title="Aplicar cambio">
-            <i class="bi bi-check-lg"></i>
-        </button>
+
     </div>
     <div id="change-display" class="text-end mt-1 fw-bold" style="display: block;">
         <span id="change-label">Vuelto</span>: $<span id="change-amount">{{ (session.get('cash_amount')|float -
