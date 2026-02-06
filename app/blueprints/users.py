@@ -43,9 +43,11 @@ def list_users():
     )
     
     if search_query:
+        from sqlalchemy import cast, String
         search_filter = or_(
             AppUser.full_name.ilike(f'%{search_query}%'),
-            AppUser.email.ilike(f'%{search_query}%')
+            AppUser.email.ilike(f'%{search_query}%'),
+            cast(UserTenant.role, String).ilike(f'%{search_query}%')
         )
         query = query.filter(search_filter)
     

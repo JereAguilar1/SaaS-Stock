@@ -187,6 +187,7 @@ def list_products():
         
         # Apply search filter if provided
         if search_query:
+            from sqlalchemy import cast, String
             # Join for search (if not already joined implicitly or explicitly)
             # Query already joins ProductStock. We need Category and UOM.
             query = query.outerjoin(Category).outerjoin(UOM)
@@ -196,7 +197,10 @@ def list_products():
                 func.lower(Product.sku).like(f'%{search_query.lower()}%'),
                 func.lower(Product.barcode).like(f'%{search_query.lower()}%'),
                 Category.name.ilike(f'%{search_query}%'),
-                UOM.name.ilike(f'%{search_query}%')
+                UOM.name.ilike(f'%{search_query}%'),
+                cast(Product.id, String).like(f'%{search_query}%'),
+                cast(Product.sale_price, String).like(f'%{search_query}%'),
+                cast(Product.cost, String).like(f'%{search_query}%')
             )
             query = query.filter(search_filter)
         

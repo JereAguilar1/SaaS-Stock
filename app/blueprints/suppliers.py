@@ -63,11 +63,14 @@ def list_suppliers():
         )
         
         if search_query:
+            from sqlalchemy import cast, String
             search_filter = or_(
                 func.lower(Supplier.name).like(f'%{search_query.lower()}%'),
                 func.lower(Supplier.tax_id).like(f'%{search_query.lower()}%'),
                 func.lower(Supplier.phone).like(f'%{search_query.lower()}%'),
-                func.lower(Supplier.email).like(f'%{search_query.lower()}%')
+                func.lower(Supplier.email).like(f'%{search_query.lower()}%'),
+                func.lower(Supplier.notes).like(f'%{search_query.lower()}%'),
+                cast(Supplier.id, String).like(f'%{search_query}%')
             )
             query = query.filter(search_filter)
             

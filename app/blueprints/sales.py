@@ -720,21 +720,23 @@ def list_sales():
         
         # Search by ID or Date (string match)
         if search_query:
-            # Try to match ID if it looks like a number
-            if search_query.isdigit():
-                query = query.filter(Sale.id == int(search_query))
-            else:
-                # Basic date matching implementation or total amount
-                # For sqlite/dates strings, this might be tricky. 
-                # Let's try to match total amount if it looks like a number
-                try:
-                    amount = float(search_query)
-                    query = query.filter(Sale.total == amount)
-                except ValueError:
-                    pass
+            from sqlalchemy import cast, String
+            from app.models import SalePayment
+
+            query = query.outerjoin(SalePayment)
+            
+            search_filter = or_(
+                cast(Sale.id, String).like(f'%{search_query}%'),
+                cast(Sale.total, String).like(f'%{search_query}%'),
+                # Usar ilike para búsqueda insensible a mayúsculas en texto
+                SalePayment.payment_method.ilike(f'%{search_query}%'),
+                # Búsqueda básica en fecha convirtiendo a string
+                cast(Sale.datetime, String).like(f'%{search_query}%')
+            )
+            query = query.filter(search_filter)
         
-        # Order by most recent first
-        sales = query.order_by(Sale.datetime.desc()).all()
+        # Order by most recent first, ensuring unique sales
+        sales = query.distinct().order_by(Sale.datetime.desc()).all()
         
         is_htmx = request.headers.get('HX-Request') == 'true'
         template = 'sales/_list_table.html' if is_htmx else 'sales/list.html'

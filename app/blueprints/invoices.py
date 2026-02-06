@@ -102,12 +102,17 @@ def list_invoices():
                 )
             )
         
-        # Search by invoice number or supplier name
+        # Search by invoice number, supplier name, amount, date, etc.
         if search_query:
+            from sqlalchemy import cast, String
             query = query.join(Supplier).filter(
                 or_(
                     PurchaseInvoice.invoice_number.ilike(f'%{search_query}%'),
-                    Supplier.name.ilike(f'%{search_query}%')
+                    Supplier.name.ilike(f'%{search_query}%'),
+                    cast(PurchaseInvoice.total_amount, String).like(f'%{search_query}%'),
+                    cast(PurchaseInvoice.invoice_date, String).like(f'%{search_query}%'),
+                    cast(PurchaseInvoice.due_date, String).like(f'%{search_query}%'),
+                    cast(PurchaseInvoice.status, String).ilike(f'%{search_query}%')
                 )
             )
         

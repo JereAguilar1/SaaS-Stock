@@ -44,13 +44,19 @@ def list_quotes():
         if status_filter and status_filter in ['DRAFT', 'SENT', 'ACCEPTED', 'CANCELED']:
             query = query.filter(Quote.status == status_filter)
         
-        # Search by quote_number, customer_name, or customer_phone
+        # Search by quote_number, customer_name, customer_phone, etc.
         if search:
+            from sqlalchemy import cast, String
             query = query.filter(
                 or_(
                     Quote.quote_number.ilike(f'%{search}%'),
                     Quote.customer_name.ilike(f'%{search}%'),
-                    Quote.customer_phone.ilike(f'%{search}%')
+                    Quote.customer_phone.ilike(f'%{search}%'),
+                    Quote.notes.ilike(f'%{search}%'),
+                    cast(Quote.id, String).like(f'%{search}%'),
+                    cast(Quote.total_amount, String).like(f'%{search}%'),
+                    cast(Quote.issued_at, String).like(f'%{search}%'),
+                    cast(Quote.valid_until, String).like(f'%{search}%')
                 )
             )
         
