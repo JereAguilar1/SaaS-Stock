@@ -5,8 +5,8 @@
 {% block page_title %}Movimientos{% endblock %}
 
 {% block topbar_actions %}
-<a href="{{ url_for('ledger.new_ledger') }}" class="btn-custom btn-primary-custom">
-    <i class="bi bi-plus-circle"></i> Movimiento Manual
+<a href="{{ url_for('ledger.new_ledger') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> Nuevo Movimiento Manual
 </a>
 <a href="{{ url_for('balance.index') }}" class="btn-custom btn-secondary-custom">
     <i class="bi bi-graph-up-arrow"></i> Ver Balance

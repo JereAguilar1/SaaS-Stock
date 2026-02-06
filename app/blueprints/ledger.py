@@ -83,7 +83,8 @@ def list_ledger():
 def new_ledger():
     """Show form to create manual ledger entry."""
     today = date.today().strftime('%Y-%m-%d')
-    return render_template('ledger/form.html', today=today)
+    now_time = datetime.now().strftime('%H:%M')
+    return render_template('ledger/form.html', today=today, now_time=now_time)
 
 
 @ledger_bp.route('/new', methods=['POST'])
