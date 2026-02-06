@@ -744,3 +744,47 @@ def delete_product(product_id):
         current_app.logger.error(f"Error deleting product {product_id}: {e}")
         flash(f'Error al eliminar producto: {str(e)}', 'danger')
         return redirect(url_for('catalog.list_products'))
+
+
+@catalog_bp.route('/check-sku', methods=['POST'])
+@require_login
+@require_tenant
+def check_sku():
+    """Check if SKU is unique (HTMX endpoint, tenant-scoped)."""
+    session = get_session()
+    
+    try:
+        sku = request.form.get('sku', '').strip()
+        product_id_str = request.form.get('product_id', '').strip()
+        
+        if not sku:
+            return '<div id="sku-error-container"></div>'
+            
+        # Check uniqueness
+        query = session.query(Product).filter(
+            Product.tenant_id == g.tenant_id,
+            Product.sku == sku
+        )
+        
+        # If editing, exclude current product
+        if product_id_str:
+            try:
+                product_id = int(product_id_str)
+                query = query.filter(Product.id != product_id)
+            except ValueError:
+                pass
+                
+        existing_product = query.first()
+        
+        if existing_product:
+            return f'''
+            <div id="sku-error-container" class="text-danger small mt-1">
+                <i class="bi bi-exclamation-circle"></i> El SKU "{sku}" ya está en uso por "{existing_product.name}".
+            </div>
+            '''
+        
+        return '<div id="sku-error-container" class="text-success small mt-1"><i class="bi bi-check-circle"></i> SKU disponible</div>'
+        
+    except Exception as e:
+        current_app.logger.error(f"Error checking SKU: {e}")
+        return '<div id="sku-error-container"></div>'

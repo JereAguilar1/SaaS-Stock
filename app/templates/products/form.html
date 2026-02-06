@@ -12,6 +12,45 @@
 </a>
 {% endblock %}
 
+{% block extra_css %}
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<style>
+    /* Ocultar spinners (flechas) en inputs de precio */
+    .no-spinner::-webkit-outer-spin-button,
+    .no-spinner::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .no-spinner[type=number] {
+        -moz-appearance: textfield;
+    }
+
+    /* Image preview styles */
+    .image-preview-container {
+        margin-top: var(--spacing-3);
+        border: 2px dashed var(--color-border-medium);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-4);
+        text-align: center;
+        background-color: var(--color-bg-muted);
+    }
+
+    .image-preview-container img {
+        max-width: 200px;
+        max-height: 200px;
+        border-radius: var(--radius-md);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .image-preview-container.has-image {
+        border-color: var(--color-success);
+        background-color: var(--color-success-light);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Alert if no UOMs available -->
 {% if not uoms or uoms|length == 0 %}
@@ -48,13 +87,8 @@
                             Nombre <span style="color: var(--color-danger);">*</span>
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
-<<<<<<< HEAD
                             value="{{ product.name if product else (request.args.get('name', '') if action == 'new' else '') }}"
                             required maxlength="255" placeholder="Ej: Martillo Galponero 25mm" autocomplete="off"
-=======
-                            value="{{ product.name or '' if product else '' }}" required maxlength="255"
-                            placeholder="Ej: Producto A" autocomplete="off"
->>>>>>> fix-none
                             style="font-size: var(--font-size-lg); font-weight: var(--font-weight-medium);">
                     </div>
 
@@ -63,17 +97,12 @@
                         <div class="form-group">
                             <label for="sku" class="form-label-custom">SKU</label>
                             <input type="text" class="form-input-custom" id="sku" name="sku"
-<<<<<<< HEAD
-                                value="{{ product.sku if product else '' }}" maxlength="100"
-                                placeholder="Código interno" autocomplete="off">
-=======
                                 value="{{ product.sku or '' if product else '' }}" maxlength="100"
                                 placeholder="Código interno" autocomplete="off"
                                 hx-post="{{ url_for('catalog.check_sku') }}" hx-trigger="keyup changed delay:500ms"
                                 hx-target="#sku-error-container" hx-swap="outerHTML" hx-include="[name='product_id']">
                             <input type="hidden" name="product_id" value="{{ product.id or '' if product else '' }}">
                             <div id="sku-error-container"></div>
->>>>>>> fix-none
                         </div>
                         <div class="form-group">
                             <label for="barcode" class="form-label-custom">Código de Barras</label>
@@ -154,8 +183,6 @@
                             </div>
                         </div>
 
-<<<<<<< HEAD
-=======
                         {% if action == 'new' %}
                         <div class="form-group">
                             <label for="initial_stock" class="form-label-custom">
@@ -166,22 +193,16 @@
                                 step="1" min="0" autocomplete="off" placeholder="0"
                                 oninput="if(this.value < 0) this.value = 0;">
                         </div>
-                        {% endif %}
-
->>>>>>> fix-none
+                        {% else %}
                         <div class="form-group">
                             <label for="min_stock_qty" class="form-label-custom">
                                 Stock Mínimo
                             </label>
                             <input type="number" class="form-input-custom" id="min_stock_qty" name="min_stock_qty"
-<<<<<<< HEAD
-                                value="{{ product.min_stock_qty | int if (product and product.min_stock_qty) else '' }}"
-                                step="1" min="0" autocomplete="off">
-=======
                                 value="{{ product.min_stock_qty | int if product and product.min_stock_qty is not none else '' }}"
                                 step="1" min="0" autocomplete="off" oninput="if(this.value < 0) this.value = 0;">
->>>>>>> fix-none
                         </div>
+                        {% endif %}
                     </div>
 
                     <div class="form-group">
@@ -202,6 +223,8 @@
                     <!-- Product Image -->
                     <div class="form-group">
                         <label for="image" class="form-label-custom">Imagen del Producto</label>
+
+                        <!-- Current Image Preview -->
                         {% if product and product.image_path %}
                         <div style="margin-bottom: var(--spacing-4);">
                             <div
@@ -214,8 +237,29 @@
                                 Imagen actual</p>
                         </div>
                         {% endif %}
+
+                        <!-- Hidden file input -->
                         <input type="file" class="form-input-custom" id="image" name="image"
-                            accept="image/jpeg,image/jpg,image/png">
+                            accept="image/jpeg,image/jpg,image/png" style="display: none;">
+
+                        <!-- Custom button to trigger file selection -->
+                        <button type="button" class="btn-custom btn-secondary-custom" id="selectImageBtn">
+                            <i class="bi bi-image"></i> Seleccionar Imagen
+                        </button>
+
+                        <!-- Image preview container -->
+                        <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
+                            <img id="imagePreview" alt="Vista previa">
+                            <p
+                                style="margin-top: var(--spacing-2); font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                                <i class="bi bi-check-circle"></i> Imagen lista para subir
+                            </p>
+                            <button type="button" class="btn-custom btn-ghost-custom btn-sm" id="changeImageBtn"
+                                style="margin-top: var(--spacing-2);">
+                                <i class="bi bi-arrow-repeat"></i> Cambiar imagen
+                            </button>
+                        </div>
+
                         <small
                             style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
                             Formatos permitidos: JPG, JPEG, PNG. Tamaño máximo: 2MB.
@@ -292,10 +336,164 @@
         </div>
     </div>
 </div>
+
+<!-- Cropper Modal -->
+<div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cropperModalLabel">
+                    <i class="bi bi-crop"></i> Ajustar Imagen del Producto
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div style="max-height: 500px; overflow: hidden;">
+                    <img id="cropperImage" style="max-width: 100%; display: block;">
+                </div>
+                <div
+                    style="margin-top: var(--spacing-4); padding: var(--spacing-3); background-color: var(--color-bg-muted); border-radius: var(--radius-md);">
+                    <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                        <i class="bi bi-info-circle"></i> Arrastra para posicionar y usa la rueda del mouse para hacer
+                        zoom. La imagen se recortará en formato cuadrado.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                <button type="button" class="btn-custom btn-primary-custom" id="applyCrop">
+                    <i class="bi bi-check-circle"></i> Aplicar Recorte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Cropper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
 <script>
+    // Image Cropper Logic
+    let cropper = null;
+    let croppedBlob = null;
+
+    const imageInput = document.getElementById('image');
+    const selectImageBtn = document.getElementById('selectImageBtn');
+    const changeImageBtn = document.getElementById('changeImageBtn');
+    const cropperModal = new bootstrap.Modal(document.getElementById('cropperModal'));
+    const cropperImage = document.getElementById('cropperImage');
+    const applyCropBtn = document.getElementById('applyCrop');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+
+    // Trigger file input when button is clicked
+    selectImageBtn.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    changeImageBtn.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    // Handle file selection
+    imageInput.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.match('image/(jpeg|jpg|png)')) {
+            alert('Por favor selecciona una imagen en formato JPG, JPEG o PNG.');
+            return;
+        }
+
+        // Validate file size (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('La imagen es demasiado grande. El tamaño máximo es 2MB.');
+            return;
+        }
+
+        // Read file and show in cropper modal
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            cropperImage.src = event.target.result;
+            cropperModal.show();
+
+            // Initialize cropper when modal is shown
+            document.getElementById('cropperModal').addEventListener('shown.bs.modal', function () {
+                if (cropper) {
+                    cropper.destroy();
+                }
+
+                cropper = new Cropper(cropperImage, {
+                    aspectRatio: 1, // Square crop
+                    viewMode: 2,
+                    autoCropArea: 1,
+                    responsive: true,
+                    background: false,
+                    zoomable: true,
+                    scalable: true,
+                    cropBoxResizable: true,
+                    cropBoxMovable: true,
+                });
+            }, { once: true });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Apply crop
+    applyCropBtn.addEventListener('click', function () {
+        if (!cropper) return;
+
+        cropper.getCroppedCanvas({
+            width: 800,
+            height: 800,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+        }).toBlob(function (blob) {
+            croppedBlob = blob;
+
+            // Create a new File object from the blob
+            const fileName = imageInput.files[0].name;
+            const croppedFile = new File([blob], fileName, {
+                type: blob.type,
+                lastModified: Date.now()
+            });
+
+            // Use DataTransfer to replace the file in the input
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(croppedFile);
+            imageInput.files = dataTransfer.files;
+
+            // Show preview
+            const previewUrl = URL.createObjectURL(blob);
+            imagePreview.src = previewUrl;
+            imagePreviewContainer.style.display = 'block';
+            imagePreviewContainer.classList.add('has-image');
+
+            // Close modal
+            cropperModal.hide();
+
+            // Destroy cropper
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        }, 'image/jpeg', 0.95);
+    });
+
+    // Clean up when modal is hidden
+    document.getElementById('cropperModal').addEventListener('hidden.bs.modal', function () {
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+    });
+
     /**
      * Formatea un número en estilo argentino "Smart":
      * - Separador de miles: punto (.)
@@ -386,7 +584,6 @@
         }
 
         // Formatear precio de venta al perder el foco
-        // Formatear precio de venta al perder el foco
         if (salePriceInput) {
             salePriceInput.addEventListener('blur', function () {
                 let val = this.value;
@@ -396,8 +593,6 @@
                 }
 
                 // Parsear: reemplazar coma por punto para obtener float
-                // Si el usuario ingresó '1500,50' (sin puntos de miles), funciona.
-                // Si ingresó '1.500,50' (con puntos), primero quitamos los puntos.
                 let cleanVal = val.replace(/\./g, '').replace(',', '.');
                 let numValue = parseFloat(cleanVal);
 
@@ -405,136 +600,91 @@
                     this.value = formatSmartAr(numValue);
                 } else {
                     this.value = '0,00';
-                    if (this.value && this.value !== '') {
-                        const numValue = parseFloat(this.value);
-                        if (!isNaN(numValue) && numValue > 0) {
-                            // Mostrar formato visual temporalmente
-                            const formatted = formatPriceAr(numValue);
-                            this.setAttribute('data-raw-value', this.value);
-                            this.value = formatted;
-                            this.type = 'text';
-                        } else if (this.value === '') {
-                            this.value = '0,00';
-                        }
+                }
+            });
+
+            salePriceInput.addEventListener('focus', function () {
+                let val = this.value;
+                if (val) {
+                    this.value = val.replace(/\./g, '');
+                    if (this.value === '0,00' || this.value === '0') {
+                        this.value = '';
                     }
                 }
-            }
+                this.type = 'text';
+                this.select();
             });
 
-    salePriceInput.addEventListener('focus', function () {
-        let val = this.value;
-        // Al enfocar, quitamos los puntos de miles para dejar el número "limpio" pero con coma decimal
-        // Ej: '1.500,00' -> '1500,00' para que sea fácil de editar
-        if (val) {
-            this.value = val.replace(/\./g, '');
-
-            // Si es 0 o 0,00, limpiar para escribir directo
-            if (this.value === '0,00' || this.value === '0') {
-                this.value = '';
-            }
-        }
-        // Aseguramos que sea texto para evitar validación estricta de navegador
-        this.type = 'text';
-        this.select();
-    });
-
-    // Validación básica en input: solo números y coma
-    salePriceInput.addEventListener('input', function () {
-        // Reemplazar cualquier caracter que no sea número o coma
-        this.value = this.value.replace(/[^0-9,]/g, '');
-
-        // Evitar múltiples comas
-        if ((this.value.match(/,/g) || []).length > 1) {
-            this.value = this.value.replace(/,$/, '');
-            // Limpiar si es 0,00 o 0
-            if (this.value === '0,00' || this.value === '0') {
-                this.value = '';
-            }
-        }
-    }
+            salePriceInput.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9,]/g, '');
+                if ((this.value.match(/,/g) || []).length > 1) {
+                    this.value = this.value.replace(/,$/, '');
+                }
             });
         }
 
-    // Formatear stock mínimo al perder el foco
-    if (minStockInput) {
-        minStockInput.addEventListener('blur', function () {
-            if (this.value && this.value !== '') {
-                const numValue = parseInt(this.value);
-                if (!isNaN(numValue) && numValue > 0) {
-                    // Mostrar formato visual temporalmente
-                    const formatted = formatSmartAr(numValue);
-                    this.setAttribute('data-raw-value', this.value);
-                    this.value = formatted;
-                    this.type = 'text';
+        // Formatear stock mínimo al perder el foco
+        if (minStockInput) {
+            minStockInput.addEventListener('blur', function () {
+                if (this.value && this.value !== '') {
+                    const numValue = parseInt(this.value);
+                    if (!isNaN(numValue) && numValue > 0) {
+                        const formatted = formatSmartAr(numValue);
+                        this.setAttribute('data-raw-value', this.value);
+                        this.value = formatted;
+                        this.type = 'text';
+                    }
                 }
-            }
-        });
+            });
 
-        minStockInput.addEventListener('focus', function () {
-            // Restaurar valor numérico para edición
-            const rawValue = this.getAttribute('data-raw-value');
-            if (rawValue) {
-                this.type = 'number';
-                this.value = rawValue;
-                this.removeAttribute('data-raw-value');
-            }
-        });
-    }
-
-    // Antes de enviar el formulario, restaurar valores numéricos
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            if (costInput && costInput.type === 'text') {
-                const rawValue = costInput.getAttribute('data-raw-value');
+            minStockInput.addEventListener('focus', function () {
+                const rawValue = this.getAttribute('data-raw-value');
                 if (rawValue) {
-                    costInput.type = 'number';
-                    costInput.value = rawValue;
-                } else {
-                    // Convertir formato argentino a número
-                    costInput.value = parseArToNumber(costInput.value);
-                    costInput.type = 'number';
+                    this.type = 'number';
+                    this.value = rawValue;
+                    this.removeAttribute('data-raw-value');
                 }
-            }
+            });
+        }
 
-            if (salePriceInput && salePriceInput.type === 'text') {
-                const rawValue = salePriceInput.getAttribute('data-raw-value');
-                if (rawValue) {
-                    salePriceInput.type = 'number';
-                    salePriceInput.value = rawValue;
-                } else {
-                    // Convertir formato argentino a número
-                    salePriceInput.value = parseArToNumber(salePriceInput.value);
-                    salePriceInput.type = 'number';
+        // Antes de enviar el formulario, restaurar valores numéricos
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                if (costInput && costInput.type === 'text') {
+                    const rawValue = costInput.getAttribute('data-raw-value');
+                    if (rawValue) {
+                        costInput.type = 'number';
+                        costInput.value = rawValue;
+                    } else {
+                        costInput.value = parseArToNumber(costInput.value);
+                        costInput.type = 'number';
+                    }
                 }
-            }
 
-            if (minStockInput && minStockInput.type === 'text') {
-                const rawValue = minStockInput.getAttribute('data-raw-value');
-                if (rawValue) {
-                    minStockInput.type = 'number';
-                    minStockInput.value = rawValue;
-                } else {
-                    // Convertir formato argentino a número
-                    minStockInput.value = parseArToNumber(minStockInput.value);
-                    minStockInput.type = 'number';
+                if (salePriceInput && salePriceInput.type === 'text') {
+                    const rawValue = salePriceInput.getAttribute('data-raw-value');
+                    if (rawValue) {
+                        salePriceInput.type = 'number';
+                        salePriceInput.value = rawValue;
+                    } else {
+                        salePriceInput.value = parseArToNumber(salePriceInput.value);
+                        salePriceInput.type = 'number';
+                    }
                 }
-            }
-        });
-    }
+
+                if (minStockInput && minStockInput.type === 'text') {
+                    const rawValue = minStockInput.getAttribute('data-raw-value');
+                    if (rawValue) {
+                        minStockInput.type = 'number';
+                        minStockInput.value = rawValue;
+                    } else {
+                        minStockInput.value = parseArToNumber(minStockInput.value);
+                        minStockInput.type = 'number';
+                    }
+                }
+            });
+        }
     });
 </script>
-
-<style>
-    /* Ocultar spinners (flechas) en inputs de precio */
-    .no-spinner::-webkit-outer-spin-button,
-    .no-spinner::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-
-    .no-spinner[type=number] {
-        -moz-appearance: textfield;
-    }
-</style>
 {% endblock %}
