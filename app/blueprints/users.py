@@ -19,6 +19,69 @@ users_bp = Blueprint('users', __name__, url_prefix='/users')
 
 from sqlalchemy import or_, func
 
+@users_bp.route('/profile')
+@require_login
+@require_tenant
+def my_profile():
+    """
+    View current user's profile.
+    Accessible by any logged-in user.
+    """
+    session = get_session()
+    
+    # Get current user's tenant relationship
+    user_tenant = session.query(UserTenant).filter_by(
+        user_id=g.user.id,
+        tenant_id=g.tenant_id,
+        active=True
+    ).first()
+    
+    return render_template('users/profile.html', user=g.user, user_tenant=user_tenant)
+
+
+@users_bp.route('/profile/edit', methods=['GET', 'POST'])
+@require_login
+@require_tenant
+def edit_my_profile():
+    """
+    Edit current user's profile.
+    Accessible by any logged-in user.
+    """
+    session = get_session()
+    
+    if request.method == 'POST':
+        full_name = request.form.get('full_name', '').strip()
+        
+        # Validations
+        if not full_name:
+            flash('El nombre completo es requerido.', 'danger')
+            return render_template('users/edit_profile.html', user=g.user)
+        
+        try:
+            # Update user
+            user = session.query(AppUser).filter_by(id=g.user.id).first()
+            if user:
+                user.full_name = full_name
+                session.commit()
+                
+                # Update g.user to reflect changes immediately
+                g.user.full_name = full_name
+                
+                flash('Perfil actualizado correctamente.', 'success')
+                return redirect(url_for('users.my_profile'))
+            else:
+                flash('Usuario no encontrado.', 'danger')
+                return redirect(url_for('users.my_profile'))
+                
+        except Exception as e:
+            session.rollback()
+            flash(f'Error al actualizar perfil: {str(e)}', 'danger')
+            return render_template('users/edit_profile.html', user=g.user)
+    
+    # GET request
+    return render_template('users/edit_profile.html', user=g.user)
+
+
 @users_bp.route('/')
 @require_login
 @require_tenant

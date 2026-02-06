@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Perfil - Sistema de Gestión{% endblock %}
+
+{% block page_title %}Editar Perfil{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('users.my_profile') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i> Volver al Perfil
+</a>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <div class="card-custom">
+        <div class="card-header-custom">
+            <h5 class="card-title-custom">Editar Información Personal</h5>
+        </div>
+        <div class="card-body-custom">
+            <form method="POST" action="{{ url_for('users.edit_my_profile') }}">
+                <!-- Full Name -->
+                <div class="form-group">
+                    <label for="full_name" class="form-label-custom">
+                        Nombre Completo <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" class="form-input-custom" id="full_name" name="full_name"
+                        value="{{ user.full_name or '' }}" required maxlength="200"
+                        placeholder="Ingresa tu nombre completo">
+                    <small class="form-text-custom">
+                        Este nombre se mostrará en tu perfil y en el sistema
+                    </small>
+                </div>
+
+                <!-- Email (Read-only) -->
+                <div class="form-group">
+                    <label for="email" class="form-label-custom">
+                        Email
+                    </label>
+                    <input type="email" class="form-input-custom" id="email" name="email" value="{{ user.email }}"
+                        readonly disabled
+                        style="background-color: var(--color-background-secondary); cursor: not-allowed;">
+                    <small class="form-text-custom">
+                        <i class="bi bi-lock"></i> El email no puede ser modificado por seguridad
+                    </small>
+                </div>
+
+                <!-- Auth Provider Info -->
+                {% if user.auth_provider == 'google' %}
+                <div class="alert-custom alert-info" style="margin-bottom: var(--spacing-4);">
+                    <i class="alert-custom-icon bi bi-info-circle-fill"></i>
+                    <div class="alert-custom-content">
+                        Tu cuenta está vinculada con Google. Algunos datos se sincronizan automáticamente.
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div
+                    style="display: flex; justify-content: space-between; gap: var(--spacing-3); margin-top: var(--spacing-5);">
+                    <a href="{{ url_for('users.my_profile') }}" class="btn-custom btn-secondary-custom">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn-custom btn-primary-custom">
+                        <i class="bi bi-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div class="card-custom" style="margin-top: var(--spacing-4);">
+        <div class="card-header-custom">
+            <h6 class="card-title-custom">
+                <i class="bi bi-question-circle"></i> Información
+            </h6>
+        </div>
+        <div class="card-body-custom">
+            <ul class="small mb-0" style="padding-left: var(--spacing-4);">
+                <li>Solo puedes editar tu nombre completo</li>
+                <li>El email está protegido y no puede ser modificado</li>
+                <li>Los cambios se reflejarán inmediatamente en el sistema</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

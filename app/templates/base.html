@@ -245,7 +245,7 @@
 
             <!-- Sidebar Footer -->
             <div class="sidebar-footer">
-                <div class="sidebar-user">
+                <a href="{{ url_for('users.my_profile') }}" class="sidebar-user" style="text-decoration: none;">
                     <div class="sidebar-user-avatar">
                         {{ g.user.full_name[0] if g.user.full_name else g.user.email[0] }}
                     </div>
@@ -253,7 +253,7 @@
                         <div class="sidebar-user-name">{{ g.user.full_name or g.user.email }}</div>
                         <div class="sidebar-user-role">{{ g.user_role }}</div>
                     </div>
-                </div>
+                </a>
                 <form method="POST" action="{{ url_for('auth.logout') }}" style="margin-top: var(--spacing-2);">
                     <button type="submit" class="btn-custom btn-ghost-custom" style="width: 100%;">
                         <i class="bi bi-box-arrow-right"></i>
