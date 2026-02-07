@@ -269,3 +269,167 @@ def send_email(to: str, subject: str, template: str, text: str | None = None) ->
         logger.exception(f"[EMAIL] ✗ Failed to send email to {to}: {str(e)}")
         return False
 
+
+def send_password_reset_email(to_email: str, reset_link: str) -> bool:
+    """
+    Send password reset email.
+    
+    Args:
+        to_email: Recipient email
+        reset_link: Full URL for password reset (including token)
+        
+    Returns:
+        bool: True if sent successfully, False otherwise
+    """
+    try:
+        logger.info(f"[EMAIL] Sending password reset email to {to_email}")
+        
+        if not _mail_enabled():
+            logger.warning(f"[EMAIL] Mail disabled, skipping password reset email to {to_email}")
+            # En dev, loguear el link para poder probar sin email
+            logger.info(f"[EMAIL] RESET LINK: {reset_link}")
+            return True
+
+        subject = "🔑 Restablecer tu contraseña - Sistema de Gestión"
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; color: #333; line-height: 1.6; }}
+                .container {{ max-width: 600px; margin: auto; padding: 20px; }}
+                .header {{ background: #dc3545; color: #fff; padding: 20px; text-align: center; }}
+                .content {{ background: #fff; padding: 30px; border: 1px solid #ddd; }}
+                .button {{
+                    display: inline-block;
+                    padding: 12px 30px;
+                    background: #dc3545;
+                    color: #fff !important;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-weight: bold;
+                    margin: 20px 0;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Recuperación de Contraseña</h1>
+                </div>
+                <div class="content">
+                    <p>Hola,</p>
+                    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta.</p>
+                    <p>Si fuiste tú, haz clic en el siguiente botón para continuar:</p>
+                    
+                    <div style="text-align: center;">
+                        <a href="{reset_link}" class="button">Restablecer Contraseña</a>
+                    </div>
+                    
+                    <p>Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+                    <p style="font-size: 12px; color: #666; word-break: break-all;">{reset_link}</p>
+                    
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                    
+                    <p style="font-size: 13px; color: #999;">
+                        Si no solicitaste este cambio, puedes ignorar este correo. Tu contraseña seguirá siendo la misma.
+                        Este enlace expirará en 1 hora por seguridad.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg = Message(
+            subject=subject,
+            recipients=[to_email],
+            html=html_body
+        )
+        
+        mail.send(msg)
+        logger.info(f"[EMAIL] ✓ Password reset email sent to {to_email}")
+        return True
+        
+    except Exception as e:
+        logger.exception(f"[EMAIL] ✗ Error sending password reset email: {e}")
+        return False
+
+def send_oauth_login_email(to_email: str, provider: str) -> bool:
+    """
+    Send email informing user they must login via OAuth (Google).
+    
+    Args:
+        to_email: Recipient email
+        provider: Auth provider name (e.g. 'google')
+        
+    Returns:
+        bool: True if sent successfully
+    """
+    try:
+        logger.info(f"[EMAIL] Sending OAuth login reminder to {to_email}")
+        
+        if not _mail_enabled():
+            logger.warning(f"[EMAIL] Mail disabled, skipping OAuth reminder to {to_email}")
+            return True
+
+        subject = "ℹ️ Inicio de sesión - SaaS Stock"
+        
+        provider_name = "Google" if provider == 'google' else provider.title()
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; color: #333; line-height: 1.6; }}
+                .container {{ max-width: 600px; margin: auto; padding: 20px; }}
+                .header {{ background: #0f172a; color: #fff; padding: 20px; text-align: center; }}
+                .content {{ background: #fff; padding: 30px; border: 1px solid #ddd; }}
+                .box {{
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin: 20px 0;
+                    text-align: center;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Información de Cuenta</h1>
+                </div>
+                <div class="content">
+                    <p>Hola,</p>
+                    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta asociada a <strong>{to_email}</strong>.</p>
+                    
+                    <div class="box">
+                        <p>Tu cuenta está registrada mediante <strong>{provider_name}</strong>.</p>
+                        <p>No necesitas una contraseña. Simplemente inicia sesión haciendo clic en el botón "Continuar con {provider_name}".</p>
+                    </div>
+                    
+                    <p>Si tienes problemas para acceder, por favor contacta a soporte.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg = Message(
+            subject=subject,
+            recipients=[to_email],
+            html=html_body
+        )
+        
+        mail.send(msg)
+        logger.info(f"[EMAIL] ✓ OAuth reminder sent to {to_email}")
+        return True
+        
+    except Exception as e:
+        logger.exception(f"[EMAIL] ✗ Error sending OAuth reminder: {e}")
+        return False

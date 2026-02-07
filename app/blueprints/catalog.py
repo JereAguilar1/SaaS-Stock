@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 import time
 from app.database import get_session
-from app.models import Product, ProductStock, UOM, Category
+from app.models import Product, ProductStock, UOM, Category, ProductFeature
 from app.middleware import require_login, require_tenant
 from app.services.storage_service import get_storage_service
 from app.services.cache_service import get_cache
@@ -408,6 +408,23 @@ def create_product():
         )
         
         session.add(product)
+        session.flush()  # To get product.id
+        
+        # PERSIST FEATURES
+        for feat in request.form:
+            if feat.startswith('features[') and feat.endswith('][title]'):
+                idx = feat.split('[')[1].split(']')[0]
+                title = request.form.get(f'features[{idx}][title]', '').strip()
+                description = request.form.get(f'features[{idx}][description]', '').strip()
+                if title and description:
+                    new_feature = ProductFeature(
+                        tenant_id=g.tenant_id,
+                        product_id=product.id,
+                        title=title,
+                        description=description
+                    )
+                    session.add(new_feature)
+
         session.commit()
         
         # PASO 8: Invalidate products cache
@@ -624,6 +641,22 @@ def update_product(product_id):
         product.min_stock_qty = min_stock_qty_int
         product.active = active
         
+        # PERSIST FEATURES (Clear and Recreate)
+        product.features = [] # Cascade delete-orphan will handle deletions
+        for feat in request.form:
+            if feat.startswith('features[') and feat.endswith('][title]'):
+                idx = feat.split('[')[1].split(']')[0]
+                title = request.form.get(f'features[{idx}][title]', '').strip()
+                description = request.form.get(f'features[{idx}][description]', '').strip()
+                if title and description:
+                    new_feature = ProductFeature(
+                        tenant_id=g.tenant_id,
+                        product_id=product.id,
+                        title=title,
+                        description=description
+                    )
+                    session.add(new_feature)
+
         session.commit()
         
         # PASO 8: Invalidate products cache

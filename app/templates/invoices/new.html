@@ -344,9 +344,6 @@
 
                     li.innerHTML = `
                         <div style="font-weight: 600;">${product.name}</div>
-                        <div style="font-size: 0.85em; color: #666;">
-                            SKU: ${product.sku || 'N/A'} | UOM: ${product.uom_symbol}
-                        </div>
                     `;
 
                     li.addEventListener('click', () => selectProduct(product));
@@ -358,7 +355,7 @@
 
         // Selection logic
         function selectProduct(product) {
-            searchInput.value = `${product.name} (${product.sku || 'Sin SKU'})`;
+            searchInput.value = product.name;
             hiddenIdInput.value = product.id;
 
             // Auto-fill cost if empty or zero

@@ -68,6 +68,21 @@ def create_app(config_object='config.Config'):
     def before_request_handler():
         """Load user and tenant context for each request."""
         load_user_and_tenant()
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        import traceback
+        app.logger.error(f"Server Error: {error}")
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return "Internal Server Error", 500
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        import traceback
+        app.logger.error(f"Unhandled Exception: {e}")
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return "Internal Server Error", 500
+
     def force_https():
         if not request.is_secure and not app.debug:
             return redirect(request.url.replace("http://", "https://"), code=301)

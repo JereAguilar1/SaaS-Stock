@@ -355,7 +355,7 @@
             </form>
 
             <div class="login-footer">
-                <a href="#" class="forgot-link">¿Olvidaste tu contraseña?</a>
+                <a href="{{ url_for('auth.forgot_password') }}" class="forgot-link">¿Olvidaste tu contraseña?</a>
                 <span class="signup-text">
                     ¿No tienes cuenta? <a href="{{ url_for('auth.register') }}" class="signup-link">Regístrate</a>
                 </span>

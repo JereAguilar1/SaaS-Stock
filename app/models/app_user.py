@@ -22,6 +22,10 @@ class AppUser(Base):
     auth_provider = Column(String(20), nullable=False, default='local')
     email_verified = Column(Boolean, nullable=False, default=False)
     
+    # Password Reset
+    reset_password_token = Column(String(100), nullable=True, unique=True)
+    reset_password_expires = Column(DateTime(timezone=True), nullable=True)
+    
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     

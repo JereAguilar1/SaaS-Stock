@@ -213,6 +213,50 @@
                         {% endif %}
                     </div>
 
+                    <hr style="border-color: var(--color-border-light); margin: var(--spacing-6) 0;">
+
+                    <!-- Product Features Section -->
+                    <div class="form-group">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-3);">
+                            <label class="form-label-custom" style="margin-bottom: 0;">
+                                Características / Especificaciones
+                            </label>
+                            <button type="button" class="btn-custom btn-secondary-custom btn-sm" id="addFeatureBtn">
+                                <i class="bi bi-plus-lg"></i> Agregar Característica
+                            </button>
+                        </div>
+
+                        <div id="featuresContainer"
+                            style="display: flex; flex-direction: column; gap: var(--spacing-3); margin-bottom: var(--spacing-3);">
+                            {% if product and product.features %}
+                            {% for feature in product.features %}
+                            <div class="feature-row"
+                                style="display: grid; grid-template-columns: 1fr 1fr 40px; gap: var(--spacing-3); align-items: start;">
+                                <input type="text" class="form-input-custom" name="features[{{ loop.index0 }}][title]"
+                                    value="{{ feature.title }}" placeholder="Título (ej: Color)" required>
+                                <input type="text" class="form-input-custom"
+                                    name="features[{{ loop.index0 }}][description]" value="{{ feature.description }}"
+                                    placeholder="Descripción (ej: Gris)" required>
+                                <button type="button"
+                                    class="btn-custom btn-ghost-custom btn-sm text-danger remove-feature-btn"
+                                    title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div id="noFeaturesMsg"
+                            style="{% if product and product.features %}display: none;{% endif %} text-align: center; padding: var(--spacing-4); background-color: var(--color-bg-muted); border-radius: var(--radius-md); border: 1px dashed var(--color-border-medium);">
+                            <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+                                No hay características agregadas. Use el botón superior para agregar especificaciones
+                                como color, talle, etc.
+                            </p>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label-custom">Estado</label>
                         <div style="display: flex; align-items: center; gap: var(--spacing-2);">
@@ -228,23 +272,31 @@
 
                     <hr style="border-color: var(--color-border-light); margin: var(--spacing-6) 0;">
 
+
                     <!-- Product Image -->
                     <div class="form-group">
                         <label for="image" class="form-label-custom">Imagen del Producto</label>
 
                         <!-- Current Image Preview -->
-                        {% if product and product.image_path %}
-                        <div style="margin-bottom: var(--spacing-4);">
+                        <div id="currentImageContainer"
+                            style="margin-bottom: var(--spacing-4); {% if not product or not product.image_path %}display: none;{% endif %}">
                             <div
-                                style="border: 1px solid var(--color-border-medium); padding: var(--spacing-2); display: inline-block; border-radius: var(--radius-md); background-color: white;">
-                                <img src="{{ product.image_path }}" alt="{{ product.name }}"
-                                    style="max-width: 150px; height: auto; display: block;">
+                                style="border: 1px solid var(--color-border-medium); padding: var(--spacing-2); display: inline-block; border-radius: var(--radius-md); background-color: white; position: relative;">
+                                <img id="currentImage"
+                                    src="{{ product.image_url if product and product.image_url else '' }}"
+                                    alt="Imagen actual" style="max-width: 150px; height: auto; display: block;">
+                            </div>
+                            <div style="margin-top: var(--spacing-2);">
+                                <button type="button" class="btn-custom btn-secondary-custom btn-sm"
+                                    id="editExistingImageBtn">
+                                    <i class="bi bi-pencil-square"></i> Editar/Recortar
+                                </button>
                             </div>
                             <p
                                 style="margin: var(--spacing-1) 0 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted);">
-                                Imagen actual</p>
+                                Imagen actual
+                            </p>
                         </div>
-                        {% endif %}
 
                         <!-- Hidden file input -->
                         <input type="file" class="form-input-custom" id="image" name="image"
@@ -252,10 +304,10 @@
 
                         <!-- Custom button to trigger file selection -->
                         <button type="button" class="btn-custom btn-secondary-custom" id="selectImageBtn">
-                            <i class="bi bi-image"></i> Seleccionar Imagen
+                            <i class="bi bi-image"></i> Seleccionar Nueva Imagen
                         </button>
 
-                        <!-- Image preview container -->
+                        <!-- Image preview container (New/Edited Image) -->
                         <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
                             <img id="imagePreview" alt="Vista previa">
                             <p
@@ -271,9 +323,6 @@
                         <small
                             style="color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: var(--spacing-1); display: block;">
                             Formatos permitidos: JPG, JPEG, PNG. Tamaño máximo: 2MB.
-                            {% if product and product.image_path %}
-                            Subir una imagen reemplazará la actual.
-                            {% endif %}
                         </small>
                     </div>
 
@@ -356,14 +405,39 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div style="max-height: 500px; overflow: hidden;">
-                    <img id="cropperImage" style="max-width: 100%; display: block;">
+                <div style="max-height: 500px; overflow: hidden; background-color: #f8f9fa;">
+                    <!-- Crossorigin anonymous is vital for editing existing S3 images -->
+                    <img id="cropperImage" style="max-width: 100%; display: block;" crossorigin="anonymous">
                 </div>
+
+                <!-- Controls Toolkit -->
+                <div class="d-flex justify-content-center gap-2 mt-3">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="cropper.zoom(0.1)"
+                            title="Zoom In">
+                            <i class="bi bi-zoom-in"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="cropper.zoom(-0.1)"
+                            title="Zoom Out">
+                            <i class="bi bi-zoom-out"></i>
+                        </button>
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="cropper.rotate(-90)"
+                            title="Rotar Izquierda">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="cropper.rotate(90)"
+                            title="Rotar Derecha">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <div
-                    style="margin-top: var(--spacing-4); padding: var(--spacing-3); background-color: var(--color-bg-muted); border-radius: var(--radius-md);">
+                    style="margin-top: var(--spacing-3); padding: var(--spacing-2); background-color: var(--color-bg-muted); border-radius: var(--radius-md); text-align: center;">
                     <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                        <i class="bi bi-info-circle"></i> Arrastra para posicionar y usa la rueda del mouse para hacer
-                        zoom. La imagen se recortará en formato cuadrado.
+                        <i class="bi bi-info-circle"></i> Usa la rueda del mouse para zoom. Arrastra para mover.
                     </p>
                 </div>
             </div>
@@ -372,7 +446,7 @@
                     <i class="bi bi-x-circle"></i> Cancelar
                 </button>
                 <button type="button" class="btn-custom btn-primary-custom" id="applyCrop">
-                    <i class="bi bi-check-circle"></i> Aplicar Recorte
+                    <i class="bi bi-check-circle"></i> Confirmar Recorte
                 </button>
             </div>
         </div>
@@ -392,11 +466,13 @@
     const imageInput = document.getElementById('image');
     const selectImageBtn = document.getElementById('selectImageBtn');
     const changeImageBtn = document.getElementById('changeImageBtn');
+    const editExistingImageBtn = document.getElementById('editExistingImageBtn');
     const cropperModal = new bootstrap.Modal(document.getElementById('cropperModal'));
     const cropperImage = document.getElementById('cropperImage');
     const applyCropBtn = document.getElementById('applyCrop');
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const imagePreview = document.getElementById('imagePreview');
+    const currentImageContainer = document.getElementById('currentImageContainer');
 
     // Trigger file input when button is clicked
     selectImageBtn.addEventListener('click', () => {
@@ -407,15 +483,37 @@
         imageInput.click();
     });
 
-    // Handle file selection
+    // Edit Existing Image Logic
+    if (editExistingImageBtn) {
+        editExistingImageBtn.addEventListener('click', () => {
+            const currentImgSrc = document.getElementById('currentImage').src;
+            if (currentImgSrc) {
+                // Set crossorigin BEFORE setting src to avoid tainted canvas
+                cropperImage.crossOrigin = 'anonymous';
+                cropperImage.src = currentImgSrc;
+
+                // Add a timestamp to bypass browser cache if needed, though usually not strictly necessary for viewing
+                // cropperImage.src = currentImgSrc + '?t=' + new Date().getTime(); 
+
+                cropperModal.show();
+                initCropperInstance();
+            }
+        });
+    }
+
+    // Handle file selection (New Image)
     imageInput.addEventListener('change', function (e) {
         const file = e.target.files[0];
 
         if (!file) return;
 
+        // If it's the result of our own crop (programmatic change), ignore to avoid loop/re-crop
+        // But here we want to allow re-cropping if user selects same file? 
+        // We will just process any file user selects.
+
         // Validate file type
-        if (!file.type.match('image/(jpeg|jpg|png)')) {
-            alert('Por favor selecciona una imagen en formato JPG, JPEG o PNG.');
+        if (!file.type.match('image/(jpeg|jpg|png|webp)')) {
+            alert('Por favor selecciona una imagen en formato JPG, JPEG, PNG o WebP.');
             return;
         }
 
@@ -428,51 +526,89 @@
         // Read file and show in cropper modal
         const reader = new FileReader();
         reader.onload = function (event) {
+            cropperImage.crossOrigin = 'anonymous'; // Good practice even for local files
             cropperImage.src = event.target.result;
             cropperModal.show();
-
-            // Initialize cropper when modal is shown
-            document.getElementById('cropperModal').addEventListener('shown.bs.modal', function () {
-                if (cropper) {
-                    cropper.destroy();
-                }
-
-                cropper = new Cropper(cropperImage, {
-                    aspectRatio: 1, // Square crop
-                    viewMode: 2,
-                    autoCropArea: 1,
-                    responsive: true,
-                    background: false,
-                    zoomable: true,
-                    scalable: true,
-                    cropBoxResizable: true,
-                    cropBoxMovable: true,
-                });
-            }, { once: true });
+            initCropperInstance();
         };
         reader.readAsDataURL(file);
     });
+
+    function initCropperInstance() {
+        // Wait for modal to be fully shown or just init if already visible logic
+        // We use a small timeout or the modal event to ensure dimensions are correct
+        const modalEl = document.getElementById('cropperModal');
+
+        // If modal is not yet shown, wait for event
+        if (!modalEl.classList.contains('show')) {
+            modalEl.addEventListener('shown.bs.modal', function () {
+                setupCropper();
+            }, { once: true });
+        } else {
+            setupCropper(); // Modal already open (e.g. edit existing)
+        }
+    }
+
+    function setupCropper() {
+        if (cropper) {
+            cropper.destroy();
+        }
+
+        cropper = new Cropper(cropperImage, {
+            aspectRatio: 1, // Enforce 1:1 square crop to match thumbnails
+            viewMode: 1, // Restrict crop box to not exceed canvas
+            autoCropArea: 0.8,
+            responsive: true,
+            background: false,
+            zoomable: true,
+            scalable: true,
+            rotatable: true,
+            movable: true,
+            cropBoxResizable: true,
+            cropBoxMovable: true,
+            checkCrossOrigin: true, // Check CORS
+        });
+    }
 
     // Apply crop
     applyCropBtn.addEventListener('click', function () {
         if (!cropper) return;
 
-        cropper.getCroppedCanvas({
-            width: 800,
-            height: 800,
+        // Get cropped canvas
+        const canvas = cropper.getCroppedCanvas({
+            // Set max dimensions if needed, or leave dynamic
+            maxWidth: 1024,
+            maxHeight: 1024,
             imageSmoothingEnabled: true,
             imageSmoothingQuality: 'high',
-        }).toBlob(function (blob) {
+        });
+
+        if (!canvas) {
+            alert('No se pudo recortar la imagen. Intenta de nuevo.');
+            return;
+        }
+
+        canvas.toBlob(function (blob) {
+            if (!blob) return;
+
             croppedBlob = blob;
 
+            // Determine file name
+            let fileName = 'imagen_editada.jpg';
+            if (imageInput.files[0]) {
+                fileName = imageInput.files[0].name;
+            } else {
+                // If editing existing image, we simulate a name
+                fileName = 'edited_product.jpg';
+            }
+
             // Create a new File object from the blob
-            const fileName = imageInput.files[0].name;
             const croppedFile = new File([blob], fileName, {
-                type: blob.type,
+                type: 'image/jpeg',
                 lastModified: Date.now()
             });
 
-            // Use DataTransfer to replace the file in the input
+            // Use DataTransfer to replace/set the file in the input
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(croppedFile);
             imageInput.files = dataTransfer.files;
@@ -483,6 +619,13 @@
             imagePreviewContainer.style.display = 'block';
             imagePreviewContainer.classList.add('has-image');
 
+            // Hide current image container if we are replacing it
+            if (currentImageContainer) {
+                // We keep it visible but maybe opacity reduced or just let the new preview take focus
+                // Or hide it? Let's hide it to show "this will be the new image"
+                currentImageContainer.style.display = 'none';
+            }
+
             // Close modal
             cropperModal.hide();
 
@@ -491,7 +634,7 @@
                 cropper.destroy();
                 cropper = null;
             }
-        }, 'image/jpeg', 0.95);
+        }, 'image/jpeg', 0.90); // 90% quality JPG
     });
 
     // Clean up when modal is hidden
@@ -500,6 +643,9 @@
             cropper.destroy();
             cropper = null;
         }
+        // Reset file input if user cancelled and it was a new upload? 
+        // No, keep it empty if cancelled creates a better UX (user has to select again)
+        // Or if they edited existing, we just didn't update the input.
     });
 
     /**
@@ -668,6 +814,55 @@
                 }
             });
         }
+
+        // Product Features Logic
+        const featuresContainer = document.getElementById('featuresContainer');
+        const addFeatureBtn = document.getElementById('addFeatureBtn');
+        const noFeaturesMsg = document.getElementById('noFeaturesMsg');
+        let featureIndex = {{ product.features| length if product and product.features else 0
+    }};
+
+    function updateNoFeaturesMsg() {
+        if (featuresContainer.children.length === 0) {
+            noFeaturesMsg.style.display = 'block';
+        } else {
+            noFeaturesMsg.style.display = 'none';
+        }
+    }
+
+    addFeatureBtn.addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = 'feature-row';
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = '1fr 1fr 40px';
+        row.style.gap = 'var(--spacing-3)';
+        row.style.alignItems = 'start';
+
+        row.innerHTML = `
+                <input type="text" class="form-input-custom" name="features[${featureIndex}][title]" 
+                    placeholder="Título (ej: Color)" required>
+                <input type="text" class="form-input-custom" name="features[${featureIndex}][description]" 
+                    placeholder="Descripción (ej: Gris)" required>
+                <button type="button" class="btn-custom btn-ghost-custom btn-sm text-danger remove-feature-btn" title="Eliminar">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+
+        featuresContainer.appendChild(row);
+        featureIndex++;
+        updateNoFeaturesMsg();
+
+        // Focus the new title input
+        row.querySelector('input').focus();
+    });
+
+    featuresContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.remove-feature-btn');
+        if (btn) {
+            btn.closest('.feature-row').remove();
+            updateNoFeaturesMsg();
+        }
+    });
     });
 </script>
 {% endblock %}

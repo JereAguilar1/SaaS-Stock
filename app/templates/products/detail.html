@@ -103,6 +103,27 @@
                     </div>
                 </div>
 
+                <!-- Especificaciones del Producto -->
+                {% if product.features %}
+                <div class="card-custom" style="margin-bottom: var(--spacing-4);">
+                    <div class="card-header-custom">
+                        <h3
+                            style="margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold);">
+                            <i class="bi bi-list-stars"></i> Especificaciones
+                        </h3>
+                    </div>
+                    <div class="card-body-custom">
+                        <dl style="display: grid; grid-template-columns: 200px 1fr; gap: var(--spacing-3); margin: 0;">
+                            {% for feature in product.features %}
+                            <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
+                                {{ feature.title }}:</dt>
+                            <dd style="margin: 0;">{{ feature.description }}</dd>
+                            {% endfor %}
+                        </dl>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Información de Precio y Stock -->
                 <div class="card-custom" style="margin-bottom: var(--spacing-4);">
                     <div class="card-header-custom">
@@ -114,7 +135,7 @@
                     <div class="card-body-custom">
                         <dl style="display: grid; grid-template-columns: 200px 1fr; gap: var(--spacing-3); margin: 0;">
                             <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">
-                                Costo Unitario:</dt>
+                                Costo compra:</dt>
                             <dd style="margin: 0; color: var(--color-text-muted); font-size: var(--font-size-sm);">
                                 ${{ product.cost|money_ar_2 }}</dd>
 

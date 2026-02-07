@@ -404,6 +404,11 @@ def root():
 # IMPERSONATION - STOP (EXIT SUPPORT MODE)
 # =====================================================
 
+
+# =====================================================
+# IMPERSONATION - STOP (EXIT SUPPORT MODE)
+# =====================================================
+
 @auth_bp.route('/stop-impersonation', methods=['POST'])
 def stop_impersonation():
     """
@@ -427,3 +432,117 @@ def stop_impersonation():
     else:
         # Fallback to admin login if no redirect URL
         return redirect(url_for('admin.login'))
+
+
+# =====================================================
+# PASSWORD RESET FLOW
+# =====================================================
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """
+    Request password reset link.
+    
+    Flow:
+    1. User enters email
+    2. Check if user exists
+    3. If OAuth user -> Send email reminding to use Google
+    4. If Local user -> Generate token and send reset link
+    5. Always show success message (security)
+    """
+    if g.user:
+        return redirect(url_for('dashboard.index'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        
+        if not email:
+            flash('Por favor ingresa tu email.', 'danger')
+            return render_template('auth/forgot_password.html')
+            
+        user = db_session.query(AppUser).filter(
+            func.lower(AppUser.email) == email.lower()
+        ).first()
+        
+        if user:
+            from app.services.email_service import send_password_reset_email, send_oauth_login_email
+            
+            if user.is_oauth_user():
+                # Notify OAuth user they should login with Google
+                send_oauth_login_email(user.email, user.auth_provider)
+            else:
+                # Local user: standard reset flow
+                import secrets
+                from datetime import datetime, timedelta, timezone
+                
+                # Generate secure token
+                token = secrets.token_urlsafe(32)
+                # Use UTC for expiration to match timezone=True column
+                expires = datetime.now(timezone.utc) + timedelta(hours=1)
+                
+                # Save to DB
+                user.reset_password_token = token
+                user.reset_password_expires = expires
+                db_session.commit()
+                
+                # Send email
+                reset_link = url_for('auth.reset_password', token=token, _external=True)
+                send_password_reset_email(user.email, reset_link)
+            
+        # Security: Always show same message
+        flash('Si el correo está registrado, recibirás instrucciones para acceder a tu cuenta.', 'info')
+        return redirect(url_for('auth.login'))
+        
+    return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """
+    Reset password using token.
+    
+    Flow:
+    1. Validate token (exists and not expired)
+    2. Show password form
+    3. Update password
+    4. Clear token
+    """
+    if g.user:
+        return redirect(url_for('dashboard.index'))
+        
+    from datetime import datetime, timezone
+    
+    # Find user by token
+    user = db_session.query(AppUser).filter_by(reset_password_token=token).first()
+    
+    # Validate token
+    # Comparison must be timezone aware
+    if not user or not user.reset_password_expires or user.reset_password_expires < datetime.now(timezone.utc):
+        flash('El enlace de recuperación es inválido o ha expirado.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+        
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+        
+        if not password or len(password) < 6:
+            flash('La contraseña debe tener al menos 6 caracteres.', 'danger')
+            return render_template('auth/reset_password.html', token=token)
+            
+        if password != password_confirm:
+            flash('Las contraseñas no coinciden.', 'danger')
+            return render_template('auth/reset_password.html', token=token)
+            
+        # Update password
+        user.set_password(password)
+        user.reset_password_token = None
+        user.reset_password_expires = None
+        db_session.commit()
+        
+        flash('Tu contraseña ha sido restablecida exitosamente. Inicia sesión.', 'success')
+        return redirect(url_for('auth.login'))
+        
+    return render_template('auth/reset_password.html', token=token)
+

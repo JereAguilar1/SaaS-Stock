@@ -1,15 +1,15 @@
 
 import os
+import sys
 import psycopg2
 from dotenv import load_dotenv
 
-def apply_migration():
+def apply_migration(migration_file):
     load_dotenv()
     
-    # Try localhost first if db host is 'db' (container)
+    # Use DB_HOST from env, default to localhost
     host = os.getenv('DB_HOST', 'localhost')
-    if host == 'db':
-        host = 'localhost'
+    # Removed the check that forced localhost if host=='db' to allow running inside docker
         
     try:
         conn = psycopg2.connect(
@@ -22,14 +22,11 @@ def apply_migration():
         conn.autocommit = True
         cur = conn.cursor()
         
-        migration_path = r'c:\jere\proyectos\SaaS-Stock\db\migrations\ADMIN_PANEL_V1.sql'
-        print(f"Applying migration: {migration_path}")
+        print(f"Applying migration: {migration_file}")
         
-        with open(migration_path, 'r', encoding='utf-8') as f:
+        with open(migration_file, 'r', encoding='utf-8') as f:
             sql = f.read()
             
-        # SQL contains multiple statements, but psycopg2 can handle them if they are simple
-        # However, it's better to execute it as one block if it has BEGIN/COMMIT
         cur.execute(sql)
         print("Migration applied successfully!")
         
@@ -37,6 +34,12 @@ def apply_migration():
         conn.close()
     except Exception as e:
         print(f"Error applying migration: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    apply_migration()
+    if len(sys.argv) < 2:
+        print("Usage: python apply_admin_migration.py <path_to_sql_file>")
+        sys.exit(1)
+        
+    migration_path = sys.argv[1]
+    apply_migration(migration_path)

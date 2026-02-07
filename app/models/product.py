@@ -31,6 +31,7 @@ class Product(Base):
     uom = relationship('UOM', foreign_keys=[uom_id])
     # Cascade delete-orphan: Al eliminar el producto, se elimina automáticamente su stock
     stock = relationship('ProductStock', uselist=False, back_populates='product', cascade="all, delete-orphan")
+    features = relationship('ProductFeature', backref='product', cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Product(id={self.id}, name='{self.name}', sku='{self.sku}')>"

@@ -9,6 +9,7 @@ from app.models.user_tenant import UserTenant, UserRole
 from app.models.uom import UOM
 from app.models.category import Category
 from app.models.product import Product
+from app.models.product_feature import ProductFeature
 from app.models.product_stock import ProductStock
 from app.models.sale import Sale, SaleStatus
 from app.models.sale_line import SaleLine
@@ -35,7 +36,7 @@ __all__ = [
     # SaaS Core
     'Tenant', 'AppUser', 'UserTenant', 'UserRole',
     # Business
-    'UOM', 'Category', 'Product', 'ProductStock',
+    'UOM', 'Category', 'Product', 'ProductFeature', 'ProductStock',
     'Sale', 'SaleStatus', 'SaleLine', 'SaleDraft', 'SaleDraftLine', 'SalePayment',
     'StockMove', 'StockMoveType', 'StockReferenceType', 'StockMoveLine',
     'FinanceLedger', 'LedgerType', 'LedgerReferenceType', 'PaymentMethod', 'normalize_payment_method',
