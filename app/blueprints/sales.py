@@ -114,6 +114,17 @@ def new_sale():
                        .order_by(Product.name)
                        .limit(20)
                        .all())
+        else:
+            # Default: Show catalog (A-Z) if no search query
+            products = (db_session.query(Product)
+                       .outerjoin(ProductStock)
+                       .filter(
+                           Product.tenant_id == g.tenant_id,
+                           Product.active == True
+                       )
+                       .order_by(Product.name)
+                       .limit(20)
+                       .all())
         
         # Get persisted draft for this user (rehydration)
         try:
@@ -130,13 +141,17 @@ def new_sale():
         # Get top selling products (tenant-scoped)
         top_products, top_products_error = get_top_selling_products(db_session, g.tenant_id, limit=10)
         
+        # is_fallback removed as we now show catalog below
+        is_fallback = False
+        
         return render_template('sales/new.html',
                              products=products,
                              search_query=search_query,
                              draft=draft,
                              totals=totals,
                              top_products=top_products,
-                             top_products_error=top_products_error)
+                             top_products_error=top_products_error,
+                             is_fallback=is_fallback)
         
     except Exception as e:
         flash(f'Error al cargar POS: {str(e)}', 'danger')
