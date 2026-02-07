@@ -226,7 +226,7 @@
 
                     <!-- Convert to Sale -->
                     {% if quote.is_convertible %}
-                    <button type="button" class="btn-custom btn-success-custom"
+                    <button type="button" class="btn-custom btn-primary-custom"
                         hx-get="{{ url_for('quotes.convert_to_sale_preview', quote_id=quote.id) }}"
                         hx-target="#modal-container" hx-swap="innerHTML" style="justify-content: center;">
                         <i class="bi bi-check-circle"></i> Convertir a Venta

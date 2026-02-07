@@ -256,6 +256,7 @@
     min-height: 100vh;
 }
 
+
 /* ============================================
    TOPBAR - Fixed Header
    ============================================ */
@@ -320,6 +321,8 @@
     max-width: var(--content-max-width);
     width: 100%;
     margin: 0 auto;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 /* ============================================
@@ -442,4 +445,72 @@
     color: #DC2626;
     font-weight: 600;
     border: none;
+}
+
+/* ============================================
+   GLOBAL FOOTER - StockAR Branding
+   ============================================ */
+
+.app-footer {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin-top: auto;
+    padding: var(--spacing-4) var(--spacing-6);
+    background-color: var(--color-bg-surface);
+    border-top: 1px solid var(--color-border-light);
+    z-index: var(--z-sticky);
+    width: 100%;
+}
+
+.app-footer-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+}
+
+.app-footer-logo {
+    max-height: 24px;
+    width: auto;
+    opacity: 0.75;
+    transition: opacity var(--transition-fast);
+}
+
+.app-footer-text {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+}
+
+.app-footer:hover .app-footer-logo {
+    opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767px) {
+    .app-footer {
+        padding: var(--spacing-3) var(--spacing-4);
+    }
+
+    .app-footer-logo {
+        max-height: 20px;
+    }
+
+    .app-footer-text {
+        font-size: 10px;
+    }
+}
+
+/* Sidebar logo responsive sizing */
+.sidebar-logo img {
+    max-height: 50px;
+    width: auto;
+    object-fit: contain;
+}
+
+@media (max-width: 1023px) {
+    .sidebar-logo img {
+        max-height: 40px;
+    }
 }

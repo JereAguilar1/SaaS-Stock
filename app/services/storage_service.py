@@ -234,6 +234,58 @@ class StorageService:
             raise ValueError(f"Tipo de archivo no permitido: {content_type}. Permitidos: {', '.join(allowed_types)}")
         
         logger.info(f"[STORAGE] ✓ File validation passed: {file.filename} ({file_size} bytes, {content_type})")
+    
+    def upload_tenant_logo(self, file: FileStorage, tenant_id: int) -> str:
+        """
+        Upload tenant business logo to S3-compatible storage.
+        
+        Recommended dimensions: max-height 60px, any reasonable width.
+        Supported formats: PNG, JPG, JPEG, SVG, WebP
+        
+        Args:
+            file: Werkzeug FileStorage object from request.files
+            tenant_id: Tenant ID for storage isolation
+        
+        Returns:
+            S3 object key (e.g., 'logos/123/business_logo.png')
+        
+        Raises:
+            ValueError: If file validation fails
+            ClientError: If upload fails
+        """
+        # Validate file type
+        allowed_types = {'image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'}
+        content_type = file.content_type
+        
+        if content_type not in allowed_types:
+            raise ValueError(f"Formato de imagen no permitido: {content_type}. Use PNG, JPG, SVG o WebP.")
+        
+        # Validate file
+        self._validate_file(file)
+        
+        # Generate object key with tenant isolation
+        import os
+        file_ext = os.path.splitext(file.filename)[1]
+        object_name = f"logos/{tenant_id}/business_logo{file_ext}"
+        
+        # Upload file
+        return self.upload_file(file, object_name, content_type)
+    
+    def delete_tenant_logo(self, logo_url: str) -> bool:
+        """
+        Delete tenant logo from S3-compatible storage.
+        
+        Args:
+            logo_url: S3 object key (e.g., 'logos/123/business_logo.png')
+        
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        if not logo_url:
+            return False
+        
+        return self.delete_file(logo_url)
+
 
 
 # Singleton instance

@@ -13,6 +13,7 @@ class Tenant(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     slug = Column(String(80), nullable=False, unique=True)  # URL-safe identifier
     name = Column(String(200), nullable=False)  # Display name
+    logo_url = Column(String(255), nullable=True)  # S3/MinIO object key for business logo
     active = Column(Boolean, nullable=False, default=True)
     is_suspended = Column(Boolean, nullable=False, default=False)  # Admin can suspend tenant access
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

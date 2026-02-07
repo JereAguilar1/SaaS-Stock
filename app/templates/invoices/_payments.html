@@ -46,7 +46,7 @@
     <!-- Payment Button (only if not fully paid) -->
     {% if invoice.status.value != 'PAID' %}
     <div style="margin-bottom: var(--spacing-6); text-align: center;">
-        <button type="button" class="btn-custom btn-success-custom"
+        <button type="button" class="btn-custom btn-primary-custom"
             style="min-width: 200px; justify-content: center; padding: var(--spacing-3); font-size: var(--font-size-lg);"
             hx-get="{{ url_for('invoices.pay_invoice_preview', invoice_id=invoice.id) }}"
             hx-target="#invoice-modal-container" hx-swap="innerHTML" hx-indicator="#pay-loading">

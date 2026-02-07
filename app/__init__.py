@@ -101,15 +101,25 @@ def create_app(config_object='config.Config'):
             try:
                 from app.database import get_session
                 from app.models import Tenant
+                from app.services.storage_service import get_storage_service
                 
                 db_session = get_session()
                 tenant = db_session.query(Tenant).filter_by(id=g.tenant_id).first()
                 if tenant:
-                    return {'current_tenant': tenant}
+                    # Generate public URL for logo if exists
+                    logo_public_url = None
+                    if tenant.logo_url:
+                        storage = get_storage_service()
+                        logo_public_url = storage.get_public_url(tenant.logo_url)
+                    
+                    return {
+                        'current_tenant': tenant,
+                        'logo_public_url': logo_public_url
+                    }
             except Exception:
                 pass
         
-        return {'current_tenant': None}
+        return {'current_tenant': None, 'logo_public_url': None}
 
     
     

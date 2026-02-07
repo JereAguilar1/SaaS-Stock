@@ -1,0 +1,16 @@
+<!-- HTMX partial for sidebar logo - swapped by logo upload/delete -->
+<div id="sidebar-logo">
+    {% if current_tenant %}
+    {% if current_tenant.logo_url and logo_public_url %}
+    <img src="{{ logo_public_url }}" alt="{{ current_tenant.name }}" class="brand-logo-custom"
+        style="max-height: 50px; width: auto; object-fit: contain;">
+    {% else %}
+    <span class="brand-text-fallback text-truncate"
+        style="color: white; font-size: var(--font-size-lg); font-weight: 700; text-transform: uppercase; max-width: 100%; display: block;">
+        {{ current_tenant.name }}
+    </span>
+    {% endif %}
+    {% else %}
+    <img src="{{ url_for('static', filename='img/logo_dashboard.png') }}" alt="StockAR" style="max-height: 40px;">
+    {% endif %}
+</div>

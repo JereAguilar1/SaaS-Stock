@@ -480,3 +480,129 @@ def delete_category(category_id):
         flash(f'Error al eliminar categoría: {str(e)}', 'danger')
     
     return redirect(url_for('settings.list_categories'))
+
+
+# ============================================================================
+# Business Configuration Routes - TENANT-SCOPED
+# ============================================================================
+
+@settings_bp.route('/business', methods=['GET'])
+@require_login
+@require_tenant
+def business_config():
+    """Display business configuration form (tenant-scoped)."""
+    session = get_session()
+    from app.models import Tenant
+    
+    tenant = session.query(Tenant).filter(
+        Tenant.id == g.tenant_id
+    ).first()
+    
+    if not tenant:
+        abort(404)
+    
+    # Get storage service to generate public URL for logo
+    from app.services.storage_service import get_storage_service
+    storage = get_storage_service()
+    
+    logo_public_url = None
+    if tenant.logo_url:
+        logo_public_url = storage.get_public_url(tenant.logo_url)
+    
+    return render_template('settings/business_config.html', tenant=tenant, logo_public_url=logo_public_url)
+
+
+@settings_bp.route('/business/logo', methods=['POST'])
+@require_login
+@require_tenant
+def upload_logo():
+    """Upload tenant business logo (HTMX endpoint)."""
+    session = get_session()
+    from app.models import Tenant
+    from app.services.storage_service import get_storage_service
+    
+    # Get current tenant
+    tenant = session.query(Tenant).filter(
+        Tenant.id == g.tenant_id
+    ).first()
+    
+    if not tenant:
+        abort(404)
+    
+    # Get uploaded file
+    logo_file = request.files.get('logo')
+    
+    if not logo_file or not logo_file.filename:
+        flash('No se proporcionó ningún archivo.', 'danger')
+        return redirect(url_for('settings.business_config'))
+    
+    try:
+        storage = get_storage_service()
+        
+        # Delete old logo if exists
+        if tenant.logo_url:
+            storage.delete_tenant_logo(tenant.logo_url)
+        
+        # Upload new logo
+        logo_url = storage.upload_tenant_logo(logo_file, g.tenant_id)
+        
+        # Update tenant
+        tenant.logo_url = logo_url
+        session.commit()
+        
+        # Get public URL for display
+        logo_public_url = storage.get_public_url(logo_url)
+        
+        # Return HTMX partial for sidebar update
+        return render_template('settings/_sidebar_logo.html', 
+                             current_tenant=tenant, 
+                             logo_public_url=logo_public_url)
+    
+    except ValueError as e:
+        session.rollback()
+        flash(str(e), 'danger')
+        return redirect(url_for('settings.business_config'))
+    except Exception as e:
+        session.rollback()
+        flash(f'Error al subir logo: {str(e)}', 'danger')
+        return redirect(url_for('settings.business_config'))
+
+
+@settings_bp.route('/business/logo/delete', methods=['POST'])
+@require_login
+@require_tenant
+def delete_logo():
+    """Delete tenant business logo (HTMX endpoint)."""
+    session = get_session()
+    from app.models import Tenant
+    from app.services.storage_service import get_storage_service
+    
+    # Get current tenant
+    tenant = session.query(Tenant).filter(
+        Tenant.id == g.tenant_id
+    ).first()
+    
+    if not tenant:
+        abort(404)
+    
+    try:
+        storage = get_storage_service()
+        
+        # Delete logo from storage
+        if tenant.logo_url:
+            storage.delete_tenant_logo(tenant.logo_url)
+        
+        # Update tenant
+        tenant.logo_url = None
+        session.commit()
+        
+        # Return HTMX partial for sidebar update (fallback to name)
+        return render_template('settings/_sidebar_logo.html', 
+                             current_tenant=tenant, 
+                             logo_public_url=None)
+    
+    except Exception as e:
+        session.rollback()
+        flash(f'Error al eliminar logo: {str(e)}', 'danger')
+        return redirect(url_for('settings.business_config'))
+

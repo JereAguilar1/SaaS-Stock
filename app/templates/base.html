@@ -66,15 +66,13 @@
             <!-- Sidebar Header -->
             <div class="sidebar-header">
                 <a href="/" class="sidebar-logo">
-                    <img src="{{ url_for('static', filename='img/logo_dashboard.png') }}" alt="Logo"
+                    {% if current_tenant %}
+                    {% include 'settings/_sidebar_logo.html' %}
+                    {% else %}
+                    <img src="{{ url_for('static', filename='img/logo_dashboard.png') }}" alt="StockAR"
                         style="max-height: 40px;">
+                    {% endif %}
                 </a>
-                {% if g.tenant %}
-                <div class="sidebar-tenant">
-                    <i class="bi bi-building"></i>
-                    <span>{{ g.tenant.name }}</span>
-                </div>
-                {% endif %}
             </div>
 
             <!-- Sidebar Navigation -->
@@ -215,6 +213,12 @@
                         </button>
                         <ul class="sidebar-dropdown-menu sidebar-nav-list">
                             <li class="sidebar-nav-item sidebar-dropdown-item">
+                                <a class="sidebar-nav-link" href="{{ url_for('settings.business_config') }}">
+                                    <i class="bi bi-shop"></i>
+                                    <span>Negocio</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-nav-item sidebar-dropdown-item">
                                 <a class="sidebar-nav-link" href="{{ url_for('settings.list_categories') }}">
                                     <i class="bi bi-tags"></i>
                                     <span>Categorías</span>
@@ -303,6 +307,15 @@
             <main class="app-content">
                 {% block content %}{% endblock %}
             </main>
+
+            <!-- Global Footer with StockAR Branding -->
+            <footer class="app-footer">
+                <div class="app-footer-content">
+                    <img src="{{ url_for('static', filename='img/logo_dashboard.png') }}" alt="StockAR"
+                        class="app-footer-logo">
+                    <span class="app-footer-text">Powered by StockAR</span>
+                </div>
+            </footer>
         </div>
     </div>
 
