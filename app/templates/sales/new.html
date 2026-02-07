@@ -38,6 +38,18 @@
         <div class="catalog-topbar">
             <!-- Search -->
             <div class="search-container">
+                <div class="mb-3">
+                    <select class="form-select" name="category_id" id="sales-category-select"
+                        hx-get="{{ url_for('sales.product_search') }}" hx-trigger="change"
+                        hx-target="#sales-product-results" hx-include="[name='q']"
+                        hx-indicator="#sales-search-indicator">
+                        <option value="">Todas las categorías</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0">
                         <i class="bi bi-search text-muted"></i>
@@ -47,7 +59,7 @@
                         placeholder="Buscar producto por nombre, SKU o código de barras..." autofocus
                         onfocus="this.select()" hx-get="{{ url_for('sales.product_search') }}"
                         hx-trigger="keyup changed delay:400ms, search" hx-target="#sales-product-results"
-                        hx-indicator="#sales-search-indicator" autocomplete="off">
+                        hx-include="[name='category_id']" hx-indicator="#sales-search-indicator" autocomplete="off">
                     <span class="input-group-text bg-white border-start-0" id="sales-search-indicator">
                         <div class="htmx-indicator spinner-border spinner-border-sm text-primary" role="status"></div>
                     </span>

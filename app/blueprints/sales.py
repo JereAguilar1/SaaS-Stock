@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 import decimal
 from datetime import datetime
 from app.database import get_session
-from app.models import Product, ProductStock, Sale, SaleLine, SaleStatus, SaleDraft
+from app.models import Product, ProductStock, Sale, SaleLine, SaleStatus, SaleDraft, Category
 from app.services.sales_service import confirm_sale, confirm_sale_from_draft
 from app.services import sale_draft_service
 from app.services.top_products_service import get_top_selling_products
@@ -144,6 +144,11 @@ def new_sale():
         # is_fallback removed as we now show catalog below
         is_fallback = False
         
+        # Get categories for filter (tenant-scoped)
+        categories = db_session.query(Category).filter(
+            Category.tenant_id == g.tenant_id
+        ).order_by(Category.name).all()
+        
         return render_template('sales/new.html',
                              products=products,
                              search_query=search_query,
@@ -151,7 +156,7 @@ def new_sale():
                              totals=totals,
                              top_products=top_products,
                              top_products_error=top_products_error,
-                             is_fallback=is_fallback)
+                             categories=categories)
         
     except Exception as e:
         flash(f'Error al cargar POS: {str(e)}', 'danger')
@@ -174,6 +179,7 @@ def product_search():
     try:
         # Get search query
         search_query = request.args.get('q', '').strip()
+        category_id = request.args.get('category_id', '').strip()
         
         # Get draft for highlighting selected products
         try:
@@ -184,6 +190,20 @@ def product_search():
             current_app.logger.warning(f"Could not load draft in product_search: {e}")
             draft, totals = None, None
         
+        # Build base query
+        query = db_session.query(Product).filter(
+            Product.tenant_id == g.tenant_id,
+            Product.active == True
+        )
+
+        # Apply Category Filter if present
+        if category_id:
+            try:
+                cat_id = int(category_id)
+                query = query.filter(Product.category_id == cat_id)
+            except ValueError:
+                pass
+        
         products = []
         exact_barcode_match = None
         
@@ -193,28 +213,40 @@ def product_search():
             
             # Check for exact barcode match first (priority)
             # IMPORTANT: Only check products with non-null barcode
-            exact_match = db_session.query(Product).filter(
+            # We also apply category filter to exact match check if present
+            exact_match_query = db_session.query(Product).filter(
                 Product.tenant_id == g.tenant_id,
                 Product.active == True,
                 Product.barcode.isnot(None),
                 func.lower(Product.barcode) == search_query.lower()
-            ).first()
+            )
+            
+            if category_id:
+                try:
+                   exact_match_query = exact_match_query.filter(Product.category_id == int(category_id))
+                except ValueError:
+                   pass
+
+            exact_match = exact_match_query.first()
             
             if exact_match:
                 exact_barcode_match = exact_match.id
                 products = [exact_match]
             else:
-            # Build search filter for fuzzy search
+                # Build search filter for fuzzy search
                 search_filter = or_(
                     func.lower(Product.name).like(f'%{search_query.lower()}%'),
                     and_(Product.sku.isnot(None), func.lower(Product.sku).like(f'%{search_query.lower()}%')),
                     and_(Product.barcode.isnot(None), func.lower(Product.barcode).like(f'%{search_query.lower()}%'))
                 )
                 
-                # Popularity Sort Query
-                # Left Outer Join with SaleLine -> Sale to calculate total sold
-                # We prioritize products with more sales history
-                products = (db_session.query(Product)
+                # Apply text filter to base query (which already has tenant/active/category)
+                query = query.filter(search_filter)
+                
+                # Popularity Sort Query with Joins
+                # Re-construct query with joins for popularity sort
+                # Note: We need to re-apply filters to this new query structure
+                pop_query = (db_session.query(Product)
                            .outerjoin(ProductStock)
                            .outerjoin(SaleLine, SaleLine.product_id == Product.id)
                            .outerjoin(Sale, and_(
@@ -225,8 +257,15 @@ def product_search():
                            .filter(
                                Product.tenant_id == g.tenant_id,
                                Product.active == True
-                           )
-                           .filter(search_filter)
+                           ))
+                
+                if category_id:
+                     try:
+                        pop_query = pop_query.filter(Product.category_id == int(category_id))
+                     except ValueError:
+                        pass
+
+                products = (pop_query.filter(search_filter)
                            .group_by(Product.id)
                            .order_by(
                                desc(func.sum(func.coalesce(SaleLine.qty, 0))), # Order by popularity
@@ -234,14 +273,25 @@ def product_search():
                            )
                            .limit(20)
                            .all())
+        elif category_id:
+             # No text search, only category
+             products = (query
+                       .outerjoin(ProductStock)
+                       .order_by(Product.name)
+                       .limit(20)
+                       .all())
         else:
-            # Si búsqueda vacía, mostrar top productos
-            try:
-                # FIX: unpack tuple returned by get_top_selling_products ((products, error))
-                products, _ = get_top_selling_products(db_session, g.tenant_id, limit=10)
-            except Exception as e:
-                current_app.logger.warning(f"Could not load top products: {e}")
-                products = []
+             # No filters at all -> Top Products or Default Catalog
+             # If search empty and no category, we usually show top products or catalog
+             # Since this is "search" endpoint, if called with empty everything, maybe return catalog?
+             # But usually frontend won't call search with empty q AND empty category unless reset
+             # Let's fallback to catalog
+             products = (query
+                       .outerjoin(ProductStock)
+                       .order_by(Product.name)
+                       .limit(20)
+                       .all())
+
         
         return render_template('sales/_product_results.html',
                              products=products,
