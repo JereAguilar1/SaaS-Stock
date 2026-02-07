@@ -366,12 +366,14 @@ def create_product():
             errors.append(f'El costo debe ser un número válido. Valor recibido: "{raw_cost}"')
         
         try:
-            min_stock_qty_decimal = float(min_stock_qty) if min_stock_qty else 0
-            if min_stock_qty_decimal < 0:
+            # Parse as integer (floor if decimal provided)
+            min_stock_qty_val = float(min_stock_qty) if min_stock_qty else 0
+            min_stock_qty_int = int(min_stock_qty_val)
+            if min_stock_qty_int < 0:
                 errors.append('El stock mínimo debe ser mayor o igual a 0')
         except ValueError:
             errors.append('El stock mínimo debe ser un número válido')
-            min_stock_qty_decimal = 0
+            min_stock_qty_int = 0
         
         if errors:
             for error in errors:
@@ -402,7 +404,7 @@ def create_product():
             cost=cost_decimal,
             active=active,
             image_path=image_url,  # Now stores full URL instead of filename
-            min_stock_qty=min_stock_qty_decimal
+            min_stock_qty=min_stock_qty_int
         )
         
         session.add(product)
@@ -579,12 +581,13 @@ def update_product(product_id):
             errors.append(f'El costo debe ser un número válido. Valor recibido: "{raw_cost}"')
         
         try:
-            min_stock_qty_decimal = float(min_stock_qty) if min_stock_qty else 0
-            if min_stock_qty_decimal < 0:
+            min_stock_qty_val = float(min_stock_qty) if min_stock_qty else 0
+            min_stock_qty_int = int(min_stock_qty_val)
+            if min_stock_qty_int < 0:
                 errors.append('El stock mínimo debe ser mayor o igual a 0')
         except ValueError:
             errors.append('El stock mínimo debe ser un número válido')
-            min_stock_qty_decimal = 0
+            min_stock_qty_int = 0
         
         if errors:
             for error in errors:
@@ -618,7 +621,7 @@ def update_product(product_id):
         product.uom_id = int(uom_id)
         product.sale_price = sale_price_decimal
         product.cost = cost_decimal
-        product.min_stock_qty = min_stock_qty_decimal
+        product.min_stock_qty = min_stock_qty_int
         product.active = active
         
         session.commit()
