@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle del Cliente - {{ customer.name }}{% endblock %}
+
+{% block page_title %}Detalle del Cliente{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('customers.list_customers') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i>
+    Volver a Clientes
+</a>
+<a href="{{ url_for('customers.edit_customer', customer_id=customer.id) }}" class="btn-custom btn-primary-custom">
+    <i class="bi bi-pencil"></i>
+    Editar Cliente
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card-custom">
+    <div class="card-body-custom">
+        <h2
+            style="margin-bottom: var(--spacing-6); color: var(--color-text-primary); font-weight: var(--font-weight-bold); border-bottom: 1px solid var(--color-border-light); padding-bottom: var(--spacing-4);">
+            <i class="bi bi-person-fill" style="margin-right: var(--spacing-2); color: var(--color-primary);"></i>
+            {{ customer.name }}
+        </h2>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-6);">
+            <!-- Información de Contacto -->
+            <div>
+                <h3
+                    style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-4);">
+                    <i class="bi bi-person-lines-fill"></i> Información de Contacto
+                </h3>
+                <dl style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-3); margin: 0;">
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">ID:</dt>
+                    <dd style="margin: 0;">{{ customer.id }}</dd>
+
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">RFC/RUT:
+                    </dt>
+                    <dd style="margin: 0;">
+                        {% if customer.tax_id %}
+                        <span
+                            style="font-family: monospace; background-color: var(--color-bg-muted); padding: 2px 6px; border-radius: 4px;">{{
+                            customer.tax_id }}</span>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Teléfono:
+                    </dt>
+                    <dd style="margin: 0;">
+                        {% if customer.phone %}
+                        <a href="tel:{{ customer.phone }}"
+                            style="text-decoration: none; color: var(--color-text-primary);">
+                            <i class="bi bi-telephone"></i> {{ customer.phone }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Email:
+                    </dt>
+                    <dd style="margin: 0;">
+                        {% if customer.email %}
+                        <a href="mailto:{{ customer.email }}"
+                            style="text-decoration: none; color: var(--color-primary);">
+                            <i class="bi bi-envelope"></i> {{ customer.email }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+
+            <!-- Notas Adicionales -->
+            <div>
+                <h3
+                    style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-4);">
+                    <i class="bi bi-journal-text"></i> Notas
+                </h3>
+                <div
+                    style="background-color: var(--color-bg-muted); padding: var(--spacing-4); border-radius: var(--radius-md); min-height: 100px;">
+                    {% if customer.notes %}
+                    <p style="margin: 0; white-space: pre-wrap;">{{ customer.notes }}</p>
+                    {% else %}
+                    <span style="color: var(--color-text-muted); font-style: italic;">No hay notas registradas.</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Auditoría -->
+        <div
+            style="margin-top: var(--spacing-6); padding-top: var(--spacing-4); border-top: 1px solid var(--color-border-light);">
+            <h3
+                style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); margin-bottom: var(--spacing-4);">
+                <i class="bi bi-clock-history"></i> Auditoría
+            </h3>
+            <dl style="display: grid; grid-template-columns: 150px 1fr; gap: var(--spacing-3); margin: 0;">
+                <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Fecha
+                    Creación:</dt>
+                <dd style="margin: 0;">{{ customer.created_at.strftime('%d/%m/%Y %H:%M') if customer.created_at else '-'
+                    }}</dd>
+
+                <dt style="font-weight: var(--font-weight-semibold); color: var(--color-text-secondary);">Última
+                    Edición:</dt>
+                <dd style="margin: 0;">{{ customer.updated_at.strftime('%d/%m/%Y %H:%M') if customer.updated_at else '-'
+                    }}</dd>
+            </dl>
+        </div>
+
+        <!-- Danger Zone -->
+        <div
+            style="margin-top: var(--spacing-6); padding-top: var(--spacing-4); border-top: 1px solid var(--color-border-light);">
+            <div class="alert-custom alert-warning"
+                style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="alert-custom-content">
+                    <strong>Zona de Peligro</strong><br>
+                    Esta acción no se puede deshacer. Se eliminará el cliente permanentemente si no tiene ventas
+                    asociadas.
+                </div>
+                <button type="button" class="btn-custom btn-danger-custom" data-bs-toggle="modal"
+                    data-bs-target="#deleteCustomerModal" data-customer-id="{{ customer.id }}"
+                    data-customer-name="{{ customer.name }}">
+                    <i class="bi bi-trash"></i> Eliminar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Delete Modal from list -->
+<div class="modal fade" id="deleteCustomerModal" tabindex="-1" aria-labelledby="deleteCustomerModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--color-danger); color: var(--color-text-inverse);">
+                <h5 class="modal-title" id="deleteCustomerModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="filter: brightness(0) invert(1);"></button>
+            </div>
+            <form method="POST" id="deleteCustomerForm">
+                <div class="modal-body">
+                    <p><strong>¿Está seguro de eliminar este cliente?</strong></p>
+                    <div class="alert-custom alert-warning">
+                        <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                        <div class="alert-custom-content">
+                            <strong>Advertencia:</strong> Esta acción es irreversible.
+                        </div>
+                    </div>
+                    <dl
+                        style="display: grid; grid-template-columns: auto 1fr; gap: var(--spacing-2); margin-bottom: 0;">
+                        <dt style="font-weight: var(--font-weight-semibold);">Cliente:</dt>
+                        <dd id="deleteCustomerName" style="margin: 0;"></dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-custom btn-secondary-custom"
+                        data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-custom btn-danger-custom">
+                        <i class="bi bi-trash"></i> Eliminar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deleteModal = document.getElementById('deleteCustomerModal');
+
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const customerId = button.getAttribute('data-customer-id');
+            const customerName = button.getAttribute('data-customer-name');
+
+            document.getElementById('deleteCustomerName').textContent = customerName;
+            document.getElementById('deleteCustomerForm').action = `/customers/${customerId}/delete`;
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if action == 'new' %}Nuevo Cliente{% else %}Editar Cliente{% endif %} - Sistema de Gestión
+{% endblock %}
+
+{% block page_title %}{% if action == 'new' %}Nuevo Cliente{% else %}Editar Cliente{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('customers.list_customers') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i> Volver
+</a>
+{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 340px; gap: var(--spacing-6);">
+    <div>
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h2 class="card-title">
+                    {{ 'Crear Nuevo Cliente' if action == 'new' else 'Editar Cliente' }}
+                </h2>
+            </div>
+            <div class="card-body-custom">
+                <form method="POST"
+                    action="{% if action == 'new' %}{{ url_for('customers.create_customer') }}{% else %}{{ url_for('customers.update_customer', customer_id=customer.id) }}{% endif %}">
+
+                    <!-- Name -->
+                    <div class="form-group">
+                        <label for="name" class="form-label-custom">
+                            Nombre <span style="color: var(--color-danger);">*</span>
+                        </label>
+                        <input type="text" class="form-input-custom" id="name" name="name"
+                            value="{{ customer.name or '' if customer else '' }}" required maxlength="255"
+                            placeholder="Nombre Completo o Razón Social" autofocus autocomplete="off"
+                            hx-post="{{ url_for('customers.check_name') }}" hx-trigger="keyup changed delay:500ms"
+                            hx-target="#name-error-container" hx-swap="outerHTML" hx-include="[name='customer_id']">
+                        <input type="hidden" name="customer_id" value="{{ customer.id or '' if customer else '' }}">
+                        <div id="name-error-container"></div>
+                    </div>
+
+                    <!-- Tax ID and Phone -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
+                        <div class="form-group">
+                            <label for="tax_id" class="form-label-custom">RFC/RUT/CUIT</label>
+                            <input type="text" class="form-input-custom" id="tax_id" name="tax_id"
+                                value="{{ customer.tax_id or '' if customer else '' }}" maxlength="50"
+                                placeholder="Identificación fiscal">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone" class="form-label-custom">Teléfono</label>
+                            <input type="text" class="form-input-custom" id="phone" name="phone"
+                                value="{{ customer.phone or '' if customer else '' }}" maxlength="50"
+                                placeholder="+54 9 ...">
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label for="email" class="form-label-custom">Email</label>
+                        <input type="email" class="form-input-custom" id="email" name="email"
+                            value="{{ customer.email or '' if customer else '' }}" maxlength="255"
+                            placeholder="contacto@cliente.com">
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-group">
+                        <label for="notes" class="form-label-custom">Notas</label>
+                        <textarea class="form-input-custom" id="notes" name="notes" rows="3"
+                            placeholder="Información adicional, preferencia de entrega, etc."
+                            style="resize: vertical; min-height: 100px;">{{ customer.notes or '' if customer else '' }}</textarea>
+                    </div>
+
+                    <!-- Actions -->
+                    <div
+                        style="display: flex; justify-content: flex-end; gap: var(--spacing-2); margin-top: var(--spacing-6);">
+                        <a href="{{ url_for('customers.list_customers') }}" class="btn-custom btn-secondary-custom">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" id="save-customer-btn" class="btn-custom btn-primary-custom">
+                            <i class="bi bi-save"></i>
+                            {% if action == 'new' %}Crear Cliente{% else %}Guardar Cambios{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div>
+        <div class="card-custom" style="background-color: var(--color-bg-muted);">
+            <div class="card-header-custom">
+                <h2 class="card-title" style="font-size: var(--font-size-sm);">
+                    <i class="bi bi-question-circle"></i> Ayuda
+                </h2>
+            </div>
+            <div class="card-body-custom">
+                <h6 style="margin-bottom: var(--spacing-2); font-weight: var(--font-weight-semibold);">Campo requerido:
+                </h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin-bottom: var(--spacing-4);">
+                    <li><strong>Nombre:</strong> Nombre o razón social del cliente</li>
+                </ul>
+
+                <h6 style="margin-bottom: var(--spacing-2); font-weight: var(--font-weight-semibold);">Campos
+                    opcionales:</h6>
+                <ul
+                    style="font-size: var(--font-size-sm); color: var(--color-text-secondary); padding-left: var(--spacing-4); margin: 0;">
+                    <li><strong>RFC/RUT/CUIT:</strong> Identificación fiscal</li>
+                    <li><strong>Teléfono:</strong> Contacto telefónico</li>
+                    <li><strong>Email:</strong> Correo electrónico</li>
+                    <li><strong>Notas:</strong> Información adicional</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

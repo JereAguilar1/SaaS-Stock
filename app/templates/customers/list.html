@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes - Sistema de Gestión{% endblock %}
+
+{% block page_title %}Clientes{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('customers.new_customer') }}" class="btn-custom btn-primary-custom">
+    <i class="bi bi-plus-circle"></i> Nuevo Cliente
+</a>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: var(--spacing-6);">
+    <p style="color: var(--color-text-secondary); margin: 0;">Gestión de clientes y contactos</p>
+</div>
+
+<!-- Search Form -->
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
+    <div class="card-body-custom">
+        <form method="GET" action="{{ url_for('customers.list_customers') }}" class="form-row">
+            <div style="flex: 1;">
+                <label for="q" class="form-label-custom">Buscar</label>
+                <div style="position: relative;">
+                    <i class="bi bi-search"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
+                    <input type="text" class="form-input-custom" id="q" name="q" value="{{ search_query or '' }}"
+                        placeholder="Nombre, RUT, Email, Teléfono..." style="padding-left: 36px;"
+                        hx-get="{{ url_for('customers.list_customers') }}"
+                        hx-trigger="input changed delay:350ms, search" hx-target="#customers-list-container"
+                        hx-swap="innerHTML" hx-push-url="true" autocomplete="off">
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="customers-list-container">
+    {% include 'customers/_list_table.html' %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Delete Customer Modal -->
+<div class="modal fade" id="deleteCustomerModal" tabindex="-1" aria-labelledby="deleteCustomerModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: var(--color-danger); color: var(--color-text-inverse);">
+                <h5 class="modal-title" id="deleteCustomerModalLabel">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="filter: brightness(0) invert(1);"></button>
+            </div>
+            <form method="POST" id="deleteCustomerForm">
+                <div class="modal-body">
+                    <p><strong>¿Está seguro de eliminar este cliente?</strong></p>
+                    <div class="alert-custom alert-warning">
+                        <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                        <div class="alert-custom-content">
+                            <strong>Advertencia:</strong> Esta acción es irreversible.
+                        </div>
+                    </div>
+                    <dl
+                        style="display: grid; grid-template-columns: auto 1fr; gap: var(--spacing-2); margin-bottom: 0;">
+                        <dt style="font-weight: var(--font-weight-semibold);">Cliente:</dt>
+                        <dd id="deleteCustomerNameIndex" style="margin: 0;"></dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-custom btn-secondary-custom"
+                        data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-custom btn-danger-custom">
+                        <i class="bi bi-trash"></i> Eliminar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deleteModal = document.getElementById('deleteCustomerModal');
+
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const customerId = button.getAttribute('data-customer-id');
+            const customerName = button.getAttribute('data-customer-name');
+
+            document.getElementById('deleteCustomerNameIndex').textContent = customerName;
+            document.getElementById('deleteCustomerForm').action = `/customers/${customerId}/delete`;
+        });
+    });
+</script>
+{% endblock %}

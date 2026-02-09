@@ -27,8 +27,11 @@ class Sale(Base):
     # Idempotency key to prevent duplicate sales on double-submit
     idempotency_key = Column(String(64), unique=True, nullable=True, index=True)
     
+    customer_id = Column(BigInteger, ForeignKey('customer.id'), nullable=True)
+    
     # Relationships
     tenant = relationship('Tenant')
+    customer = relationship('Customer', back_populates='sales')
     lines = relationship('SaleLine', back_populates='sale', cascade='all, delete-orphan')
     payments = relationship('SalePayment', back_populates='sale', cascade='all, delete-orphan')
     

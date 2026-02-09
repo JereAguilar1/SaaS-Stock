@@ -12,6 +12,7 @@
                 <tr>
                     <th style="width: 80px;">ID</th>
                     <th>Fecha y Hora</th>
+                    <th>Cliente</th>
                     <th style="text-align: right;">Total</th>
                     <th>Estado</th>
                     <th style="text-align: center;">Acciones</th>
@@ -26,6 +27,16 @@
                     <td>
                         <i class="bi bi-calendar3" style="color: var(--color-text-muted);"></i>
                         {{ sale.datetime|datetime_ar }}
+                    </td>
+                    <td>
+                        {% if sale.customer %}
+                        <a href="{{ url_for('customers.view_customer', customer_id=sale.customer.id) }}"
+                            class="fw-bold text-dark text-decoration-none">
+                            {{ sale.customer.name }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
                     </td>
                     <td style="text-align: right;">
                         <strong style="color: var(--color-success); font-weight: var(--font-weight-semibold);">${{

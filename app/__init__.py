@@ -150,6 +150,7 @@ def create_app(config_object='config.Config'):
     from app.blueprints.users import users_bp  # PASO 6
     from app.blueprints.catalog import catalog_bp
     from app.blueprints.sales import sales_bp
+    from app.blueprints.customers import customers_bp
     from app.blueprints.suppliers import suppliers_bp
     from app.blueprints.invoices import invoices_bp
     from app.blueprints.balance import balance_bp
@@ -171,6 +172,7 @@ def create_app(config_object='config.Config'):
     app.register_blueprint(users_bp)  # PASO 6
     app.register_blueprint(catalog_bp)
     app.register_blueprint(sales_bp)
+    app.register_blueprint(customers_bp)
     app.register_blueprint(suppliers_bp)
     app.register_blueprint(invoices_bp)
     app.register_blueprint(balance_bp)
