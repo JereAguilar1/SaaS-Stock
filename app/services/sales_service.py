@@ -11,7 +11,7 @@ from app.models import (
 )
 
 
-def confirm_sale(cart: dict, session, payment_method: str = 'CASH', tenant_id: int = None) -> int:
+def confirm_sale(cart: dict, session, payment_method: str = 'CASH', tenant_id: int = None, customer_id: int = None) -> int:
     """
     Confirm sale with full transactional processing (tenant-scoped).
     
@@ -128,7 +128,8 @@ def confirm_sale(cart: dict, session, payment_method: str = 'CASH', tenant_id: i
             tenant_id=tenant_id,  # CRITICAL
             datetime=datetime.now(),
             total=sale_total,
-            status=SaleStatus.CONFIRMED
+            status=SaleStatus.CONFIRMED,
+            customer_id=customer_id
         )
         session.add(sale)
         session.flush()  # Get sale.id
@@ -228,7 +229,8 @@ def confirm_sale_from_draft(
     idempotency_key: str,
     session,
     tenant_id: int,
-    user_id: int
+    user_id: int,
+    customer_id: int = None
 ) -> int:
     """
     Confirm sale from draft with idempotency and mixed payments.
@@ -361,7 +363,8 @@ def confirm_sale_from_draft(
             datetime=datetime.now(),
             total=sale_total,
             status=SaleStatus.CONFIRMED,
-            idempotency_key=idempotency_key
+            idempotency_key=idempotency_key,
+            customer_id=customer_id
         )
         session.add(sale)
         session.flush()

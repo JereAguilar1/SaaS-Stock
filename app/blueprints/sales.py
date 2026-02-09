@@ -1,6 +1,7 @@
 """Sales blueprint for POS and cart management - Multi-Tenant."""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file, current_app, g, abort
 from sqlalchemy import or_, func, and_, desc
+from sqlalchemy.orm import joinedload
 from decimal import Decimal, InvalidOperation
 import decimal
 from datetime import datetime
@@ -666,6 +667,18 @@ def confirm():
         
         # Get payment method from form
         payment_method = request.form.get('payment_method', 'CASH').upper()
+        customer_id = request.form.get('customer_id')
+
+        # Validate customer_id if required
+        if not customer_id:
+             flash('Debe seleccionar un cliente.', 'danger')
+             return redirect(url_for('sales.new_sale'))
+        
+        try:
+             customer_id = int(customer_id)
+        except ValueError:
+             flash('ID de cliente inválido.', 'danger')
+             return redirect(url_for('sales.new_sale'))
         
         # Validate payment method
         if payment_method not in ['CASH', 'TRANSFER']:
@@ -673,7 +686,7 @@ def confirm():
             return redirect(url_for('sales.new_sale'))
         
         # Call service to confirm sale with tenant_id
-        sale_id = confirm_sale(cart, db_session, payment_method, g.tenant_id)
+        sale_id = confirm_sale(cart, db_session, payment_method, g.tenant_id, customer_id)
         
         # Clear cart
         session['cart'] = {'items': {}}
@@ -777,7 +790,7 @@ def list_sales():
         sale_id_search = request.args.get('id', '').strip()
         
         # Build query (tenant-scoped)
-        query = db_session.query(Sale).filter(
+        query = db_session.query(Sale).options(joinedload(Sale.customer)).filter(
             Sale.tenant_id == g.tenant_id,
             Sale.status == SaleStatus.CONFIRMED
         )
@@ -1495,6 +1508,14 @@ def confirm_draft():
         if not payments:
             raise ValueError('Debe especificar al menos un método de pago')
         
+        # Get customer_id (optional)
+        customer_id = request.form.get('customer_id')
+        if customer_id:
+            try:
+                customer_id = int(customer_id)
+            except ValueError:
+                customer_id = None
+        
         # Confirm sale
         sale_id = confirm_sale_from_draft(
             draft_id=draft.id,
@@ -1502,7 +1523,8 @@ def confirm_draft():
             idempotency_key=idempotency_key,
             session=db_session,
             tenant_id=g.tenant_id,
-            user_id=g.user_id
+            user_id=g.user_id,
+            customer_id=customer_id
         )
         
         # ROBUSTEZ: Clear draft con manejo de errores (no crítico)

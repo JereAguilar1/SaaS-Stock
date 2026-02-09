@@ -39,6 +39,41 @@
             <!-- Search -->
             <div class="search-container">
                 <div class="mb-3">
+                    <div class="card border-0 shadow-sm mb-3 bg-light">
+                        <div class="card-body p-3">
+                            <label class="form-label fw-bold text-uppercase small text-muted mb-1">
+                                <i class="bi bi-person-badge me-1"></i>Cliente
+                            </label>
+
+                            <div class="position-relative">
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text bg-white border-end-0 text-primary">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+
+                                    <input type="text" id="customer_search" class="form-control border-start-0 ps-0"
+                                        placeholder="Buscar por nombre o DNI..." autocomplete="off">
+
+                                    <input type="hidden" name="customer_id" id="customer_id">
+
+                                    <button class="btn btn-outline-secondary border-start-0 bg-white" type="button"
+                                        id="btn_clear_customer" style="display: none;">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+
+                                    <a href="{{ url_for('customers.create_customer') }}" class="btn btn-primary"
+                                        target="_blank" title="Crear Nuevo">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </a>
+                                </div>
+
+                                <div id="customer_results" class="list-group shadow position-absolute w-100"
+                                    style="display:none; z-index: 1050; top: 100%; max-height: 250px; overflow-y: auto;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <select class="form-select" name="category_id" id="sales-category-select"
                         hx-get="{{ url_for('sales.product_search') }}" hx-trigger="change"
                         hx-target="#sales-product-results" hx-include="[name='q']"
@@ -67,6 +102,8 @@
             </div>
 
 
+
+
             <!-- Top Products Suggestions -->
             <div id="top-products-section">
                 {% include 'sales/_top_products.html' %}
@@ -91,8 +128,6 @@
 
             // Guard: exit if element doesn't exist
             if (!searchInput) {
-                // Solo warn si estamos en debug, para no llenar la consola en prod
-                // console.warn('POS search input not found, skipping initialization');
                 return;
             }
 
@@ -124,7 +159,7 @@
 
         function addProductToCart(productId) {
             // Create form and submit via HTMX
-            htmx.ajax('POST', '{{ url_for("sales.draft_add") }}', {
+            htmx.ajax('POST', '{{ url_for("sales.cart_add") }}', {
                 target: '#cart-container',
                 swap: 'innerHTML',
                 values: { product_id: productId, qty: 1 }
@@ -135,11 +170,116 @@
             addProductToCart(productId);
         }
 
+        // --- Customer Search Utils ---
+        function initializeCustomerSearch() {
+            const customerSearchInput = document.getElementById('customer_search');
+            const customerIdInput = document.getElementById('customer_id');
+            const customerResults = document.getElementById('customer_results');
+            const clearCustomerBtn = document.getElementById('btn_clear_customer'); // Updated ID
+
+            if (!customerSearchInput || customerSearchInput.dataset.initialized === 'true') {
+                return;
+            }
+
+            // Mark as initialized to prevent creating duplicate listeners if called multiple times
+            customerSearchInput.dataset.initialized = 'true';
+
+            let debounceTimer;
+
+            customerSearchInput.addEventListener('input', function () {
+                const query = this.value.trim();
+                clearTimeout(debounceTimer);
+
+                if (query.length < 2) {
+                    customerResults.style.display = 'none';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`{{ url_for('customers.search_customers') }}?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            customerResults.innerHTML = '';
+                            if (data.results.length > 0) {
+                                data.results.forEach(customer => {
+                                    const item = document.createElement('button');
+                                    item.type = 'button';
+                                    item.className = 'list-group-item list-group-item-action';
+                                    item.innerHTML = `<strong>${customer.name}</strong> <small class="text-muted">(${customer.tax_id || 'N/A'})</small>`;
+                                    // Use new global selectCustomer function
+                                    item.onclick = () => window.selectCustomer(customer.id, customer.name);
+                                    customerResults.appendChild(item);
+                                });
+                                customerResults.style.display = 'block';
+                            } else {
+                                customerResults.style.display = 'none';
+                            }
+                        });
+                }, 300);
+            });
+
+            // Lógica del Botón Limpiar
+            if (clearCustomerBtn) {
+                clearCustomerBtn.addEventListener('click', function () {
+                    customerSearchInput.value = '';
+                    customerIdInput.value = '';
+                    customerSearchInput.disabled = false; // Desbloquear
+                    clearCustomerBtn.style.display = 'none'; // Ocultar X
+                    customerSearchInput.focus();
+                });
+            }
+        }
+
+        // Global function for selecting customer
+        window.selectCustomer = function (id, name) {
+            const searchInput = document.getElementById('customer_search');
+            const hiddenInput = document.getElementById('customer_id');
+            const clearBtn = document.getElementById('btn_clear_customer');
+            const resultsDiv = document.getElementById('customer_results');
+
+            if (searchInput && hiddenInput) {
+                searchInput.value = name;
+                hiddenInput.value = id;
+                searchInput.disabled = true; // Bloquear escritura
+                if (clearBtn) clearBtn.style.display = 'block'; // Mostrar X
+                if (resultsDiv) resultsDiv.style.display = 'none';
+            }
+        };
+
+        // Global document click listener for closing results
+        document.addEventListener('click', function (e) {
+            const customerSearchInput = document.getElementById('customer_search');
+            const customerResults = document.getElementById('customer_results');
+
+            if (customerSearchInput && customerResults) {
+                if (!customerSearchInput.contains(e.target) && !customerResults.contains(e.target)) {
+                    customerResults.style.display = 'none';
+                }
+            }
+        });
+
         // Initialize on DOM ready
-        document.addEventListener('DOMContentLoaded', initializeSearch);
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSearch();
+            initializeCustomerSearch();
+        });
 
         // Re-initialize if HTMX swaps content
-        document.body.addEventListener('htmx:load', initializeSearch);
+        document.body.addEventListener('htmx:load', () => {
+            initializeSearch();
+            initializeCustomerSearch();
+        });
+
+        // Sync customer_id to confirm form on submit (Global listener)
+        document.addEventListener('submit', function (e) {
+            if (e.target && e.target.id === 'confirm-form') {
+                var customerIdInput = document.getElementById('customer_id');
+                var submitCustomerId = document.getElementById('submit_customer_id');
+                if (customerIdInput && submitCustomerId) {
+                    submitCustomerId.value = customerIdInput.value;
+                }
+            }
+        });
     </script>
     {% endblock %}
 

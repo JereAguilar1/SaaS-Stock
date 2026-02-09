@@ -25,6 +25,9 @@
 <div class="cart-footer">
     {% if totals and totals['lines'] %}
     <div class="totals-area">
+        <!-- Customer Search (Moved) -->
+
+
         <div class="total-row final-total">
             <span>Total</span>
             <span id="cart-total-display">${{ totals.total|money_ar }}</span>
@@ -67,6 +70,7 @@
 
         <form id="confirm-form" method="POST" action="{{ url_for('sales.confirm_draft') }}">
             <input type="hidden" name="idempotency_key" id="idempotency-key" value="">
+            <input type="hidden" name="customer_id" id="submit_customer_id" value="">
             <input type="hidden" name="payments[0][method]" id="payment-method-input" value="CASH">
             <input type="hidden" name="payments[0][amount]" id="payment-amount-input" value="{{ totals.total }}">
 
@@ -86,6 +90,23 @@
 </div>
 
 
+
+
+<script>
+    // Sync customer_id to confirm form on submit
+    document.addEventListener('DOMContentLoaded', function () {
+        const confirmForm = document.getElementById('confirm-form');
+        if (confirmForm) {
+            confirmForm.addEventListener('submit', function () {
+                var customerIdInput = document.getElementById('customer_id');
+                var submitCustomerId = document.getElementById('submit_customer_id');
+                if (customerIdInput && submitCustomerId) {
+                    submitCustomerId.value = customerIdInput.value;
+                }
+            });
+        }
+    });
+</script>
 
 <style>
     /* Reuse existing cart styles */

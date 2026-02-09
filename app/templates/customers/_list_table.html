@@ -1,0 +1,104 @@
+<div class="card-custom">
+    {% if customers %}
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">ID</th>
+                    <th>Nombre</th>
+                    <th>RFC/RUT</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr>
+                    <td>{{ customer.id }}</td>
+                    <td><strong style="color: var(--color-text-primary);">{{ customer.name }}</strong></td>
+                    <td>
+                        {% if customer.tax_id %}
+                        <span style="font-family: monospace;">{{ customer.tax_id }}</span>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if customer.phone %}
+                        <a href="tel:{{ customer.phone }}"
+                            style="color: var(--color-text-secondary); text-decoration: none;">
+                            <i class="bi bi-telephone" style="font-size: var(--font-size-xs);"></i> {{ customer.phone }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if customer.email %}
+                        <a href="mailto:{{ customer.email }}"
+                            style="color: var(--color-primary); text-decoration: none;">
+                            {{ customer.email }}
+                        </a>
+                        {% else %}
+                        <span style="color: var(--color-text-muted);">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="table-actions" style="justify-content: center;">
+                            <a href="{{ url_for('customers.view_customer', customer_id=customer.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Ver Detalle">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('customers.edit_customer', customer_id=customer.id) }}"
+                                class="btn-custom btn-secondary-custom btn-sm" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
+                                data-bs-toggle="modal" data-bs-target="#deleteCustomerModal"
+                                data-customer-id="{{ customer.id }}" data-customer-name="{{ customer.name }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-footer-custom">
+        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+            <strong>{{ customers|length }}</strong> cliente(s) registrado(s)
+            {% if search_query %}
+            para la búsqueda: <strong>"{{ search_query }}"</strong>
+            {% endif %}
+        </p>
+    </div>
+    {% else %}
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-person-video2"></i>
+            <div class="empty-state-title">
+                {% if search_query %}
+                No se encontraron clientes
+                {% else %}
+                No hay clientes registrados
+                {% endif %}
+            </div>
+            <p class="empty-state-description">
+                {% if search_query %}
+                No hay resultados para <strong>"{{ search_query }}"</strong>
+                {% else %}
+                Registre los clientes para asociar ventas y llevar el control de cuentas corrientes.
+                {% endif %}
+            </p>
+            {% if not search_query %}
+            <a href="{{ url_for('customers.new_customer') }}" class="btn-custom btn-primary-custom">
+                <i class="bi bi-plus-circle"></i> Crear primer cliente
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
