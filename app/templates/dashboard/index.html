@@ -85,7 +85,17 @@
                 </h2>
             </div>
             <div class="card-body-custom" style="padding: 0;">
-                {% if low_stock_products %}
+                {% if product_count == 0 %}
+                <div class="empty-state">
+                    <i class="empty-state-icon bi bi-box-seam" style="color: var(--color-primary);"></i>
+                    <div class="empty-state-title">Todavía no tenés productos cargados</div>
+                    <p class="empty-state-description">Cargá tu primer producto para empezar a vender.</p>
+                    <a href="{{ url_for('catalog.create_product') }}" class="btn-custom btn-primary-custom">
+                        <i class="bi bi-plus-lg"></i>
+                        Agregar primer producto
+                    </a>
+                </div>
+                {% elif low_stock_products %}
                 <div style="display: flex; flex-direction: column;">
                     {% for product in low_stock_products %}
                     <div

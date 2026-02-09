@@ -211,6 +211,28 @@
                                 style="font-family: monospace;">
                         </div>
                         {% endif %}
+
+                        <!-- 5. Stock Actual (Editable - Only Edit) -->
+                        {% if action == 'edit' %}
+                        <div class="form-group">
+                            <label for="on_hand_qty" class="form-label-custom">
+                                Stock Actual
+                            </label>
+                            <div style="position: relative;">
+                                <input type="text" class="form-input-custom no-spinner" id="on_hand_qty"
+                                    name="on_hand_qty"
+                                    value="{{ '{:,.2f}'.format(product.on_hand_qty).replace(',', 'X').replace('.', ',').replace('X', '.') if product else '0,00' }}"
+                                    inputmode="decimal" required autocomplete="off"
+                                    onfocus="if(this.value === '0,00' || this.value === '0') this.value = '';"
+                                    onblur="if(this.value === '') this.value = '0,00';"
+                                    style="font-family: monospace; font-weight: bold;">
+                                <small
+                                    style="color: var(--color-text-muted); font-size: var(--font-size-xs); display: block; margin-top: 4px;">
+                                    Modificar ajusta el stock.
+                                </small>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
 
                     <hr style="border-color: var(--color-border-light); margin: var(--spacing-6) 0;">
@@ -286,11 +308,20 @@
                                     src="{{ product.image_url if product and product.image_url else '' }}"
                                     alt="Imagen actual" style="max-width: 150px; height: auto; display: block;">
                             </div>
-                            <div style="margin-top: var(--spacing-2);">
+                            <div style="margin-top: var(--spacing-2); display: flex; gap: var(--spacing-2);">
                                 <button type="button" class="btn-custom btn-secondary-custom btn-sm"
-                                    id="editExistingImageBtn">
+                                    id="editExistingImageBtn"
+                                    data-original-url="{{ product.image_original_url if product and product.image_original_url else (product.image_url if product and product.image_url else '') }}">
                                     <i class="bi bi-pencil-square"></i> Editar/Recortar
                                 </button>
+
+                                {% if product and product.image_original_path %}
+                                <button type="button" class="btn-custom btn-ghost-custom btn-sm text-warning"
+                                    id="restoreImageBtn" title="Restaurar a la imagen original sin recortes"
+                                    data-restore-url="{{ url_for('catalog.restore_product_image', product_id=product.id) }}">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Restaurar
+                                </button>
+                                {% endif %}
                             </div>
                             <p
                                 style="margin: var(--spacing-1) 0 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted);">
@@ -326,16 +357,7 @@
                         </small>
                     </div>
 
-                    {% if product %}
-                    <!-- Stock Info (read-only) -->
-                    <div class="alert-custom alert-info" style="margin-top: var(--spacing-6);">
-                        <i class="alert-custom-icon bi bi-info-circle"></i>
-                        <div class="alert-custom-content">
-                            <strong>Stock actual:</strong>
-                            {{ "%.2f"|format(product.on_hand_qty) }} {{ product.uom.symbol }}
-                        </div>
-                    </div>
-                    {% endif %}
+
 
                     <!-- Actions -->
                     <div
@@ -462,6 +484,7 @@
     // Image Cropper Logic
     let cropper = null;
     let croppedBlob = null;
+    const productId = "{{ product.id if product else '' }}";
 
     const imageInput = document.getElementById('image');
     const selectImageBtn = document.getElementById('selectImageBtn');
@@ -486,17 +509,57 @@
     // Edit Existing Image Logic
     if (editExistingImageBtn) {
         editExistingImageBtn.addEventListener('click', () => {
+            const originalUrl = editExistingImageBtn.dataset.originalUrl;
             const currentImgSrc = document.getElementById('currentImage').src;
-            if (currentImgSrc) {
+
+            // Prefer original URL for cropping to allow infinite edits
+            const srcToLoad = originalUrl || currentImgSrc;
+
+            if (srcToLoad) {
                 // Set crossorigin BEFORE setting src to avoid tainted canvas
                 cropperImage.crossOrigin = 'anonymous';
-                cropperImage.src = currentImgSrc;
+                cropperImage.src = srcToLoad;
 
                 // Add a timestamp to bypass browser cache if needed, though usually not strictly necessary for viewing
                 // cropperImage.src = currentImgSrc + '?t=' + new Date().getTime(); 
 
                 cropperModal.show();
                 initCropperInstance();
+            }
+        });
+    }
+
+    // Restore Image Logic
+    const restoreBtn = document.getElementById('restoreImageBtn');
+    if (restoreBtn) {
+        restoreBtn.addEventListener('click', function () {
+            if (confirm('¿Está seguro de restaurar la imagen original? Se perderá el recorte actual.')) {
+
+                const originalContent = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Restaurando...';
+
+                fetch(this.dataset.restoreUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' // Just in case, though not strictly required if not using CSRF extension yet
+                    }
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + (data.error || 'Error desconocido'));
+                            this.disabled = false;
+                            this.innerHTML = originalContent;
+                        }
+                    })
+                    .catch(err => {
+                        alert('Error de red: ' + err);
+                        this.disabled = false;
+                        this.innerHTML = originalContent;
+                    });
             }
         });
     }
@@ -588,6 +651,52 @@
             return;
         }
 
+        // Logic split: 
+        // 1. If we have a NEW file selected (imageInput has files), use client-side blob logic.
+        // 2. If we are editing an EXISTING confirmed image (imageInput empty + we have productId), use server-side crop.
+
+        const hasNewFile = imageInput.files && imageInput.files.length > 0;
+
+        if (!hasNewFile && productId) {
+            // SERVER-SIDE CROP (Existing Product)
+            const data = cropper.getData();
+
+            const originalBtnContent = applyCropBtn.innerHTML;
+            applyCropBtn.disabled = true;
+            applyCropBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+
+            fetch(`/products/${productId}/crop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'x': data.x,
+                    'y': data.y,
+                    'width': data.width,
+                    'height': data.height
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error'));
+                        applyCropBtn.disabled = false;
+                        applyCropBtn.innerHTML = originalBtnContent;
+                    }
+                })
+                .catch(err => {
+                    alert('Error de red: ' + err);
+                    applyCropBtn.disabled = false;
+                    applyCropBtn.innerHTML = originalBtnContent;
+                });
+
+            return; // Stop execution here, let fetch handle it
+        }
+
+        // CLIENT-SIDE CROP (New Upload or New Product)
         canvas.toBlob(function (blob) {
             if (!blob) return;
 

@@ -1,11 +1,14 @@
 """Catalog blueprint for products management - Multi-Tenant."""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, g, abort
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, select
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 import time
+from io import BytesIO
+from PIL import Image
+import requests
 from app.database import get_session
-from app.models import Product, ProductStock, UOM, Category, ProductFeature
+from app.models import Product, ProductStock, UOM, Category, ProductFeature, StockMove, StockMoveLine, StockMoveType, StockReferenceType
 from app.middleware import require_login, require_tenant
 from app.services.storage_service import get_storage_service
 from app.services.cache_service import get_cache
@@ -403,7 +406,8 @@ def create_product():
             sale_price=sale_price_decimal,
             cost=cost_decimal,
             active=active,
-            image_path=image_url,  # Now stores full URL instead of filename
+            image_path=image_url,
+            image_original_path=image_url,  # Save original reference
             min_stock_qty=min_stock_qty_int
         )
         
@@ -625,10 +629,15 @@ def update_product(product_id):
                 if product.image_path:
                     delete_product_image(product.image_path)
                 
+                # Also delete original if it's different
+                if product.image_original_path and product.image_original_path != product.image_path:
+                    delete_product_image(product.image_original_path)
+                
                 # Upload new image to S3
                 image_url = save_product_image(image_file, g.tenant_id)
                 if image_url:
-                    product.image_path = image_url  # Store full URL
+                    product.image_path = image_url
+                    product.image_original_path = image_url # Update original as well
         
         # Update product
         product.name = name
@@ -640,6 +649,53 @@ def update_product(product_id):
         product.cost = cost_decimal
         product.min_stock_qty = min_stock_qty_int
         product.active = active
+
+        # STOCK ADJUSTMENT (Refactored)
+        # Check if stock changed
+        new_on_hand_qty_str = request.form.get('on_hand_qty', '').strip()
+        if new_on_hand_qty_str:
+            try:
+                # SANITIZER: Clean stock format (1.000,00 -> 1000.00)
+                clean_qty = new_on_hand_qty_str.replace('.', '').replace(',', '.')
+                new_on_hand_qty = float(clean_qty)
+
+                if new_on_hand_qty >= 0:
+                    current_qty = product.on_hand_qty
+                    delta = new_on_hand_qty - float(current_qty)
+                    
+                    if abs(delta) > 0.001:
+                        # Create Stock Move
+                        stock_move = StockMove(
+                            tenant_id=g.tenant_id,
+                            type=StockMoveType.ADJUST,
+                            reference_type=StockReferenceType.MANUAL,
+                            notes=f"Edición directa desde formulario de producto (Usuario: {g.user.email if g.user else 'Unknown'})"
+                        )
+                        session.add(stock_move)
+                        session.flush()
+                        
+                        # Create Move Line
+                        move_line = StockMoveLine(
+                            stock_move_id=stock_move.id,
+                            product_id=product.id,
+                            qty=delta,
+                            uom_id=product.uom_id
+                        )
+                        session.add(move_line)
+                        
+                        # Update ProductStock (if exists) or Product field logic
+                        # Checking if ProductStock entity is used or if we need to update it
+                        product_stock = session.query(ProductStock).filter(ProductStock.product_id == product.id).first()
+                        if not product_stock:
+                            product_stock = ProductStock(product_id=product.id, on_hand_qty=0)
+                            session.add(product_stock)
+                        
+                        product_stock.on_hand_qty = new_on_hand_qty
+                        # Note: product.on_hand_qty is a proxy/property usually, but if it's not we might need to refresh
+                else:
+                    flash('El stock no puede ser negativo. Se ignoró el cambio de stock.', 'warning')
+            except ValueError:
+                flash('Valor de stock inválido. Se ignoró el cambio de stock.', 'warning')
         
         # PERSIST FEATURES (Clear and Recreate)
         product.features = [] # Cascade delete-orphan will handle deletions
@@ -748,6 +804,35 @@ def delete_product(product_id):
         image_path = product.image_path
         
         try:
+            # FIX: Check for StockMoveLine dependencies
+            # If exists, check if they are all from MANUAL/ADJUST stock moves
+            # If so, we can safely delete the lines first.
+            # If any is from SALE/INVOICE, we block.
+            
+            stmt = select(StockMoveLine).filter(StockMoveLine.product_id == product_id)
+            lines = session.execute(stmt).scalars().all()
+            
+            if lines:
+                # Check parents
+                for line in lines:
+                    # Lazy loading might trigger here, better to join if performance critical
+                    # but for deletion of single product it's fine.
+                    move = line.stock_move
+                    if move.reference_type not in (StockReferenceType.MANUAL,): 
+                        # If we had other safe types like 'INITIAL', add them here.
+                        # Block if SALE or INVOICE
+                        raise IntegrityError("Has commercial history", params=None, orig=None)
+                
+                # All lines are safe to delete (Manual adjustments)
+                # We delete the lines. The StockMove parent might be left empty or deleted?
+                # Usually StockMove is the header. If we delete the line, the header 
+                # might stay if it has other lines, or become empty.
+                # For this fix, we just delete the lines associated with this product.
+                for line in lines:
+                    session.delete(line)
+                
+                session.flush()
+
             session.delete(product)
             session.commit()
             
@@ -769,7 +854,7 @@ def delete_product(product_id):
             session.rollback()
             flash(
                 f'No se puede eliminar el producto "{product_name}" porque tiene '
-                'movimientos, ventas o compras asociadas. '
+                'ventas o compras asociadas. '
                 'Use la opción "Desactivar" en su lugar.',
                 'warning'
             )
@@ -824,3 +909,173 @@ def check_sku():
     except Exception as e:
         current_app.logger.error(f"Error checking SKU: {e}")
         return '<div id="sku-error-container"></div>'
+
+
+@catalog_bp.route('/<int:product_id>/crop', methods=['POST'])
+@require_login
+@require_tenant
+def crop_product_image(product_id):
+    """
+    Crop product image using server-side processing (Pillow).
+    Always crops from the ORIGINAL image to preserve quality/context.
+    """
+    session = get_session()
+    storage = get_storage_service()
+    
+    try:
+        product = session.query(Product).filter(
+            Product.id == product_id,
+            Product.tenant_id == g.tenant_id
+        ).first()
+        
+        if not product:
+            return {'error': 'Producto no encontrado'}, 404
+            
+        # 1. Resolve source image (ORIGINAL)
+        source_key = product.image_original_path
+        if not source_key:
+            # Fallback for legacy data: use current image as original
+            source_key = product.image_path
+            if source_key:
+                product.image_original_path = source_key # Backfill
+                session.commit()
+            else:
+                return {'error': 'El producto no tiene imagen para recortar'}, 400
+                
+        # 2. Get crop parameters
+        try:
+            x = float(request.form.get('x'))
+            y = float(request.form.get('y'))
+            width = float(request.form.get('width'))
+            height = float(request.form.get('height'))
+        except (TypeError, ValueError):
+            return {'error': 'Parámetros de recorte inválidos'}, 400
+
+        # 3. Download original image from S3
+        try:
+            # We need to get the file content. 
+            # StorageService uses boto3 client. Let's use get_object.
+            s3_response = storage.client.get_object(Bucket=storage.bucket, Key=source_key)
+            file_stream = BytesIO(s3_response['Body'].read())
+        except Exception as e:
+            current_app.logger.error(f"Error downloading original image: {e}")
+            return {'error': 'No se pudo acceder a la imagen original'}, 500
+
+        # 4. Process with Pillow
+        try:
+            img = Image.open(file_stream)
+            
+            # Crop
+            # The coordinates from frontend (Cropper.js) are relative to natural dimensions 
+            # if we configured it correctly, otherwise we might need to scale.
+            # Assuming frontend sends natural dimensions or we trust the values.
+            box = (x, y, x + width, y + height)
+            cropped_img = img.crop(box)
+            
+            # Save to buffer
+            output_buffer = BytesIO()
+            # Preserve format if possible, default to JPEG
+            format = img.format or 'JPEG'
+            if format == 'PNG':
+                 cropped_img.save(output_buffer, format='PNG')
+                 content_type = 'image/png'
+                 extension = '.png'
+            else:
+                 cropped_img = cropped_img.convert('RGB')
+                 cropped_img.save(output_buffer, format='JPEG', quality=90)
+                 content_type = 'image/jpeg'
+                 extension = '.jpg'
+                 
+            output_buffer.seek(0)
+            
+            # Create a FileStorage-like object or modify StorageService to accept stream
+            # StorageService expects FileStorage. Let's wrap it.
+            from werkzeug.datastructures import FileStorage
+            timestamp = int(time.time())
+            filename = f"crop_{timestamp}{extension}"
+            
+            new_file = FileStorage(
+                stream=output_buffer,
+                filename=filename,
+                content_type=content_type,
+            )
+            
+        except Exception as e:
+            current_app.logger.error(f"Error processing image with Pillow: {e}")
+            return {'error': 'Error al procesar el recorte de imagen'}, 500
+
+        # 5. Upload new cropped image
+        # We don't overwrite the original! We create a new file.
+        # If there was a previous *cropped* image (different from original), we should delete it?
+        # Yes, to avoid orphans.
+        old_cropped_key = product.image_path
+        if old_cropped_key and old_cropped_key != product.image_original_path:
+             delete_product_image(old_cropped_key)
+
+        new_image_key = save_product_image(new_file, g.tenant_id)
+        
+        if not new_image_key:
+             return {'error': 'Error al guardar la imagen recortada'}, 500
+             
+        # 6. Update Product
+        product.image_path = new_image_key
+        session.commit()
+        
+        # 7. Invalidate cache
+        invalidate_products_cache(g.tenant_id)
+        
+        return {
+            'success': True, 
+            'image_url': product.image_url,
+            'message': 'Imagen recortada exitosamente'
+        }
+        
+    except Exception as e:
+        session.rollback()
+        current_app.logger.error(f"Error in crop_product_image: {e}")
+        return {'error': str(e)}, 500
+
+
+@catalog_bp.route('/<int:product_id>/restore-image', methods=['POST'])
+@require_login
+@require_tenant
+def restore_product_image(product_id):
+    """Restore the product image to its original uploaded version."""
+    session = get_session()
+    
+    try:
+        product = session.query(Product).filter(
+            Product.id == product_id,
+            Product.tenant_id == g.tenant_id
+        ).first()
+        
+        if not product:
+            return {'error': 'Producto no encontrado'}, 404
+            
+        if not product.image_original_path:
+            return {'error': 'No existe una imagen original para restaurar'}, 400
+            
+        # If current image is strictly different from original, delete it (it's a crop)
+        current_key = product.image_path
+        original_key = product.image_original_path
+        
+        if current_key and current_key != original_key:
+            delete_product_image(current_key)
+            
+        # Restore reference
+        product.image_path = original_key
+        session.commit()
+        
+        invalidate_products_cache(g.tenant_id)
+        
+        return {
+            'success': True,
+            'image_url': product.image_url,
+            'message': 'Imagen original restaurada'
+        }
+
+    except Exception as e:
+        session.rollback()
+        return {'error': str(e)}, 500
+    # ... existing implementation ...
+
