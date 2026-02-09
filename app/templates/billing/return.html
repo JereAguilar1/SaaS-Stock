@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Procesando Suscripción{% endblock %}
+
+{% block page_title %}Procesando tu Suscripción{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 600px; margin: 0 auto; text-align: center; padding: var(--spacing-8) 0;">
+
+    <div class="card-custom">
+        <div class="card-body-custom" style="padding: var(--spacing-8);">
+
+            <!-- Spinner -->
+            <div style="margin-bottom: var(--spacing-6);">
+                <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+
+            <h3 style="color: var(--color-primary); margin-bottom: var(--spacing-4);">
+                Procesando tu Suscripción
+            </h3>
+
+            <p style="color: var(--color-text-muted); font-size: var(--font-size-lg); margin-bottom: var(--spacing-6);">
+                Estamos verificando tu pago con Mercado Pago. Esto puede tomar unos segundos...
+            </p>
+
+            <!-- Estado actual -->
+            <div id="status-message" style="margin-bottom: var(--spacing-6);">
+                <span class="badge-custom badge-warning" style="font-size: var(--font-size-base);">
+                    <i class="bi bi-clock"></i> Esperando confirmación
+                </span>
+            </div>
+
+            <!-- Botón de reintentar -->
+            <button id="retry-btn" class="btn-custom btn-secondary-custom" onclick="checkStatus()"
+                style="display: none;">
+                <i class="bi bi-arrow-clockwise"></i> Verificar Estado
+            </button>
+
+            <!-- Botón para volver a planes -->
+            <a href="{{ url_for('billing.plans') }}" class="btn-custom btn-secondary-custom"
+                style="margin-top: var(--spacing-4);">
+                <i class="bi bi-arrow-left"></i> Volver a Planes
+            </a>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let pollInterval = null;
+    let pollCount = 0;
+    const MAX_POLLS = 60; // 60 * 2s = 2 minutos
+
+    function checkStatus() {
+        fetch('{{ url_for("billing.status") }}')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Status:', data);
+
+                const statusMessage = document.getElementById('status-message');
+                const retryBtn = document.getElementById('retry-btn');
+
+                if (data.status === 'ACTIVE') {
+                    // Suscripción activa - redirigir al dashboard
+                    statusMessage.innerHTML = '<span class="badge-custom badge-success" style="font-size: var(--font-size-base);"><i class="bi bi-check-circle"></i> ¡Suscripción Activa!</span>';
+
+                    // Detener polling
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                    }
+
+                    // Redirigir después de 1 segundo
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("dashboard.index") }}';
+                    }, 1000);
+
+                } else if (data.status === 'PENDING') {
+                    statusMessage.innerHTML = '<span class="badge-custom badge-warning" style="font-size: var(--font-size-base);"><i class="bi bi-clock"></i> Esperando confirmación...</span>';
+
+                } else if (data.status === 'REJECTED' || data.status === 'CANCELED' || data.status === 'EXPIRED') {
+                    // Estado final negativo
+                    statusMessage.innerHTML = `<span class="badge-custom badge-danger" style="font-size: var(--font-size-base);"><i class="bi bi-x-circle"></i> ${data.status}</span>`;
+
+                    // Detener polling
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                    }
+
+                    // Mostrar botón de reintentar
+                    retryBtn.style.display = 'inline-block';
+
+                } else if (!data.status) {
+                    statusMessage.innerHTML = '<span class="badge-custom badge-secondary" style="font-size: var(--font-size-base);"><i class="bi bi-question-circle"></i> No se encontró suscripción</span>';
+                }
+
+                pollCount++;
+
+                // Detener después de MAX_POLLS intentos
+                if (pollCount >= MAX_POLLS) {
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                    }
+                    statusMessage.innerHTML = '<span class="badge-custom badge-secondary" style="font-size: var(--font-size-base);"><i class="bi bi-hourglass-split"></i> Tiempo de espera agotado</span>';
+                    retryBtn.style.display = 'inline-block';
+                }
+            })
+            .catch(error => {
+                console.error('Error checking status:', error);
+            });
+    }
+
+    // Iniciar polling al cargar la página
+    document.addEventListener('DOMContentLoaded', function () {
+        // Primera verificación inmediata
+        checkStatus();
+
+        // Luego cada 2 segundos
+        pollInterval = setInterval(checkStatus, 2000);
+    });
+</script>
+
+{% endblock %}

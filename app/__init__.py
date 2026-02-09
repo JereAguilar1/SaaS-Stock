@@ -62,12 +62,15 @@ def create_app(config_object='config.Config'):
     
     # SaaS Multi-Tenant: Load user and tenant context before each request
     from app.middleware import load_user_and_tenant
+    from app.middleware.billing_gate import check_billing_gate
     from flask import request, redirect
 
     @app.before_request
     def before_request_handler():
         """Load user and tenant context for each request."""
         load_user_and_tenant()
+        # Billing V1: Check subscription status (after tenant is loaded)
+        return check_billing_gate()
     def force_https():
         if not request.is_secure and not app.debug:
             return redirect(request.url.replace("http://", "https://"), code=301)
@@ -135,6 +138,7 @@ def create_app(config_object='config.Config'):
     from app.blueprints.metrics import metrics_bp  # PASO 9
     from app.blueprints.auth_google import auth_google_bp  # GOOGLE_AUTH
     from app.blueprints.admin import admin_bp  # ADMIN_PANEL_V1
+    from app.blueprints.billing import billing_bp  # BILLING_V1
 
     
     app.register_blueprint(auth_bp)
@@ -153,6 +157,7 @@ def create_app(config_object='config.Config'):
     app.register_blueprint(missing_products_bp)  # MEJORA 18
     app.register_blueprint(debug_bp)
     app.register_blueprint(metrics_bp)  # PASO 9
+    app.register_blueprint(billing_bp)  # BILLING_V1
     
     # Register CLI commands (ADMIN_PANEL_V1)
     from app.cli_commands import init_cli_commands

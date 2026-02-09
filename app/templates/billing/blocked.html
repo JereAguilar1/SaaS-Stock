@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Suscripción Requerida{% endblock %}
+
+{% block page_title %}Suscripción Requerida{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 700px; margin: 0 auto; text-align: center; padding: var(--spacing-8) 0;">
+
+    <div class="card-custom">
+        <div class="card-body-custom" style="padding: var(--spacing-8);">
+
+            <div style="margin-bottom: var(--spacing-6);">
+                <i class="bi bi-lock-fill" style="font-size: 5rem; color: var(--color-warning);"></i>
+            </div>
+
+            <h2 style="color: var(--color-text-primary); margin-bottom: var(--spacing-4);">
+                Suscripción Requerida
+            </h2>
+
+            <p style="color: var(--color-text-muted); font-size: var(--font-size-lg); margin-bottom: var(--spacing-6);">
+                Para acceder a esta funcionalidad necesitas tener una suscripción activa.
+            </p>
+
+            <div class="alert-custom alert-warning" style="margin-bottom: var(--spacing-6); text-align: left;">
+                <i class="alert-custom-icon bi bi-exclamation-triangle-fill"></i>
+                <div class="alert-custom-content">
+                    Tu suscripción actual no está activa. Por favor, verifica tu estado de pago o contacta al
+                    propietario del negocio.
+                </div>
+            </div>
+
+            <a href="{{ url_for('billing.plans') }}" class="btn-custom btn-primary-custom"
+                style="font-size: var(--font-size-lg);">
+                <i class="bi bi-credit-card"></i> Ver Planes y Suscribirme
+            </a>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

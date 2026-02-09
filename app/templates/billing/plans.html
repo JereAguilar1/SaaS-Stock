@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Planes de Facturación{% endblock %}
+
+{% block page_title %}Planes de Facturación{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 0 auto;">
+
+    <!-- Estado Actual -->
+    {% if current_subscription %}
+    <div class="card-custom" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header-custom">
+            <h5 class="card-title">Estado de tu Suscripción</h5>
+        </div>
+        <div class="card-body-custom">
+            <div style="display: flex; align-items: center; gap: var(--spacing-4);">
+                <div style="flex: 1;">
+                    <p style="margin: 0; font-size: var(--font-size-lg);">
+                        <strong>Estado:</strong>
+                        {% if current_subscription.status == 'ACTIVE' %}
+                        <span class="badge-custom badge-success">ACTIVA</span>
+                        {% elif current_subscription.status == 'PENDING' %}
+                        <span class="badge-custom badge-warning">PENDIENTE</span>
+                        {% elif current_subscription.status == 'PAUSED' %}
+                        <span class="badge-custom badge-warning">PAUSADA</span>
+                        {% else %}
+                        <span class="badge-custom badge-danger">{{ current_subscription.status }}</span>
+                        {% endif %}
+                    </p>
+                    {% if current_subscription.started_at %}
+                    <p style="margin: var(--spacing-2) 0 0 0; color: var(--color-text-muted);">
+                        Iniciada: {{ current_subscription.started_at.strftime('%d/%m/%Y') }}
+                    </p>
+                    {% endif %}
+                </div>
+
+                {% if current_subscription.status == 'ACTIVE' %}
+                <div>
+                    <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: var(--color-success);"></i>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Planes Disponibles -->
+    <div class="card-custom">
+        <div class="card-header-custom" style="background-color: var(--color-primary); color: white;">
+            <h5 class="card-title" style="color: white; margin: 0;">
+                <i class="bi bi-credit-card"></i> Planes Disponibles
+            </h5>
+        </div>
+        <div class="card-body-custom">
+
+            {% if not plans %}
+            <div class="empty-state">
+                <i class="empty-state-icon bi bi-exclamation-circle"></i>
+                <div class="empty-state-title">No hay planes disponibles</div>
+                <p class="empty-state-description">Contacte al administrador del sistema.</p>
+            </div>
+            {% else %}
+
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--spacing-6);">
+                {% for plan in plans %}
+                <div class="card-custom"
+                    style="border: 2px solid var(--color-border); {% if current_subscription and current_subscription.plan_id == plan.id %}border-color: var(--color-primary);{% endif %}">
+                    <div class="card-body-custom" style="text-align: center;">
+                        <h3 style="color: var(--color-primary); margin-bottom: var(--spacing-2);">
+                            {{ plan.name }}
+                        </h3>
+                        <div
+                            style="font-size: 2.5rem; font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin: var(--spacing-4) 0;">
+                            ${{ plan.price_amount|money_ar }}
+                        </div>
+                        <p style="color: var(--color-text-muted); margin-bottom: var(--spacing-6);">
+                            por {{ plan.frequency }}
+                            {% if plan.frequency_type == 'months' %}
+                            {{ 'mes' if plan.frequency == 1 else 'meses' }}
+                            {% else %}
+                            {{ 'día' if plan.frequency == 1 else 'días' }}
+                            {% endif %}
+                        </p>
+
+                        <!-- Botón de suscripción -->
+                        {% if current_subscription and current_subscription.status == 'ACTIVE' %}
+                        <button class="btn-custom btn-success-custom" disabled style="width: 100%;">
+                            <i class="bi bi-check-circle"></i> Suscripción Activa
+                        </button>
+                        {% elif current_subscription and current_subscription.status == 'PENDING' %}
+                        <a href="{{ current_subscription.mp_init_point }}" class="btn-custom btn-warning-custom"
+                            style="width: 100%;">
+                            <i class="bi bi-wallet2"></i> Continuar con el Pago
+                        </a>
+                        <div style="margin-top: var(--spacing-2); font-size: 0.8em; color: var(--color-text-muted);">
+                            Tienes un pago pendiente.<br>Haz clic para completar.
+                        </div>
+                        {% elif is_owner %}
+                        <form method="POST" action="{{ url_for('billing.subscribe') }}" style="margin: 0;">
+                            <input type="hidden" name="plan_code" value="{{ plan.code }}">
+                            <button type="submit" class="btn-custom btn-primary-custom" style="width: 100%;">
+                                <i class="bi bi-cart-plus"></i> Suscribirme
+                            </button>
+                        </form>
+                        {% else %}
+                        <button class="btn-custom btn-secondary-custom" disabled style="width: 100%;">
+                            <i class="bi bi-lock"></i> Solo Propietarios
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Información -->
+    {% if not current_subscription or current_subscription.status != 'ACTIVE' %}
+    <div class="alert-custom alert-info" style="margin-top: var(--spacing-6);">
+        <i class="alert-custom-icon bi bi-info-circle-fill"></i>
+        <div class="alert-custom-content">
+            <strong>Importante:</strong> Para utilizar el sistema necesitas una suscripción activa.
+            {% if not is_owner %}
+            Solo el propietario del negocio puede suscribirse.
+            {% else %}
+            Haz clic en "Suscribirme" para comenzar.
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

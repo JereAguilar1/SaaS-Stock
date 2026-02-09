@@ -31,6 +31,11 @@ from app.models.audit_log import AuditLog, AuditAction  # PASO 6
 from app.models.subscription import Subscription, Payment
 from app.models.admin_audit import AdminAuditLog, AuditAction as AdminAuditAction
 
+# Billing V1 - Mercado Pago
+from app.models.billing_plan import BillingPlan
+from app.models.mp_subscription import MPSubscription
+from app.models.mp_webhook_event import MPWebhookEvent
+
 __all__ = [
     # SaaS Core
     'Tenant', 'AppUser', 'UserTenant', 'UserRole',
@@ -45,5 +50,8 @@ __all__ = [
     'AuditLog', 'AuditAction',  # PASO 6
     # Admin Panel V2
     'AdminUser', 'Subscription', 'Payment', 'AdminAuditLog', 'AdminAuditAction',
+    # Billing V1
+    'BillingPlan', 'MPSubscription', 'MPWebhookEvent',
 ]
+
 

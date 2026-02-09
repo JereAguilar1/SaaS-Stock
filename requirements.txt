@@ -48,3 +48,7 @@ prometheus-client==0.21.0
 # Google OAuth Authentication (GOOGLE_AUTH)
 authlib==1.3.0
 requests==2.31.0
+
+# Mercado Pago Billing (BILLING_V1)
+mercadopago==2.2.0
+
