@@ -44,7 +44,7 @@
                 </form>
 
                 <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                <input type="number" class="qty-input" name="qty" value="{{ item.qty|int }}"
+                <input type="number" class="qty-input" name="qty" value="{{ item.qty|int }}" min="1" step="1"
                     hx-post="{{ url_for('sales.cart_update') }}" hx-trigger="change" hx-target="#cart-container"
                     hx-swap="innerHTML" oninput="this.value = Math.max(1, Math.floor(this.value) || 1);">
 
@@ -57,7 +57,7 @@
             </div>
 
             <div class="cart-item-price">
-                ${{ "%.2f"|format(item.subtotal) }}
+                ${{ item.subtotal|money_ar_2 }}
             </div>
         </div>
     </div>
@@ -85,7 +85,7 @@
         </div>-->
         <div class="total-row final-total">
             <span>Total</span>
-            <span>${{ "%.2f"|format(cart_total) }}</span>
+            <span>${{ cart_total|money_ar_2 }}</span>
         </div>
     </div>
 

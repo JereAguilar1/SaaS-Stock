@@ -44,7 +44,7 @@
             <div>
                 <dt style="color: var(--color-text-secondary); font-size: var(--font-size-xs);">Total Original</dt>
                 <dd style="color: var(--color-primary); font-weight: var(--font-weight-bold);">${{
-                    sale.total|money_ar }}</dd>
+                    sale.total|money_ar_2 }}</dd>
             </div>
         </dl>
     </div>
@@ -83,16 +83,16 @@
                             </td>
                             <td>
                                 <input type="number" class="form-input-custom qty-input"
-                                    name="lines[{{ loop.index0 }}][qty]" value="{{ line.qty }}" min="0.01" step="0.01"
+                                    name="lines[{{ loop.index0 }}][qty]" value="{{ line.qty|int }}" min="1" step="1"
                                     data-unit-price="{{ line.unit_price }}" data-stock="{{ line.current_stock }}"
                                     required style="text-align: center;">
                             </td>
-                            <td style="text-align: right;" class="unit-price">${{ line.unit_price|money_ar }}</td>
+                            <td style="text-align: right;" class="unit-price">${{ line.unit_price|money_ar_2 }}</td>
                             <td style="text-align: right;">
                                 <span class="badge-custom badge-info">{{ line.current_stock }}</span>
                             </td>
                             <td style="text-align: right;" class="line-total">
-                                <strong>${{ line.line_total|money_ar }}</strong>
+                                <strong>${{ line.line_total|money_ar_2 }}</strong>
                             </td>
                             <td style="text-align: center;">
                                 <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
@@ -112,7 +112,7 @@
                                 <span
                                     style="font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-primary);"
                                     id="total-display">
-                                    ${{ sale.total|money_ar }}
+                                    ${{ sale.total|money_ar_2 }}
                                 </span>
                             </td>
                             <td></td>
@@ -149,8 +149,7 @@
                 </div>
                 <div class="form-group" style="margin: 0;">
                     <label for="new-qty" class="form-label-custom">Cantidad</label>
-                    <input type="number" class="form-input-custom" id="new-qty" min="0.01" step="0.01"
-                        placeholder="1.00">
+                    <input type="number" class="form-input-custom" id="new-qty" min="1" step="1" placeholder="1">
                 </div>
                 <div>
                     <button type="button" class="btn-custom btn-primary-custom" id="add-product-btn"
@@ -189,6 +188,27 @@
         let lineIndex = {{ sale.lines| length
     }};
 
+    /**
+     * Formatea un precio en formato argentino con 2 decimales SIEMPRE:
+     * - Separador de miles: punto (.)
+     * - Separador decimal: coma (,)
+     * - Siempre muestra 2 decimales (ej: 1.500,00)
+     */
+    function formatPriceAr(value) {
+        if (value === null || value === undefined || value === '' || isNaN(value)) return '0,00';
+
+        const num = parseFloat(value);
+
+        // Separar parte entera y decimal (siempre 2 decimales)
+        let [integerPart, decimalPart] = num.toFixed(2).split('.');
+
+        // Formatear parte entera con separador de miles
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+        // Construir resultado con 2 decimales siempre
+        return `${integerPart},${decimalPart}`;
+    }
+
     // Calculate line total
     function calculateLineTotal(qtyInput) {
         const qty = parseFloat(qtyInput.value) || 0;
@@ -196,7 +216,7 @@
         const lineTotal = qty * unitPrice;
 
         const row = qtyInput.closest('tr');
-        row.querySelector('.line-total').innerHTML = '<strong>$' + lineTotal.toFixed(2) + '</strong>';
+        row.querySelector('.line-total').innerHTML = '<strong>$' + formatPriceAr(lineTotal) + '</strong>';
 
         calculateGrandTotal();
     }
@@ -215,7 +235,7 @@
 
         const totalDisplay = document.getElementById('total-display');
         if (totalDisplay) {
-            totalDisplay.textContent = '$' + total.toFixed(2);
+            totalDisplay.textContent = '$' + formatPriceAr(total);
         }
     }
 
@@ -306,20 +326,20 @@
                 <input type="number" 
                        class="form-input-custom qty-input" 
                        name="lines[${lineIndex}][qty]" 
-                       value="${qty}"
-                       min="0.01"
-                       step="0.01"
+                       value="${Math.floor(qty)}"
+                       min="1"
+                       step="1"
                        data-unit-price="${unitPrice}"
                        data-stock="${stock}"
                        required
                        style="text-align: center;">
             </td>
-            <td style="text-align: right;" class="unit-price">$${unitPrice.toFixed(2)}</td>
+            <td style="text-align: right;" class="unit-price">$${formatPriceAr(unitPrice)}</td>
             <td style="text-align: right;">
                 <span class="badge-custom badge-info">${stock}</span>
             </td>
             <td style="text-align: right;" class="line-total">
-                <strong>$${lineTotal.toFixed(2)}</strong>
+                <strong>$${formatPriceAr(lineTotal)}</strong>
             </td>
             <td style="text-align: center;">
                 <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar" style="display: inline-flex; width: 32px; height: 32px; justify-content: center; align-items: center; padding: 0;">
