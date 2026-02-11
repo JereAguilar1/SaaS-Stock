@@ -2,7 +2,7 @@ CONTEXTO GENERAL (ROADMAP SaaS)
 Tenemos una plataforma web ya construida (Flask + Postgres + Docker) para gestión de stock, ventas, compras/boletas, presupuestos PDF, y balance financiero.
 
 Objetivo de negocio:
-- Convertirla en un SaaS para ferreterías/kioscos/negocios similares.
+- Convertirla en un SaaS para comercios minoristas/negocios similares.
 - Escalar progresivamente: 10 clientes → 100 → 1.000 → miles.
 
 DECISIÓN ARQUITECTÓNICA BASE:

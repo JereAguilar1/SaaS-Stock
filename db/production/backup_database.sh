@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# Sistema Ferretería - Script de Backup de Base de Datos
+# Sistema de Gestión - Script de Backup de Base de Datos
 # ============================================================================
 # Versión: 1.0
 # Fecha: Enero 2026
@@ -21,7 +21,7 @@ BACKUP_FILE_COMPRESSED="${BACKUP_FILE}.gz"
 mkdir -p "$BACKUP_DIR"
 
 echo "============================================"
-echo "Backup de Base de Datos - Sistema Ferretería"
+echo "Backup de Base de Datos - Sistema de Gestión"
 echo "============================================"
 echo "Fecha: $(date)"
 echo "Base de datos: ${DB_NAME}"

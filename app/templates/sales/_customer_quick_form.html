@@ -1,0 +1,52 @@
+<div id="quick-create-form-container">
+    {% if error %}
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+    </div>
+    {% endif %}
+
+    <form hx-post="{{ url_for('customers.quick_create') }}" hx-target="#customer-select-wrapper" hx-swap="outerHTML"
+        hx-on::after-request="if(event.detail.successful) { bootstrap.Modal.getInstance(document.getElementById('quick-create-customer-modal')).hide(); }">
+
+        <div class="mb-3">
+            <label for="quick_customer_name" class="form-label">
+                Nombre <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" id="quick_customer_name" name="name" value="{{ name or '' }}"
+                required autofocus placeholder="Ej: Juan Pérez">
+        </div>
+
+        <div class="mb-3">
+            <label for="quick_customer_tax_id" class="form-label">DNI/CUIT</label>
+            <input type="text" class="form-control" id="quick_customer_tax_id" name="tax_id" value="{{ tax_id or '' }}"
+                placeholder="Ej: 20-12345678-9">
+        </div>
+
+        <div class="mb-3">
+            <label for="quick_customer_phone" class="form-label">Teléfono</label>
+            <input type="tel" class="form-control" id="quick_customer_phone" name="phone" value="{{ phone or '' }}"
+                placeholder="Ej: +54 9 11 1234-5678">
+        </div>
+
+        <div class="mb-3">
+            <label for="quick_customer_email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="quick_customer_email" name="email" value="{{ email or '' }}"
+                placeholder="Ej: cliente@ejemplo.com">
+        </div>
+
+        <div class="mb-3">
+            <label for="quick_customer_address" class="form-label">Dirección</label>
+            <textarea class="form-control" id="quick_customer_address" name="address" rows="2"
+                placeholder="Ej: Av. Corrientes 1234, CABA">{{ address or '' }}</textarea>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="bi bi-x-lg me-1"></i>Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-1"></i>Guardar Cliente
+            </button>
+        </div>
+    </form>
+</div>

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# PostgreSQL Restore Script for Ferretería SaaS
+# PostgreSQL Restore Script for SaaS Comercial
 # ============================================
 # This script restores a PostgreSQL database from a backup file.
 # WARNING: This will DROP and RECREATE the database!

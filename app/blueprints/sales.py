@@ -150,6 +150,17 @@ def new_sale():
             Category.tenant_id == g.tenant_id
         ).order_by(Category.name).all()
         
+        # NEW: Load customers for selector
+        from app.models import Customer
+        from app.services.customer_service import get_or_create_default_customer_id
+        
+        customers = db_session.query(Customer).filter(
+            Customer.tenant_id == g.tenant_id
+        ).order_by(Customer.name).all()
+        
+        # Get default customer ID
+        default_customer_id = get_or_create_default_customer_id(db_session, g.tenant_id)
+        
         return render_template('sales/new.html',
                              products=products,
                              search_query=search_query,
@@ -157,7 +168,9 @@ def new_sale():
                              totals=totals,
                              top_products=top_products,
                              top_products_error=top_products_error,
-                             categories=categories)
+                             categories=categories,
+                             customers=customers,
+                             default_customer_id=default_customer_id)
         
     except Exception as e:
         flash(f'Error al cargar POS: {str(e)}', 'danger')
@@ -667,18 +680,32 @@ def confirm():
         
         # Get payment method from form
         payment_method = request.form.get('payment_method', 'CASH').upper()
-        customer_id = request.form.get('customer_id')
-
-        # Validate customer_id if required
-        if not customer_id:
-             flash('Debe seleccionar un cliente.', 'danger')
-             return redirect(url_for('sales.new_sale'))
+        customer_id_raw = request.form.get('customer_id', '').strip()
         
-        try:
-             customer_id = int(customer_id)
-        except ValueError:
-             flash('ID de cliente inválido.', 'danger')
-             return redirect(url_for('sales.new_sale'))
+        # NEW: Handle customer_id with fallback to default
+        from app.models import Customer
+        from app.services.customer_service import get_or_create_default_customer_id
+        
+        if not customer_id_raw or customer_id_raw == '':
+            # No customer selected -> use default
+            customer_id = get_or_create_default_customer_id(db_session, g.tenant_id)
+        else:
+            try:
+                customer_id = int(customer_id_raw)
+                
+                # Verify customer belongs to tenant
+                customer = db_session.query(Customer).filter(
+                    Customer.id == customer_id,
+                    Customer.tenant_id == g.tenant_id
+                ).first()
+                
+                if not customer:
+                    flash('Cliente inválido o no pertenece a su negocio', 'danger')
+                    return redirect(url_for('sales.new_sale'))
+                    
+            except ValueError:
+                # Invalid ID format -> use default
+                customer_id = get_or_create_default_customer_id(db_session, g.tenant_id)
         
         # Validate payment method
         if payment_method not in ['CASH', 'TRANSFER']:
@@ -747,7 +774,7 @@ def quote_pdf():
         
         # Business info from config
         business_info = {
-            'name': current_app.config.get('BUSINESS_NAME', 'Ferretería'),
+            'name': current_app.config.get('BUSINESS_NAME', 'Mi Negocio'),
             'address': current_app.config.get('BUSINESS_ADDRESS', ''),
             'phone': current_app.config.get('BUSINESS_PHONE', ''),
             'email': current_app.config.get('BUSINESS_EMAIL', ''),

@@ -57,12 +57,12 @@ CREATE TEMP TABLE _vars (
 
 -- 2. Crear Tenant si no existe
 INSERT INTO tenant (slug, name, active, created_at, updated_at)
-VALUES ('ferreteria-migrada', 'Ferretería Migrada', true, NOW(), NOW())
+VALUES ('comercio-migrado', 'Comercio Migrado', true, NOW(), NOW())
 ON CONFLICT (slug) DO UPDATE SET updated_at = NOW();
 
 -- 3. Guardar ID de Tenant
 INSERT INTO _vars (tenant_id)
-SELECT id FROM tenant WHERE slug = 'ferreteria-migrada';
+SELECT id FROM tenant WHERE slug = 'comercio-migrado';
 
 -- 4. Crear Usuario Admin
 -- Password "password123" hasheado con scrypt (ejemplo genérico, debería funcionar con passlib/werkzeug defaults)

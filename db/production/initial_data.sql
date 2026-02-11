@@ -1,5 +1,5 @@
 -- ============================================================================
--- Sistema Ferretería - Datos Iniciales para Producción
+-- Sistema de Gestión Comercial - Datos Iniciales para Producción
 -- ============================================================================
 -- Versión: 1.0
 -- Fecha: Enero 2026
@@ -34,7 +34,7 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO category (name) VALUES
   ('Herramientas Manuales'),
   ('Herramientas Eléctricas'),
-  ('Ferretería General'),
+  ('Productos Generales'),
   ('Pintura y Accesorios'),
   ('Electricidad'),
   ('Plomería'),

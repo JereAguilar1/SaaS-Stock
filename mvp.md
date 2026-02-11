@@ -4,7 +4,7 @@ Versión: MVP inicial (hasta 10 clientes)
 Objetivo: Definir el alcance mínimo funcional y técnico para transformar la plataforma actual en un SaaS escalable.
 
 1. Objetivo del MVP
-El objetivo de este MVP es convertir la plataforma existente (gestión de stock, ventas, compras, presupuestos y balance) en un SaaS multi-tenant, permitiendo que múltiples negocios (ferreterías, kioscos u otros comercios similares) utilicen el sistema de forma simultánea, sin compartir datos entre sí, y con posibilidad de escalar progresivamente a cientos o miles de clientes.
+El objetivo de este MVP es convertir la plataforma existente (gestión de stock, ventas, compras, presupuestos y balance) en un SaaS multi-tenant, permitiendo que múltiples negocios minoristas utilicen el sistema de forma simultánea, sin compartir datos entre sí, y con posibilidad de escalar progresivamente a cientos o miles de clientes.
 Este MVP está diseñado para:
 Soportar hasta 10 clientes reales en producción.
 Reutilizar el 100% de la lógica de negocio existente.
@@ -56,9 +56,9 @@ Tiene su propio conjunto de datos.
 No puede ver ni acceder a datos de otros tenants.
 Puede tener uno o más usuarios asociados (preparado, aunque el MVP use uno).
 Ejemplos de tenants:
-“Ferretería López”
-“Kiosco Central”
-“Corralón San Martín”
+"Comercio López"
+"Kiosco Central"
+"Distribuidora San Martín"
 
 4. Modelo de Usuarios
 4.1 Usuario (App User)

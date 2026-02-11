@@ -1,4 +1,4 @@
-# 📁 Archivos de Producción - Sistema Ferretería
+# 📁 Archivos de Producción - Sistema de Gestión Comercial
 
 Este directorio contiene todos los archivos necesarios para desplegar el sistema en producción.
 

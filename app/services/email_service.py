@@ -47,7 +47,7 @@ def send_invitation_email(
         full_name: Full name (may contain accents: José, María)
         invite_link: Invitation URL
         role: ADMIN or STAFF
-        tenant_name: Tenant name (may contain accents: Ferretería López)
+        tenant_name: Tenant name (may contain accents: Comercio López)
     
     Returns:
         True if sent successfully, False otherwise

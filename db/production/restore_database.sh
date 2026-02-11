@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# Sistema Ferretería - Script de Restore de Base de Datos
+# Sistema de Gestión - Script de Restore de Base de Datos
 # ============================================================================
 # Versión: 1.0
 # Fecha: Enero 2026
@@ -32,7 +32,7 @@ DB_NAME="${DB_NAME:-ferreteria}"
 DB_USER="${DB_USER:-ferreteria}"
 
 echo "============================================"
-echo "Restore de Base de Datos - Sistema Ferretería"
+echo "Restore de Base de Datos - Sistema de Gestión"
 echo "============================================"
 echo "ADVERTENCIA: Esta operación eliminará todos"
 echo "los datos actuales de la base de datos"

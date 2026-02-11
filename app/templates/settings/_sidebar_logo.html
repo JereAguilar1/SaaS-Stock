@@ -1,16 +1,33 @@
 <!-- HTMX partial for sidebar logo - swapped by logo upload/delete -->
 <div id="sidebar-logo">
+    {#
+    ============================================================================
+    FUNCIONALIDAD DE LOGO DINÁMICO POR TENANT - DESACTIVADA TEMPORALMENTE
+    ============================================================================
+
+    La siguiente lógica permite que cada tenant tenga su propio logo personalizado.
+    Se ha comentado temporalmente para mostrar siempre el logo institucional StockAR.
+
+    Código original comentado:
+
     {% if current_tenant %}
     {% if current_tenant.logo_url and logo_public_url %}
     <img src="{{ logo_public_url }}" alt="{{ current_tenant.name }}" class="brand-logo-custom"
         style="max-height: 50px; width: auto; object-fit: contain;">
     {% else %}
     <span class="brand-text-fallback text-truncate"
-        style="color: white; font-size: var(--font-size-lg); font-weight: 700; text-transform: uppercase; max-width: 100%; display: block;">
+        style="color: black; font-size: var(--font-size-lg); font-weight: 700; text-transform: uppercase; max-width: 100%; display: block;">
         {{ current_tenant.name }}
     </span>
     {% endif %}
     {% else %}
     <img src="{{ url_for('static', filename='img/logo_dashboard.png') }}" alt="StockAR" style="max-height: 40px;">
     {% endif %}
+
+    ============================================================================
+    #}
+
+    <!-- Logo institucional fijo - StockAR -->
+    <img src="{{ url_for('static', filename='img/logo_dashboard.png') }}" alt="StockAR" class="brand-logo-institutional"
+        style="max-height: 40px; width: auto; object-fit: contain;">
 </div>

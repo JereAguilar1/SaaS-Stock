@@ -198,7 +198,7 @@ def download_pdf(quote_id):
         
         # Business info from config
         business_info = {
-            'name': current_app.config.get('BUSINESS_NAME', 'Ferretería'),
+            'name': current_app.config.get('BUSINESS_NAME', 'Mi Negocio'),
             'address': current_app.config.get('BUSINESS_ADDRESS', ''),
             'phone': current_app.config.get('BUSINESS_PHONE', ''),
             'email': current_app.config.get('BUSINESS_EMAIL', ''),

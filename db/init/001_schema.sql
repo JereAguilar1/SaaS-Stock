@@ -1,4 +1,4 @@
--- PostgreSQL DDL for Ferretería SaaS Multi-Tenant
+-- PostgreSQL DDL for SaaS Comercial Multi-Tenant
 -- Target: PostgreSQL 13+ (recommended 14+)
 -- Architecture: Multi-tenant with tenant_id column separation
 -- Notes:
@@ -791,6 +791,37 @@ CREATE TRIGGER app_user_set_updated_at
     BEFORE UPDATE ON app_user
     FOR EACH ROW
     EXECUTE FUNCTION trg_saas_set_updated_at();
+
+-- =========================
+-- CUSTOMERS (MULTI-TENANT)
+-- =========================
+CREATE TABLE IF NOT EXISTS customer (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    tax_id VARCHAR(50),
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    address TEXT,
+    notes TEXT,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_customer_tenant_id ON customer(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_customer_search ON customer(tenant_id, name);
+CREATE INDEX IF NOT EXISTS idx_customer_is_default ON customer(is_default) WHERE is_default = true;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_tenant_default 
+    ON customer(tenant_id) WHERE is_default = true;
+
+-- Trigger for updated_at
+DROP TRIGGER IF EXISTS customer_set_updated_at ON customer;
+CREATE TRIGGER customer_set_updated_at
+    BEFORE UPDATE ON customer
+    FOR EACH ROW
+    EXECUTE FUNCTION trg_set_updated_at();
 
 COMMIT;
 

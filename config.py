@@ -53,7 +53,7 @@ class Config:
     LOW_STOCK_THRESHOLD = int(os.getenv('LOW_STOCK_THRESHOLD', '10'))
     
     # Business Information (for quotes/invoices)
-    BUSINESS_NAME = os.getenv('BUSINESS_NAME', 'Ferretería')
+    BUSINESS_NAME = os.getenv('BUSINESS_NAME', 'Mi Negocio')
     BUSINESS_ADDRESS = os.getenv('BUSINESS_ADDRESS', '')
     BUSINESS_PHONE = os.getenv('BUSINESS_PHONE', '')
     BUSINESS_EMAIL = os.getenv('BUSINESS_EMAIL', '')

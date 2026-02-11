@@ -1,5 +1,5 @@
 # ============================================================================
-# Sistema Ferretería - Script de Backup de Base de Datos (Windows)
+# Sistema de Gestión - Script de Backup de Base de Datos (Windows)
 # ============================================================================
 # Versión: 1.0
 # Fecha: Enero 2026
@@ -22,7 +22,7 @@ if (-not (Test-Path $BACKUP_DIR)) {
 }
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "Backup de Base de Datos - Sistema Ferretería" -ForegroundColor Cyan
+Write-Host "Backup de Base de Datos - Sistema de Gestión" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "Fecha: $(Get-Date)"
 Write-Host "Base de datos: $DB_NAME"

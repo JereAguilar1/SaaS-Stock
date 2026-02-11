@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-{% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %} - Sistema Ferretería
+{% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %} - Sistema de Gestión
 {% endblock %}
 
 {% block page_title %}{% if action == 'new' %}Nuevo Producto{% else %}Editar Producto{% endif %}{% endblock %}
@@ -88,7 +88,7 @@
                         </label>
                         <input type="text" class="form-input-custom" id="name" name="name"
                             value="{{ product.name if product else (request.args.get('name', '') if action == 'new' else '') }}"
-                            required maxlength="255" placeholder="Ej: Martillo Galponero 25mm" autocomplete="off"
+                            required maxlength="255" placeholder="Nombre del producto" autocomplete="off"
                             style="font-size: var(--font-size-lg); font-weight: var(--font-weight-medium);">
                     </div>
 
@@ -108,7 +108,7 @@
                             <label for="barcode" class="form-label-custom">Código de Barras</label>
                             <input type="text" class="form-input-custom" id="barcode" name="barcode"
                                 value="{{ product.barcode or '' if product else '' }}" maxlength="100"
-                                placeholder="EAN-13 / UPC" autocomplete="off">
+                                placeholder="EAN / UPC" autocomplete="off">
                         </div>
                     </div>
 
@@ -162,8 +162,7 @@
                                     inputmode="decimal" autocomplete="off"
                                     onfocus="if(this.value === '0,00' || this.value === '0') this.value = '';"
                                     onblur="if(this.value === '') this.value = '0,00';"
-                                    style="padding-left: 28px; color: var(--color-text-secondary);"
-                                    placeholder="1.000,00">
+                                    style="padding-left: 28px; color: var(--color-text-secondary);" placeholder="0,00">
                             </div>
                         </div>
 
@@ -182,7 +181,7 @@
                                     onfocus="if(this.value === '0,00' || this.value === '0') this.value = '';"
                                     onblur="if(this.value === '') this.value = '0,00';"
                                     style="padding-left: 28px; font-weight: var(--font-weight-bold); color: var(--color-success);"
-                                    placeholder="1.000,00">
+                                    placeholder="0,00">
                             </div>
                         </div>
 
@@ -256,10 +255,10 @@
                             <div class="feature-row"
                                 style="display: grid; grid-template-columns: 1fr 1fr 40px; gap: var(--spacing-3); align-items: start;">
                                 <input type="text" class="form-input-custom" name="features[{{ loop.index0 }}][title]"
-                                    value="{{ feature.title }}" placeholder="Título (ej: Color)" required>
+                                    value="{{ feature.title }}" placeholder="Nombre de la característica" required>
                                 <input type="text" class="form-input-custom"
                                     name="features[{{ loop.index0 }}][description]" value="{{ feature.description }}"
-                                    placeholder="Descripción (ej: Gris)" required>
+                                    placeholder="Descripción de la característica" required>
                                 <button type="button"
                                     class="btn-custom btn-ghost-custom btn-sm text-danger remove-feature-btn"
                                     title="Eliminar">
@@ -949,9 +948,9 @@
 
         row.innerHTML = `
                 <input type="text" class="form-input-custom" name="features[${featureIndex}][title]" 
-                    placeholder="Título (ej: Color)" required>
+                    placeholder="Nombre de la característica" required>
                 <input type="text" class="form-input-custom" name="features[${featureIndex}][description]" 
-                    placeholder="Descripción (ej: Gris)" required>
+                    placeholder="Descripción de la característica" required>
                 <button type="button" class="btn-custom btn-ghost-custom btn-sm text-danger remove-feature-btn" title="Eliminar">
                     <i class="bi bi-trash"></i>
                 </button>

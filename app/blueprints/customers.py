@@ -77,6 +77,100 @@ def search_customers():
         return {'results': [], 'error': str(e)}
 
 
+@customers_bp.route('/quick-create', methods=['POST'])
+@require_login
+@require_tenant
+def quick_create():
+    """
+    Quick create customer from POS (HTMX endpoint).
+    
+    Returns HTML fragment with updated customer selector.
+    """
+    session = get_session()
+    
+    try:
+        # Get form data
+        name = request.form.get('name', '').strip()
+        tax_id = request.form.get('tax_id', '').strip() or None
+        phone = request.form.get('phone', '').strip() or None
+        email = request.form.get('email', '').strip() or None
+        address = request.form.get('address', '').strip() or None
+        
+        # Validate
+        if not name:
+            return render_template(
+                'sales/_customer_quick_form.html',
+                error='El nombre es requerido',
+                name=name,
+                tax_id=tax_id,
+                phone=phone,
+                email=email,
+                address=address
+            ), 400
+        
+        # Create customer
+        customer = Customer(
+            tenant_id=g.tenant_id,
+            name=name,
+            tax_id=tax_id,
+            phone=phone,
+            email=email,
+            address=address
+        )
+        
+        session.add(customer)
+        session.commit()
+        
+        # Return updated selector with new customer selected
+        from app.services.customer_service import get_or_create_default_customer_id
+        
+        customers = session.query(Customer).filter(
+            Customer.tenant_id == g.tenant_id
+        ).order_by(Customer.name).all()
+        
+        default_customer_id = get_or_create_default_customer_id(session, g.tenant_id)
+        
+        # Return selector with newly created customer selected
+        return render_template(
+            'sales/_customer_selector.html',
+            customers=customers,
+            default_customer_id=default_customer_id,
+            selected_customer_id=customer.id,  # NEW customer selected
+            success_message=f'Cliente "{customer.name}" creado exitosamente'
+        )
+        
+    except IntegrityError as e:
+        session.rollback()
+        error_msg = str(e.orig).lower() if hasattr(e, 'orig') else str(e).lower()
+        if 'unique' in error_msg:
+            error = f'El cliente "{name}" ya existe'
+        else:
+            error = 'Error al crear cliente'
+            
+        return render_template(
+            'sales/_customer_quick_form.html',
+            error=error,
+            name=name,
+            tax_id=tax_id,
+            phone=phone,
+            email=email,
+            address=address
+        ), 400
+        
+    except Exception as e:
+        session.rollback()
+        return render_template(
+            'sales/_customer_quick_form.html',
+            error=f'Error: {str(e)}',
+            name=name or '',
+            tax_id=tax_id or '',
+            phone=phone or '',
+            email=email or '',
+            address=address or ''
+        ), 500
+
+
+
 @customers_bp.route('/list')
 @require_login
 @require_tenant

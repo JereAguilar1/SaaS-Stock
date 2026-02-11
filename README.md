@@ -1,6 +1,6 @@
-# Sistema de Ferretería - Aplicación Web
+# Sistema de Gestión Comercial - Aplicación Web
 
-Sistema web completo para gestión de ferretería con control de stock, ventas, compras y balance financiero.
+Sistema web completo para gestión de stock, ventas, compras y balance financiero para negocios minoristas.
 
 > **⚠️ IMPORTANTE - Protección por Contraseña (MEJORA 8)**  
 > Esta aplicación requiere una contraseña única para acceder. Debes configurar `APP_PASSWORD` en el archivo `.env` antes de iniciar la aplicación. Sin esta variable configurada, la aplicación bloqueará el acceso por seguridad.
@@ -30,7 +30,7 @@ Sistema web completo para gestión de ferretería con control de stock, ventas, 
 ### 1. Clonar el repositorio
 
 ```bash
-cd c:\jere\Ferreteria\ferreteria-app
+cd c:\jere\Saas Stock
 ```
 
 ### 2. Instalar dependencias
@@ -631,7 +631,7 @@ CACHE_CATEGORIES_TTL=600   # 300s → 600s
 
 ### Transformación a SaaS Multi-Tenant
 
-El sistema ha sido transformado de single-tenant a multi-tenant usando separación por columna `tenant_id`. Esta arquitectura permite que múltiples negocios (ferreterías, kioscos, etc.) usen la misma instancia de la aplicación con completo aislamiento de datos.
+El sistema ha sido transformado de single-tenant a multi-tenant usando separación por columna `tenant_id`. Esta arquitectura permite que múltiples negocios minoristas usen la misma instancia de la aplicación con completo aislamiento de datos.
 
 ### Decisión Arquitectónica
 

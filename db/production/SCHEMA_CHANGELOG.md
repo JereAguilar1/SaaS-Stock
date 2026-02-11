@@ -281,4 +281,4 @@ SELECT typname FROM pg_type WHERE typtype = 'e' ORDER BY typname;
 
 **Última actualización:** Enero 2026  
 **Versión actual:** 1.0  
-**Autor:** Sistema Ferretería
+**Autor:** Sistema de Gestión

@@ -15,11 +15,11 @@ services:
     networks:
       - stock_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stock_user} -d ${POSTGRES_DB:-stock_db}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stock_user} -d ${POSTGRES_DB:-stock_db}" ]
       interval: 10s
       timeout: 5s
       retries: 5
-    
+
   minio:
     image: minio/minio:latest
     container_name: SaaS-Stock_minio_prod
@@ -33,7 +33,7 @@ services:
     networks:
       - stock_network
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/ready > /dev/null || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:9000/minio/health/ready > /dev/null || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,18 +46,7 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     command: >
-      sh -lc '
-      exec redis-server
-      --appendonly yes
-      --appendfsync everysec
-      --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
-      --save 900 1
-      --save 300 10
-      --save 60 10000
-      --loglevel notice
-      --requirepass "$$REDIS_PASSWORD"
-      '
+      sh -lc ' exec redis-server --appendonly yes --appendfsync everysec --maxmemory 512mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10 --save 60 10000 --loglevel notice --requirepass "$$REDIS_PASSWORD" '
     volumes:
       - redis_data_prod:/data
     networks:
@@ -65,7 +54,7 @@ services:
         aliases:
           - redis
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      test: [ "CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -82,7 +71,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-stock_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-stock_db}
       SECRET_KEY: ${SECRET_KEY}
 
-      BUSINESS_NAME: ${BUSINESS_NAME:-Ferretería}
+      BUSINESS_NAME: ${BUSINESS_NAME:-Mi Negocio}
       BUSINESS_ADDRESS: ${BUSINESS_ADDRESS:-}
       BUSINESS_PHONE: ${BUSINESS_PHONE:-}
       BUSINESS_EMAIL: ${BUSINESS_EMAIL:-}
@@ -143,7 +132,7 @@ services:
                --log-level info
                wsgi:app
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -176,7 +165,7 @@ services:
     networks:
       - stock_network
     healthcheck:
-      test: ["CMD", "wget", "--no-check-certificate", "--spider", "http://localhost/health"]
+      test: [ "CMD", "wget", "--no-check-certificate", "--spider", "http://localhost/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -188,7 +177,7 @@ services:
 
   # Certbot for Let's Encrypt
   certbot:
-    image: certbot/certbot:latest  
+    image: certbot/certbot:latest
     container_name: SaaS-Stock_certbot
     volumes:
       - certbot_webroot:/var/www/certbot
@@ -214,9 +203,9 @@ services:
     networks:
       - stock_network
     ports:
-      - "3001:3001"  # Access at http://your-vps-ip:3001 (not exposed via nginx by default)
+      - "3001:3001" # Access at http://your-vps-ip:3001 (not exposed via nginx by default)
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001"]
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001" ]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -245,7 +234,7 @@ services:
     networks:
       - stock_network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -277,7 +266,7 @@ services:
     depends_on:
       - prometheus
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -395,7 +384,6 @@ volumes:
     driver: local
   grafana_data_prod:
     driver: local
-
 
 networks:
   stock_network:

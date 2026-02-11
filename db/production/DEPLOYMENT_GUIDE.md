@@ -1,4 +1,4 @@
-# 🚀 Guía de Despliegue en Producción - Sistema Ferretería
+# 🚀 Guía de Despliegue en Producción - Sistema de Gestión Comercial
 
 ## 📋 Índice
 
@@ -356,7 +356,7 @@ crontab -e
 
 1. Abrir Task Scheduler
 2. Crear tarea básica:
-   - Nombre: "Ferretería Backup Diario"
+   - Nombre: "Backup Diario del Sistema"
    - Disparador: Diario a las 2:00 AM
    - Acción: Ejecutar `backup_database.ps1`
 

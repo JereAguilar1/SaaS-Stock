@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# PostgreSQL Backup Script for Ferretería SaaS
+# PostgreSQL Backup Script for SaaS Comercial
 # ============================================
 # This script creates a compressed backup of the PostgreSQL database
 # and maintains a rolling retention policy.

@@ -1,6 +1,6 @@
 # Database Backup & Restore
 
-Este directorio contiene scripts para backup y restauración de la base de datos PostgreSQL de Ferretería SaaS.
+Este directorio contiene scripts para backup y restauración de la base de datos PostgreSQL del SaaS Comercial.
 
 ## 📁 Estructura
 
