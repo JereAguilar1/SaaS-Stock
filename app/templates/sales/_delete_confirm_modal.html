@@ -1,0 +1,169 @@
+<!-- Delete Sale Confirmation Modal -->
+<div class="modal fade" id="deleteSaleModal" tabindex="-1" aria-labelledby="deleteSaleModalLabel" aria-hidden="true"
+    data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; box-shadow: var(--shadow-xl);">
+            <!-- Header -->
+            <div class="modal-header"
+                style="background: linear-gradient(135deg, var(--color-danger) 0%, #dc2626 100%); color: var(--color-text-inverse); border-bottom: none; padding: var(--spacing-5);">
+                <div style="display: flex; align-items: center; gap: var(--spacing-3);">
+                    <div
+                        style="width: 48px; height: 48px; background: rgba(255, 255, 255, 0.2); border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 24px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title" id="deleteSaleModalLabel"
+                            style="margin: 0; font-weight: var(--font-weight-bold); font-size: var(--font-size-lg);">
+                            Confirmar Eliminación
+                        </h5>
+                        <p style="margin: 0; font-size: var(--font-size-sm); opacity: 0.9;">
+                            Venta #{{ sale.id }}
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="filter: brightness(0) invert(1); opacity: 0.8;"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body" style="padding: var(--spacing-6);">
+                <!-- Main Question -->
+                <div style="margin-bottom: var(--spacing-5);">
+                    <p
+                        style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text-primary); margin: 0;">
+                        ¿Está seguro de eliminar esta venta?
+                    </p>
+                </div>
+
+                <!-- Impact Details -->
+                <div class="alert-custom alert-info"
+                    style="margin-bottom: var(--spacing-4); background-color: #e0f2fe; border-color: #0ea5e9;">
+                    <i class="alert-custom-icon bi bi-info-circle-fill" style="color: #0284c7;"></i>
+                    <div class="alert-custom-content" style="color: #075985;">
+                        <strong>Atención: Se devolverán {{ sale.total_units|int }} unidades al stock y se restará
+                            ${{ sale.total|money_ar_2 }} del balance general.</strong>
+                    </div>
+                </div>
+
+                <!-- Impact Warning -->
+                <div class="alert-custom alert-warning" style="margin-bottom: var(--spacing-4);">
+                    <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                    <div class="alert-custom-content">
+                        <strong>Esta acción realizará los siguientes cambios:</strong>
+                        <ul style="margin: var(--spacing-2) 0 0 0; padding-left: var(--spacing-5);">
+                            <li><strong>Stock:</strong> Las {{ sale.total_units|int }} unidades de {{ sale.line_count
+                                }} producto(s) se restaurarán al inventario.</li>
+                            <li><strong>Balance:</strong> El monto de ${{ sale.total|money_ar_2 }} se deducirá del
+                                balance financiero actual.</li>
+                            <li><strong>Registros Contables:</strong> Se eliminarán todos los asientos del libro mayor
+                                asociados.</li>
+                            <li><strong>Movimientos de Stock:</strong> Se borrarán los movimientos de salida
+                                registrados.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Irreversible Warning -->
+                <div class="alert-custom alert-danger" style="margin-bottom: 0;">
+                    <i class="alert-custom-icon bi bi-exclamation-triangle-fill"></i>
+                    <div class="alert-custom-content">
+                        <strong>Advertencia:</strong> Esta acción es <strong>irreversible</strong> y no se puede
+                        deshacer.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer"
+                style="padding: var(--spacing-4) var(--spacing-6); background-color: var(--color-bg-muted); border-top: 1px solid var(--color-border-light);">
+                <button type="button" class="btn-custom btn-secondary-custom" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                <button type="button" class="btn-custom btn-danger-custom" id="confirmDeleteBtn"
+                    hx-delete="{{ url_for('sales.delete_sale', sale_id=sale.id) }}" hx-swap="none"
+                    hx-on::before-request="this.disabled = true; this.innerHTML = '<i class=\'bi bi-hourglass-split\'></i> Eliminando...';"
+                    hx-on::after-request="
+                        this.disabled = false;
+                        this.innerHTML = '<i class=\'bi bi-trash\'></i> Sí, Eliminar Venta';
+                        
+                        if(event.detail.successful) { 
+                            // Close modal
+                            const modalEl = document.getElementById('deleteSaleModal');
+                            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                            if(modalInstance) {
+                                modalInstance.hide();
+                            }
+                            
+                            // Remove modal from DOM after it's hidden
+                            setTimeout(() => {
+                                const modalsContainer = document.getElementById('modals-here');
+                                if(modalsContainer) {
+                                    modalsContainer.innerHTML = '';
+                                }
+                            }, 300);
+                            
+                            // Remove the row from table with animation
+                            const row = document.querySelector('tr[data-sale-id=\'{{ sale.id }}\']');
+                            if(row) {
+                                row.style.transition = 'opacity 0.5s, transform 0.5s';
+                                row.style.opacity = '0';
+                                row.style.transform = 'translateX(-20px)';
+                                setTimeout(() => row.remove(), 500);
+                            }
+                            
+                            // Show success message
+                            const msgContainer = document.getElementById('delete-messages');
+                            if(msgContainer) {
+                                const msg = document.createElement('div'); 
+                                msg.className = 'alert-custom alert-success';
+                                msg.innerHTML = '<i class=\'alert-custom-icon bi bi-check-circle-fill\'></i><div class=\'alert-custom-content\'><strong>Éxito:</strong> Venta #{{ sale.id }} eliminada correctamente. Stock y balance actualizados.</div>';
+                                msgContainer.appendChild(msg);
+                                setTimeout(() => {
+                                    msg.style.transition = 'opacity 0.3s';
+                                    msg.style.opacity = '0';
+                                    setTimeout(() => msg.remove(), 300);
+                                }, 5000);
+                            }
+                        } else {
+                            // Close modal on error too
+                            const modalEl = document.getElementById('deleteSaleModal');
+                            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                            if(modalInstance) {
+                                modalInstance.hide();
+                            }
+                            
+                            setTimeout(() => {
+                                const modalsContainer = document.getElementById('modals-here');
+                                if(modalsContainer) {
+                                    modalsContainer.innerHTML = '';
+                                }
+                            }, 300);
+                            
+                            // Show error message
+                            const msgContainer = document.getElementById('delete-messages');
+                            if(msgContainer) {
+                                const msg = document.createElement('div'); 
+                                msg.className = 'alert-custom alert-danger';
+                                const errorText = event.detail.xhr.responseText || 'Error desconocido al eliminar la venta';
+                                msg.innerHTML = '<i class=\'alert-custom-icon bi bi-exclamation-triangle-fill\'></i><div class=\'alert-custom-content\'><strong>Error:</strong> ' + errorText + '</div>';
+                                msgContainer.appendChild(msg);
+                            }
+                        }
+                    ">
+                    <i class="bi bi-trash"></i> Sí, Eliminar Venta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-show modal script -->
+<script>
+    (function () {
+        const modalEl = document.getElementById('deleteSaleModal');
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    })();
+</script>

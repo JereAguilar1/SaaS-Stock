@@ -20,7 +20,7 @@
             </thead>
             <tbody>
                 {% for sale in sales %}
-                <tr>
+                <tr data-sale-id="{{ sale.id }}">
                     <td>
                         <span class="badge-custom badge-secondary">#{{ sale.id }}</span>
                     </td>
@@ -69,7 +69,8 @@
                             {% endif %}
 
                             <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
-                                data-bs-toggle="modal" data-bs-target="#deleteSaleModal" data-sale-id="{{ sale.id }}">
+                                hx-get="{{ url_for('sales.delete_sale_confirm_modal', sale_id=sale.id) }}"
+                                hx-target="#modals-here" hx-swap="innerHTML">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>

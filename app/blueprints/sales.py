@@ -1556,3 +1556,124 @@ def confirm_draft():
         current_app.logger.error(f"Error in confirm_draft: {str(e)}", exc_info=True)
         flash(f'Error al confirmar venta: {str(e)}', 'danger')
         return redirect(url_for('sales.new_sale'))
+
+
+# ============================================================================
+# Delete Sale with Stock Reversal - TENANT-SCOPED
+# ============================================================================
+
+@sales_bp.route('/<int:sale_id>/delete/confirm', methods=['GET'])
+@require_login
+@require_tenant
+def delete_sale_confirm_modal(sale_id):
+    """Load delete confirmation modal (HTMX endpoint, tenant-scoped)."""
+    db_session = get_session()
+    
+    try:
+        # Validate sale exists and belongs to tenant
+        sale = db_session.query(Sale).options(joinedload(Sale.lines)).filter(
+            Sale.id == sale_id,
+            Sale.tenant_id == g.tenant_id
+        ).first()
+        
+        if not sale:
+            return '''
+                <div class="alert-custom alert-danger">
+                    <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                    <div class="alert-custom-content">
+                        <strong>Error:</strong> Venta no encontrada o no pertenece a su negocio.
+                    </div>
+                </div>
+            ''', 404
+        
+        # Calculate total units to be restored
+        total_units = sum(line.qty for line in sale.lines)
+        
+        # Get sale details
+        sale_data = {
+            'id': sale.id,
+            'total': sale.total,
+            'total_units': total_units,
+            'line_count': len(sale.lines)
+        }
+        
+        return render_template('sales/_delete_confirm_modal.html', sale=sale_data)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error loading delete modal for sale {sale_id}: {str(e)}", exc_info=True)
+        return f'''
+            <div class="alert-custom alert-danger">
+                <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                <div class="alert-custom-content">
+                    <strong>Error:</strong> No se pudo cargar el modal de confirmación.
+                </div>
+            </div>
+        ''', 500
+
+
+
+@sales_bp.route('/<int:sale_id>/delete', methods=['POST', 'DELETE'])
+@require_login
+@require_tenant
+def delete_sale(sale_id):
+    """Delete sale and reverse stock (tenant-scoped, HTMX-compatible)."""
+    db_session = get_session()
+    
+    try:
+        from app.services.sale_delete_service import delete_sale_with_reversal
+        
+        # Delete sale with stock reversal
+        result = delete_sale_with_reversal(sale_id, db_session, g.tenant_id)
+        
+        # Check if HTMX request
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        
+        if is_htmx:
+            # Return success message for HTMX to display
+            return f'''
+                <div class="alert-custom alert-success">
+                    <i class="alert-custom-icon bi bi-check-circle"></i>
+                    <div class="alert-custom-content">
+                        <strong>Éxito:</strong> {result['message']}
+                    </div>
+                </div>
+            ''', 200
+        else:
+            flash(result['message'], 'success')
+            return redirect(url_for('sales.list_sales'))
+        
+    except ValueError as e:
+        db_session.rollback()
+        current_app.logger.warning(f"Business logic error deleting sale {sale_id}: {str(e)}")
+        
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        if is_htmx:
+            return f'''
+                <div class="alert-custom alert-danger">
+                    <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                    <div class="alert-custom-content">
+                        <strong>Error:</strong> {str(e)}
+                    </div>
+                </div>
+            ''', 400
+        else:
+            flash(str(e), 'danger')
+            return redirect(url_for('sales.list_sales'))
+        
+    except Exception as e:
+        db_session.rollback()
+        current_app.logger.error(f"Error deleting sale {sale_id}: {str(e)}", exc_info=True)
+        
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        if is_htmx:
+            return f'''
+                <div class="alert-custom alert-danger">
+                    <i class="alert-custom-icon bi bi-exclamation-circle"></i>
+                    <div class="alert-custom-content">
+                        <strong>Error:</strong> Error al eliminar venta: {str(e)}
+                    </div>
+                </div>
+            ''', 500
+        else:
+            flash(f'Error al eliminar venta: {str(e)}', 'danger')
+            return redirect(url_for('sales.list_sales'))
