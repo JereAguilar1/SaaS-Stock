@@ -127,19 +127,24 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="uom_id" class="form-label-custom">
-                                Unidad de Medida <span style="color: var(--color-danger);">*</span>
-                            </label>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-1);">
+                                <label for="uom_id" class="form-label-custom" style="margin-bottom: 0;">
+                                    Unidad de Medida <span style="color: var(--color-danger);">*</span>
+                                </label>
+                                <button type="button" class="btn-custom btn-secondary-custom btn-sm"
+                                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
+                                    hx-get="{{ url_for('settings.quick_create_uom') }}" hx-target="#modal-container"
+                                    hx-trigger="click">
+                                    <i class="bi bi-plus"></i> Nuevo
+                                </button>
+                            </div>
+                            <!-- Selector target ID used by HTMX OOB swap -->
                             <select class="form-select-custom" id="uom_id" name="uom_id" required {% if not uoms or
                                 uoms|length==0 %}disabled{% endif %}>
-                                <option value="">{% if uoms and uoms|length > 0 %}Seleccione una unidad{% else %}Sin
-                                    unidades disponibles{% endif %}</option>
-                                {% for uom in uoms %}
-                                <option value="{{ uom.id }}" {% if product and product.uom_id==uom.id %}selected{% endif
-                                    %}>
-                                    {{ uom.name }} ({{ uom.symbol }})
-                                </option>
-                                {% endfor %}
+                                {% with selected_uom_id = product.uom_id if product else None %}
+                                {% include 'products/_uom_selector_options.html' %}
+                                {% endwith %}
                             </select>
                         </div>
                     </div>
@@ -473,11 +478,36 @@
         </div>
     </div>
 </div>
+
+<!-- New UOM Modal Container -->
+<div class="modal fade" id="uomModal" tabindex="-1" aria-labelledby="uomModalLabel" aria-hidden="true">
+    <div id="modal-container">
+        <!-- Modal content loaded via HTMX -->
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <!-- Cropper.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+<script>
+    // Listen for uomCreated event to close modal automatically
+    document.body.addEventListener('uomCreated', function () {
+        const modalEl = document.getElementById('uomModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) {
+            modal.hide();
+        }
+
+        // Remove 'disabled' attribute from select if it was there (handy for first creation)
+        const select = document.getElementById('uom_id');
+        if (select) {
+            select.removeAttribute('disabled');
+        }
+    });
+</script>
+
 
 <script>
     // Image Cropper Logic

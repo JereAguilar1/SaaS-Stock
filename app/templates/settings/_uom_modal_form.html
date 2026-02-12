@@ -1,0 +1,43 @@
+<div class="modal-dialog">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="uomModalLabel">Nueva Unidad de Medida</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form id="new-uom-form" hx-post="{{ url_for('settings.quick_create_uom') }}" hx-target="#modal-container"
+                hx-swap="innerHTML">
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="modal_uom_name" class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="modal_uom_name" name="name" placeholder="Ej: Kilogramo"
+                        value="{{ name or '' }}" required maxlength="80">
+                </div>
+
+                <div class="mb-3">
+                    <label for="modal_uom_symbol" class="form-label">Símbolo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="modal_uom_symbol" name="symbol" placeholder="Ej: kg"
+                        value="{{ symbol or '' }}" required maxlength="16">
+                </div>
+
+                <div class="text-end">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+<script>
+    (function () {
+        var modalEl = document.getElementById('uomModal');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    })();
+</script>

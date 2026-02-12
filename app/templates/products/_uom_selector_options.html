@@ -1,0 +1,6 @@
+<option value="">Seleccione una unidad</option>
+{% for uom in uoms %}
+<option value="{{ uom.id }}" {% if selected_uom_id and uom.id==selected_uom_id %}selected{% endif %}>
+    {{ uom.name }} ({{ uom.symbol }})
+</option>
+{% endfor %}

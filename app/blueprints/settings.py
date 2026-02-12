@@ -3,7 +3,7 @@ Settings blueprint for managing master data (UOM and Categories) - Multi-Tenant.
 MEJORA 9: Allows users to create/edit/delete UOMs and Categories from UI.
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort, make_response
 from sqlalchemy import func
 from app.database import get_session
 from app.models import UOM, Category, Product
@@ -159,6 +159,90 @@ def new_uom():
     
     # GET request
     return render_template('settings/uoms_form.html', uom=None)
+
+
+@settings_bp.route('/uoms/quick-create', methods=['GET', 'POST'])
+@require_login
+@require_tenant
+def quick_create_uom():
+    """Create new UOM via modal (HTMX)."""
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        symbol = request.form.get('symbol', '').strip()
+        
+        # Helper to return error in modal
+        def return_error(msg, name_val, symbol_val):
+            return render_template('settings/_uom_modal_form.html', 
+                                 error=msg, 
+                                 name=name_val, 
+                                 symbol=symbol_val), 422
+        
+        # Validations
+        if not name:
+            return return_error('El nombre es obligatorio.', name, symbol)
+        
+        if len(name) > 80:
+            return return_error('El nombre debe tener máximo 80 caracteres.', name, symbol)
+        
+        if not symbol:
+            return return_error('El símbolo es obligatorio.', name, symbol)
+        
+        if len(symbol) > 16:
+            return return_error('El símbolo debe tener máximo 16 caracteres.', name, symbol)
+        
+        session = get_session()
+        
+        # Check if name already exists
+        existing_name = session.query(UOM).filter(
+            UOM.tenant_id == g.tenant_id,
+            func.lower(UOM.name) == func.lower(name)
+        ).first()
+        
+        if existing_name:
+            return return_error(f'Ya existe una unidad "{name}".', name, symbol)
+        
+        # Create UOM
+        try:
+            uom = UOM(
+                tenant_id=g.tenant_id,
+                name=name,
+                symbol=symbol
+            )
+            session.add(uom)
+            session.commit()
+            
+            # Invalidate cache
+            invalidate_uom_cache(g.tenant_id)
+            
+            # Fetch updated list for selector
+            # Note: We duplicate the query from form.html or list_uoms logic roughly
+            # Usually form.html gets uoms from catalog.new_product -> which calls some service
+            # Here we just need list of UOMs ordered by name
+            uoms = session.query(UOM).filter(
+                UOM.tenant_id == g.tenant_id
+            ).order_by(UOM.name).all()
+            
+            # Render options
+            options_html = render_template('products/_uom_selector_options.html', 
+                                         uoms=uoms, 
+                                         selected_uom_id=uom.id)
+            
+            # Wrap in OOB swap for the selector
+            # We must match the ID and crucial attributes
+            # Note: We remove 'disabled' attribute since now we have at least one UOM
+            response_html = f'<select class="form-select-custom" id="uom_id" name="uom_id" required hx-swap-oob="true">{options_html}</select>'
+            
+            response = make_response(response_html)
+            response.headers['HX-Trigger'] = 'uomCreated'
+            return response
+            
+        except Exception as e:
+            session.rollback()
+            return return_error(f'Error: {str(e)}', name, symbol)
+    
+    # GET request - return modal form
+    return render_template('settings/_uom_modal_form.html')
+
 
 
 @settings_bp.route('/uoms/<int:uom_id>/edit', methods=['GET', 'POST'])
