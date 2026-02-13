@@ -464,6 +464,48 @@ def new_category():
     return render_template('settings/categories_form.html', category=None)
 
 
+@settings_bp.route('/categories/quick-create', methods=['GET', 'POST'])
+@require_login
+@require_tenant
+def quick_create_category():
+    session = get_session()
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('El nombre es obligatorio.', 'danger')
+            return render_template('settings/_category_modal_form.html'), 422
+            
+        # Validar duplicado por tenant
+        exists = session.query(Category).filter(
+            Category.tenant_id == g.tenant_id, 
+            func.lower(Category.name) == func.lower(name)
+        ).first()
+        
+        if exists:
+            flash(f'La categoría "{name}" ya existe.', 'danger')
+            return render_template('settings/_category_modal_form.html'), 422
+            
+        new_cat = Category(name=name, tenant_id=g.tenant_id)
+        session.add(new_cat)
+        session.commit()
+        
+        # Invalidar cachés correspondientes
+        invalidate_categories_cache(g.tenant_id)
+        invalidate_products_cache(g.tenant_id)
+        
+        # Cargar todas las categorías para actualizar el select
+        categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
+        
+        from flask import make_response
+        response = make_response(render_template('products/_category_selector_options.html', 
+                                              categories=categories, 
+                                              selected_category_id=new_cat.id))
+        response.headers['HX-Trigger'] = 'categoryCreated'
+        return response
+
+    return render_template('settings/_category_modal_form.html')
+
+
 @settings_bp.route('/categories/<int:category_id>/edit', methods=['GET', 'POST'])
 @require_login
 @require_tenant

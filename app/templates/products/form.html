@@ -115,37 +115,38 @@
                     <!-- Category and UOM -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-4);">
                         <div class="form-group">
-                            <label for="category_id" class="form-label-custom">Categoría</label>
-                            <select class="form-select-custom" id="category_id" name="category_id">
-                                <option value="">Sin categoría</option>
-                                {% for category in categories %}
-                                <option value="{{ category.id }}" {% if product and product.category_id==category.id
-                                    %}selected{% endif %}>
-                                    {{ category.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-1);">
-                                <label for="uom_id" class="form-label-custom" style="margin-bottom: 0;">
-                                    Unidad de Medida <span style="color: var(--color-danger);">*</span>
-                                </label>
-                                <button type="button" class="btn-custom btn-secondary-custom btn-sm"
-                                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
-                                    hx-get="{{ url_for('settings.quick_create_uom') }}" hx-target="#modal-container"
-                                    hx-trigger="click">
-                                    <i class="bi bi-plus"></i> Nuevo
+                            <label class="form-label-custom">Categoría</label>
+                            <div style="display: flex; gap: var(--spacing-2); align-items: flex-start;">
+                                <select class="form-select-custom" id="category_id" name="category_id">
+                                    {% include 'products/_category_selector_options.html' %}
+                                </select>
+                                <button type="button" class="btn-custom btn-secondary-custom"
+                                    hx-get="{{ url_for('settings.quick_create_category') }}"
+                                    hx-target="#modal-container"
+                                    style="padding: 0 var(--spacing-3); height: 42px; flex-shrink: 0;"
+                                    title="Nueva Categoría">
+                                    <i class="bi bi-plus-lg"></i>
                                 </button>
                             </div>
-                            <!-- Selector target ID used by HTMX OOB swap -->
-                            <select class="form-select-custom" id="uom_id" name="uom_id" required {% if not uoms or
-                                uoms|length==0 %}disabled{% endif %}>
-                                {% with selected_uom_id = product.uom_id if product else None %}
-                                {% include 'products/_uom_selector_options.html' %}
-                                {% endwith %}
-                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label-custom">Unidad de Medida <span
+                                    style="color: var(--color-danger);">*</span></label>
+                            <div style="display: flex; gap: var(--spacing-2); align-items: flex-start;">
+                                <!-- Selector target ID used by HTMX OOB swap -->
+                                <select class="form-select-custom" id="uom_id" name="uom_id" required {% if not uoms or
+                                    uoms|length==0 %}disabled{% endif %}>
+                                    {% with selected_uom_id = product.uom_id if product else None %}
+                                    {% include 'products/_uom_selector_options.html' %}
+                                    {% endwith %}
+                                </select>
+                                <button type="button" class="btn-custom btn-secondary-custom"
+                                    hx-get="{{ url_for('settings.quick_create_uom') }}" hx-target="#modal-container"
+                                    style="padding: 0 var(--spacing-3); height: 42px; flex-shrink: 0;"
+                                    title="Nueva Unidad de Medida">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -480,11 +481,9 @@
 </div>
 
 <!-- New UOM Modal Container -->
-<div class="modal fade" id="uomModal" tabindex="-1" aria-labelledby="uomModalLabel" aria-hidden="true">
-    <div id="modal-container">
-        <!-- Modal content loaded via HTMX -->
-    </div>
-</div>
+<!-- New UOM Modal Container -->
+<!-- Generic Modal Container (Category, UOM, etc) -->
+<div id="modal-container"></div>
 {% endblock %}
 
 {% block extra_js %}

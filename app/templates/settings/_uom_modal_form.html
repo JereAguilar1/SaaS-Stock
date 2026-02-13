@@ -1,43 +1,60 @@
-<div class="modal-dialog">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h5 class="modal-title" id="uomModalLabel">Nueva Unidad de Medida</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-            <form id="new-uom-form" hx-post="{{ url_for('settings.quick_create_uom') }}" hx-target="#modal-container"
-                hx-swap="innerHTML">
-                {% if error %}
-                <div class="alert alert-danger" role="alert">
-                    {{ error }}
+<div class="modal fade" id="uomModal" tabindex="-1" aria-labelledby="uomModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border: none; background: transparent;">
+            <div class="card-custom" style="margin: 0;">
+                <div class="card-header-custom"
+                    style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="card-title" id="uomModalLabel" style="font-size: 1.25rem;">Nueva Unidad de Medida</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                {% endif %}
+                <div class="card-body-custom">
+                    <form id="new-uom-form" hx-post="{{ url_for('settings.quick_create_uom') }}"
+                        hx-target="#uom-modal-content" hx-swap="innerHTML">
+                        {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ error }}
+                        </div>
+                        {% endif %}
 
-                <div class="mb-3">
-                    <label for="modal_uom_name" class="form-label">Nombre <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="modal_uom_name" name="name" placeholder="Ej: Kilogramo"
-                        value="{{ name or '' }}" required maxlength="80">
-                </div>
+                        <div class="form-group mb-3">
+                            <label for="modal_uom_name" class="form-label-custom">Nombre <span
+                                    style="color: var(--color-danger);">*</span></label>
+                            <input type="text" class="form-input-custom" id="modal_uom_name" name="name"
+                                placeholder="Ej: Kilogramo" value="{{ name or '' }}" required maxlength="80">
+                        </div>
 
-                <div class="mb-3">
-                    <label for="modal_uom_symbol" class="form-label">Símbolo <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="modal_uom_symbol" name="symbol" placeholder="Ej: kg"
-                        value="{{ symbol or '' }}" required maxlength="16">
-                </div>
+                        <div class="form-group mb-4">
+                            <label for="modal_uom_symbol" class="form-label-custom">Símbolo <span
+                                    style="color: var(--color-danger);">*</span></label>
+                            <input type="text" class="form-input-custom" id="modal_uom_symbol" name="symbol"
+                                placeholder="Ej: kg" value="{{ symbol or '' }}" required maxlength="16">
+                        </div>
 
-                <div class="text-end">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
+                        <div style="display: flex; justify-content: flex-end; gap: var(--spacing-2);">
+                            <button type="button" class="btn-custom btn-secondary-custom"
+                                data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn-custom btn-primary-custom"
+                                style="padding: 0.5rem 1.5rem;">Guardar</button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
-</div>
+
 <script>
     (function () {
         var modalEl = document.getElementById('uomModal');
-        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        var modal = new bootstrap.Modal(modalEl);
         modal.show();
+
+        // Listen for creation success to close (trigger name: uomCreated)
+        document.body.addEventListener('uomCreated', function () {
+            var modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        }, { once: true });
     })();
 </script>

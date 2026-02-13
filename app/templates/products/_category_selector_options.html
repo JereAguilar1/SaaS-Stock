@@ -1,0 +1,6 @@
+<option value="">Sin categoría</option>
+{% for category in categories %}
+<option value="{{ category.id }}" {% if selected_category_id==category.id %}selected{% endif %}>
+    {{ category.name }}
+</option>
+{% endfor %}

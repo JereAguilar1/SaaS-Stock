@@ -1,0 +1,59 @@
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-labelledby="categoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border: none; background: transparent;">
+            <div class="card-custom" style="margin: 0;">
+                <div class="card-header-custom"
+                    style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 class="card-title" id="categoryModalLabel" style="font-size: 1.25rem;">Nueva Categoría</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="card-body-custom">
+                    <form id="quick-category-form" hx-post="{{ url_for('settings.quick_create_category') }}"
+                        hx-target="#modal-container">
+
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                        {% endwith %}
+
+                        <div class="form-group mb-4">
+                            <label for="modal-category-name" class="form-label-custom">Nombre <span
+                                    style="color: var(--color-danger);">*</span></label>
+                            <input type="text" class="form-input-custom" id="modal-category-name" name="name" required
+                                maxlength="120" autocomplete="off" placeholder="Ej: Bebidas">
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: var(--spacing-2);">
+                            <button type="button" class="btn-custom btn-secondary-custom"
+                                data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn-custom btn-primary-custom"
+                                style="padding: 0.5rem 1.5rem;">Guardar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var modalElement = document.getElementById('categoryModal');
+        var modal = new bootstrap.Modal(modalElement);
+        modal.show();
+
+        // Listen for creation success to close
+        document.body.addEventListener('categoryCreated', function () {
+            var modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        }, { once: true });
+    })();
+</script>
