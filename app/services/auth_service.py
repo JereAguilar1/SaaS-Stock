@@ -6,6 +6,7 @@ Handles user creation, OAuth account linking, and session management.
 from app.database import db_session
 from app.models import AppUser, UserTenant
 from sqlalchemy.exc import IntegrityError
+from app.exceptions import BusinessLogicError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ def get_or_create_user_from_google(google_profile):
         AppUser: User instance
     
     Raises:
-        ValueError: If email not verified or account linking conflict
+        BusinessLogicError: If email not verified or account linking conflict
     """
     email = google_profile['email']
     google_sub = google_profile['sub']
@@ -38,7 +39,7 @@ def get_or_create_user_from_google(google_profile):
     # Validate email is verified
     if not email_verified:
         logger.warning(f"Attempted login with unverified email: {email}")
-        raise ValueError("Email no verificado por Google")
+        raise BusinessLogicError("Email no verificado por Google")
     
     # Check if user exists by google_sub
     user = db_session.query(AppUser).filter_by(google_sub=google_sub).first()
@@ -64,7 +65,7 @@ def get_or_create_user_from_google(google_profile):
                 f"Account linking conflict: email={email}, "
                 f"existing_sub={user.google_sub}, new_sub={google_sub}"
             )
-            raise ValueError(
+            raise BusinessLogicError(
                 "Este email ya está vinculado a otra cuenta de Google. "
                 "Si crees que esto es un error, contacta soporte."
             )
@@ -104,17 +105,17 @@ def get_or_create_user_from_google(google_profile):
         
         # Check if it's a duplicate email (race condition)
         if 'app_user_email_key' in str(e) or 'unique constraint' in str(e).lower():
-            raise ValueError(
+            raise BusinessLogicError(
                 "Este email ya está registrado. "
                 "Intenta iniciar sesión o usa otro email."
             )
         
-        raise ValueError("Error al crear la cuenta. Intenta nuevamente.")
+        raise BusinessLogicError("Error al crear la cuenta. Intenta nuevamente.")
     
     except Exception as e:
         db_session.rollback()
         logger.error(f"Unexpected error creating user from Google: {str(e)}", exc_info=True)
-        raise ValueError("Error inesperado al crear la cuenta.")
+        raise BusinessLogicError("Error inesperado al crear la cuenta.")
 
 
 def get_user_tenants(user_id):

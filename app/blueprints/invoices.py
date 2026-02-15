@@ -1,8 +1,10 @@
 """Invoices blueprint for purchase invoice management - Multi-Tenant."""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, g, abort, make_response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, g, abort, make_response, Response, jsonify
+from typing import List, Dict, Optional, Union, Any, Tuple
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, date, timedelta
 from sqlalchemy import and_, or_, func
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 from app.database import get_session
 from app.models import PurchaseInvoice, Supplier, Product, InvoiceStatus, PurchaseInvoicePayment, ProductStock
@@ -11,12 +13,37 @@ from app.services.payment_service import register_invoice_payment
 from app.services.invoice_alerts_service import is_invoice_overdue
 from app.middleware import require_login, require_tenant
 from app.utils.number_format import parse_ar_decimal, parse_ar_number
-from flask import jsonify
+from app.exceptions import BusinessLogicError, NotFoundError
+from flask import Response
 
 invoices_bp = Blueprint('invoices', __name__, url_prefix='/invoices')
 
 
-def get_invoice_draft():
+def _parse_date(date_str: Optional[str]) -> Optional[date]:
+    """Helper to parse date string formatted as YYYY-MM-DD."""
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str.strip(), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
+
+
+def _validate_invoice_draft(draft: Dict[str, Any]) -> List[str]:
+    """Validate invoice draft data and return list of errors."""
+    errors = []
+    if not draft.get('supplier_id'):
+        errors.append('Debe seleccionar un proveedor')
+    if not draft.get('invoice_number', '').strip():
+        errors.append('El número de boleta es requerido')
+    if not draft.get('invoice_date'):
+        errors.append('La fecha de boleta es requerida')
+    if not draft.get('lines'):
+        errors.append('Debe agregar al menos un ítem a la boleta')
+    return errors
+
+
+def get_invoice_draft() -> Dict[str, Any]:
     """Get invoice draft from session."""
     if 'invoice_draft' not in session:
         session['invoice_draft'] = {
@@ -29,13 +56,13 @@ def get_invoice_draft():
     return session['invoice_draft']
 
 
-def save_invoice_draft(draft):
+def save_invoice_draft(draft: Dict[str, Any]) -> None:
     """Save invoice draft to session."""
     session['invoice_draft'] = draft
     session.modified = True
 
 
-def clear_invoice_draft():
+def clear_invoice_draft() -> None:
     """Clear invoice draft from session."""
     session['invoice_draft'] = {
         'supplier_id': None,
@@ -50,7 +77,7 @@ def clear_invoice_draft():
 @invoices_bp.route('/')
 @require_login
 @require_tenant
-def list_invoices():
+def list_invoices() -> Union[str, Response]:
     """List all purchase invoices (tenant-scoped)."""
     db_session = get_session()
     
@@ -63,7 +90,7 @@ def list_invoices():
         overdue = request.args.get('overdue', type=int)
         
         # Base query - filter by tenant
-        query = db_session.query(PurchaseInvoice).filter(
+        query = db_session.query(PurchaseInvoice).options(joinedload(PurchaseInvoice.supplier)).filter(
             PurchaseInvoice.tenant_id == g.tenant_id
         )
         
@@ -165,7 +192,7 @@ def list_invoices():
 @invoices_bp.route('/<int:invoice_id>')
 @require_login
 @require_tenant
-def view_invoice(invoice_id):
+def view_invoice(invoice_id: int) -> Union[str, Response]:
     """View invoice detail (tenant-scoped)."""
     db_session = get_session()
     
@@ -187,19 +214,19 @@ def view_invoice(invoice_id):
         
         return render_template('invoices/detail.html', invoice=invoice, today=today)
         
+    except (BusinessLogicError, NotFoundError) as e:
+        raise e
     except Exception as e:
         import traceback
         current_app.logger.error(f"Error loading invoice {invoice_id}: {str(e)}")
         current_app.logger.error(traceback.format_exc())
-        
-        flash(f'Error al cargar boleta: {str(e)}', 'danger')
-        return redirect(url_for('invoices.list_invoices'))
+        raise BusinessLogicError(f'Error al cargar boleta: {str(e)}')
 
 
 @invoices_bp.route('/<int:invoice_id>/edit', methods=['GET', 'POST'])
 @require_login
 @require_tenant
-def edit_invoice(invoice_id):
+def edit_invoice(invoice_id: int) -> Union[str, Response]:
     """Edit an existing invoice (tenant-scoped)."""
     db_session = get_session()
     
@@ -210,12 +237,11 @@ def edit_invoice(invoice_id):
         ).first()
         
         if not invoice:
-            abort(404)
+            raise NotFoundError('Boleta no encontrada')
             
         if invoice.status == InvoiceStatus.PAID:
-            flash('No se puede editar una boleta pagada.', 'warning')
-            return redirect(url_for('invoices.view_invoice', invoice_id=invoice.id))
-            
+            raise BusinessLogicError('No se puede editar una boleta pagada.')
+        
         if request.method == 'POST':
             # Basic editing of header fields only for now
             # Full editing would require more complex logic to handle stock rollbacks etc.
@@ -226,40 +252,44 @@ def edit_invoice(invoice_id):
             due_date_str = request.form.get('due_date', '').strip()
             
             if not invoice_number:
-                flash('El número de boleta es requerido', 'danger')
-                return render_template('invoices/edit.html', invoice=invoice)
+                raise BusinessLogicError('El número de boleta es requerido')
                 
             try:
                 invoice.invoice_number = invoice_number
-                invoice.invoice_date = datetime.strptime(invoice_date_str, '%Y-%m-%d').date()
-                if due_date_str:
-                    invoice.due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-                else:
-                    invoice.due_date = None
+                
+                invoice_date = _parse_date(invoice_date_str)
+                if not invoice_date:
+                    flash('Fecha de boleta inválida', 'danger')
+                    return render_template('invoices/edit.html', invoice=invoice)
+                
+                invoice.invoice_date = invoice_date
+                invoice.due_date = _parse_date(due_date_str)
                     
                 db_session.commit()
                 flash('Boleta actualizada exitosamente.', 'success')
                 return redirect(url_for('invoices.view_invoice', invoice_id=invoice.id))
                 
-            except ValueError:
-                flash('Formatos de fecha inválidos', 'danger')
-                return render_template('invoices/edit.html', invoice=invoice)
-            except IntegrityError:
+            except Exception as e:
                 db_session.rollback()
-                flash('Error de integridad al guardar cambios.', 'danger')
+                current_app.logger.error(f"Error updating invoice {invoice_id}: {e}")
+                flash('Error al guardar cambios.', 'danger')
                 return render_template('invoices/edit.html', invoice=invoice)
         
         return render_template('invoices/edit.html', invoice=invoice)
         
+    except (BusinessLogicError, NotFoundError) as e:
+        db_session.rollback()
+        raise e
     except Exception as e:
-        flash(f'Error al cargar formulario de edición: {str(e)}', 'danger')
-        return redirect(url_for('invoices.list_invoices'))
+        db_session.rollback()
+        current_app.logger.error(f"Error editing invoice {invoice_id}: {str(e)}")
+        raise BusinessLogicError(f'Error al procesar edición: {str(e)}')
 
 
 @invoices_bp.route('/<int:invoice_id>/delete', methods=['POST'])
 @require_login
 @require_tenant
-def delete_invoice(invoice_id):
+def delete_invoice(invoice_id: int) -> Response:
     """Delete an invoice (tenant-scoped)."""
     db_session = get_session()
     
@@ -274,12 +304,10 @@ def delete_invoice(invoice_id):
         
         # Check if it can be deleted (e.g. not paid, no payments)
         if invoice.status == InvoiceStatus.PAID:
-            flash('No se puede eliminar una boleta pagada completamente.', 'danger')
-            return redirect(url_for('invoices.list_invoices'))
+            raise BusinessLogicError('No se puede eliminar una boleta pagada completamente.')
             
         if invoice.paid_amount > 0:
-             flash('No se puede eliminar una boleta con pagos parciales.', 'danger')
-             return redirect(url_for('invoices.list_invoices'))
+             raise BusinessLogicError('No se puede eliminar una boleta con pagos parciales.')
 
         # Log info for debugging
         current_app.logger.info(f"Deleting invoice {invoice_id}")
@@ -314,7 +342,7 @@ def delete_invoice(invoice_id):
 @invoices_bp.route('/new', methods=['GET'])
 @require_login
 @require_tenant
-def new_invoice():
+def new_invoice() -> Union[str, Response]:
     """Show form to create new invoice (tenant-scoped)."""
     db_session = get_session()
     
@@ -363,7 +391,7 @@ def new_invoice():
 @invoices_bp.route('/draft/update-header', methods=['POST'])
 @require_login
 @require_tenant
-def update_draft_header():
+def update_draft_header() -> Tuple[str, int]:
     """Update invoice draft header (HTMX endpoint)."""
     try:
         draft = get_invoice_draft()
@@ -379,14 +407,13 @@ def update_draft_header():
         return '', 204
         
     except Exception as e:
-        flash(f'Error al actualizar: {str(e)}', 'danger')
-        return '', 500
+        raise BusinessLogicError(f'Error al actualizar: {str(e)}')
 
 
 @invoices_bp.route('/draft/add-line', methods=['POST'])
 @require_login
 @require_tenant
-def add_draft_line():
+def add_draft_line() -> Response:
     """Add line to invoice draft (HTMX endpoint, tenant-scoped)."""
     db_session = get_session()
     
@@ -411,12 +438,10 @@ def add_draft_line():
         
         # Validations
         if not product_id:
-            flash('Debe seleccionar un producto', 'danger')
-            return redirect(url_for('invoices.new_invoice'))
+            raise BusinessLogicError('Debe seleccionar un producto')
         
         if qty <= 0:
-            flash('La cantidad debe ser mayor a 0', 'danger')
-            return redirect(url_for('invoices.new_invoice'))
+            raise BusinessLogicError('La cantidad debe ser mayor a 0')
         
         if unit_cost < 0:
             flash('El costo unitario no puede ser negativo', 'danger')
@@ -461,7 +486,7 @@ def add_draft_line():
 @invoices_bp.route('/draft/remove-line/<int:product_id>', methods=['POST'])
 @require_login
 @require_tenant
-def remove_draft_line(product_id):
+def remove_draft_line(product_id: int) -> Response:
     """Remove line from invoice draft (HTMX endpoint)."""
     try:
         draft = get_invoice_draft()
@@ -481,7 +506,7 @@ def remove_draft_line(product_id):
 @invoices_bp.route('/new/confirm-preview', methods=['GET'])
 @require_login
 @require_tenant
-def confirm_create_preview():
+def confirm_create_preview() -> str:
     """Preview invoice creation (HTMX modal, tenant-scoped)."""
     db_session = get_session()
     
@@ -489,19 +514,7 @@ def confirm_create_preview():
         draft = get_invoice_draft()
         
         # Validate draft
-        errors = []
-        
-        if not draft.get('supplier_id'):
-            errors.append('Debe seleccionar un proveedor')
-        
-        if not draft.get('invoice_number'):
-            errors.append('El número de boleta es requerido')
-        
-        if not draft.get('invoice_date'):
-            errors.append('La fecha de boleta es requerida')
-        
-        if not draft.get('lines'):
-            errors.append('Debe agregar al menos un ítem a la boleta')
+        errors = _validate_invoice_draft(draft)
         
         if errors:
             error_html = '<div class="alert alert-danger"><ul class="mb-0">'
@@ -572,7 +585,7 @@ def confirm_create_preview():
 @invoices_bp.route('/create', methods=['POST'])
 @require_login
 @require_tenant
-def create_invoice():
+def create_invoice() -> Response:
     """Create invoice with lines and update stock (tenant-scoped)."""
     db_session = get_session()
     
@@ -580,20 +593,10 @@ def create_invoice():
         draft = get_invoice_draft()
         
         # Validate draft
-        if not draft['supplier_id']:
-            flash('Debe seleccionar un proveedor', 'danger')
-            return redirect(url_for('invoices.new_invoice'))
-        
-        if not draft['invoice_number']:
-            flash('El número de boleta es requerido', 'danger')
-            return redirect(url_for('invoices.new_invoice'))
-        
-        if not draft['invoice_date']:
-            flash('La fecha de boleta es requerida', 'danger')
-            return redirect(url_for('invoices.new_invoice'))
-        
-        if not draft['lines']:
-            flash('Debe agregar al menos un ítem a la boleta', 'danger')
+        errors = _validate_invoice_draft(draft)
+        if errors:
+            for error in errors:
+                flash(error, 'danger')
             return redirect(url_for('invoices.new_invoice'))
         
         # Parse dates
@@ -637,7 +640,7 @@ def create_invoice():
 @invoices_bp.route('/<int:invoice_id>/pay/preview', methods=['GET'])
 @require_login
 @require_tenant
-def pay_invoice_preview(invoice_id):
+def pay_invoice_preview(invoice_id: int) -> str:
     """Preview invoice payment (HTMX modal, tenant-scoped)."""
     db_session = get_session()
     
@@ -669,7 +672,7 @@ def pay_invoice_preview(invoice_id):
 @invoices_bp.route('/<int:invoice_id>/payments', methods=['POST'])
 @require_login
 @require_tenant
-def register_payment_route(invoice_id):
+def register_payment_route(invoice_id: int) -> Union[str, Response]:
     """Register a payment for an invoice (HTMX, tenant-scoped)."""
     db_session = get_session()
     
@@ -768,39 +771,18 @@ def register_payment_route(invoice_id):
     except ValueError as e:
         db_session.rollback()
         current_app.logger.warning(f"[PAYMENT] Validation error for invoice {invoice_id}: {str(e)}")
-        if request.headers.get('HX-Request'):
-             # Return error to the modal using HX-Retarget
-             error_html = f'''<div class="alert alert-danger" style="margin: 0; padding: var(--spacing-3); font-size: var(--font-size-sm);">
-                 <i class="bi bi-exclamation-circle me-2"></i>{str(e)}
-             </div>'''
-             response = make_response(error_html)
-             response.headers['HX-Retarget'] = '#modal-errors'
-             response.headers['HX-Reswap'] = 'innerHTML'
-             return response
-        flash(str(e), 'danger')
-        return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+        raise BusinessLogicError(str(e))
         
     except Exception as e:
         db_session.rollback()
         current_app.logger.error(f"[PAYMENT] CRITICAL ERROR for invoice {invoice_id}: {str(e)}")
-        import traceback
-        current_app.logger.error(f"[PAYMENT] Traceback:\n{traceback.format_exc()}")
-        if request.headers.get('HX-Request'):
-             error_html = f'''<div class="alert alert-danger" style="margin: 0; padding: var(--spacing-3); font-size: var(--font-size-sm);">
-                 <i class="bi bi-exclamation-octagon me-2"></i>Error interno al procesar pago. Por favor, contacte al administrador.
-             </div>'''
-             response = make_response(error_html)
-             response.headers['HX-Retarget'] = '#modal-errors'
-             response.headers['HX-Reswap'] = 'innerHTML'
-             return response
-        flash(f'Error al procesar pago: {str(e)}', 'danger')
-        return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+        raise e
 
 
 @invoices_bp.route('/<int:invoice_id>/pay', methods=['POST'])
 @require_login
 @require_tenant
-def pay_invoice_route(invoice_id):
+def pay_invoice_route(invoice_id: int) -> Union[str, Response]:
     """Legacy route compatibility."""
     return register_payment_route(invoice_id)
 
@@ -808,7 +790,7 @@ def pay_invoice_route(invoice_id):
 @invoices_bp.route('/products/search', methods=['GET'])
 @require_login
 @require_tenant
-def search_products():
+def search_products() -> Response:
     """Search products for invoice creation (return JSON)."""
     db_session = get_session()
     
@@ -832,16 +814,16 @@ def search_products():
         # Limit results
         products = products_query.order_by(Product.name).limit(20).all()
         
-        results = []
-        for p in products:
-            results.append({
+        results = [
+            {
                 'id': p.id,
                 'name': p.name,
                 'sku': p.sku,
                 'uom_symbol': p.uom.symbol if p.uom else '',
                 'sale_price': float(p.sale_price) if p.sale_price else 0,
                 'cost': float(p.cost) if p.cost else 0
-            })
+            } for p in products
+        ]
             
         return jsonify(results)
         

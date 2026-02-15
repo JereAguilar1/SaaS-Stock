@@ -1,5 +1,5 @@
 """Sales blueprint for POS and cart management - Multi-Tenant."""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file, current_app, g, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file, current_app, g, abort, Response
 from sqlalchemy import or_, func, and_, desc
 from sqlalchemy.orm import joinedload
 from decimal import Decimal, InvalidOperation
@@ -12,11 +12,138 @@ from app.services import sale_draft_service
 from app.services.top_products_service import get_top_selling_products
 from app.services.quote_service import generate_quote_pdf
 from app.middleware import require_login, require_tenant
+from app.exceptions import BusinessLogicError, NotFoundError
 
+from typing import Optional, Tuple, Union
 sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
 
+IVA_RATE = Decimal('1.21')
 
-def get_cart():
+# Helper removed: using global exception handlers
+
+def _calculate_tax_breakdown(total: Decimal) -> Tuple[Decimal, Decimal]:
+    """Calculate subtotal and IVA from total with tax included."""
+    if total is None:
+        return Decimal('0.00'), Decimal('0.00')
+    subtotal = (total / IVA_RATE).quantize(Decimal('0.01'))
+    iva = total - subtotal
+    return subtotal, iva
+
+def _get_product_or_error(db_session, product_id: int, tenant_id: int) -> Optional[Product]:
+    """Get product by ID with tenant validation.
+    
+    Returns None if product not found or doesn't belong to tenant.
+    """
+    return db_session.query(Product).filter(
+        Product.id == product_id,
+        Product.tenant_id == tenant_id
+    ).first()
+
+def _validate_product_for_cart(product: Optional[Product], qty: Decimal) -> Optional[str]:
+    """Validate if product can be added to cart with given quantity."""
+    if not product:
+        return 'Producto no encontrado o no pertenece a su negocio'
+    if not product.active:
+        return f'El producto "{product.name}" no está activo'
+    if product.on_hand_qty <= 0:
+        return f'El producto "{product.name}" no tiene stock disponible'
+    if qty <= 0:
+        return 'La cantidad debe ser mayor a 0'
+    return None
+
+def _search_products_internal(db_session, tenant_id: int, search_query: str = '', category_id: str = '') -> Tuple[list, Optional[int]]:
+    """Internal helper to build and execute the product search query."""
+    # Build base query
+    query = db_session.query(Product).filter(
+        Product.tenant_id == tenant_id,
+        Product.active == True
+    )
+
+    # Apply Category Filter if present
+    if category_id:
+        try:
+            cat_id = int(category_id)
+            query = query.filter(Product.category_id == cat_id)
+        except ValueError:
+            pass
+    
+    products = []
+    exact_barcode_match = None
+    
+    if search_query:
+        # Sanitize input (limit length)
+        search_query = search_query[:100]
+        
+        # Check for exact barcode match first
+        exact_match_query = db_session.query(Product).filter(
+            Product.tenant_id == tenant_id,
+            Product.active == True,
+            Product.barcode.isnot(None),
+            func.lower(Product.barcode) == search_query.lower()
+        )
+        
+        if category_id:
+            try:
+                exact_match_query = exact_match_query.filter(Product.category_id == int(category_id))
+            except ValueError:
+                pass
+
+        exact_match = exact_match_query.first()
+        
+        if exact_match:
+            exact_barcode_match = exact_match.id
+            products = [exact_match]
+        else:
+            # Fuzzy search filter
+            search_filter = or_(
+                func.lower(Product.name).like(f'%{search_query.lower()}%'),
+                and_(Product.sku.isnot(None), func.lower(Product.sku).like(f'%{search_query.lower()}%')),
+                and_(Product.barcode.isnot(None), func.lower(Product.barcode).like(f'%{search_query.lower()}%'))
+            )
+            
+            # Popularity Sort Query
+            pop_query = (db_session.query(Product)
+                       .outerjoin(ProductStock)
+                       .outerjoin(SaleLine, SaleLine.product_id == Product.id)
+                       .outerjoin(Sale, and_(
+                           Sale.id == SaleLine.sale_id, 
+                           Sale.status == SaleStatus.CONFIRMED,
+                           Sale.tenant_id == tenant_id
+                       ))
+                       .filter(
+                           Product.tenant_id == tenant_id,
+                           Product.active == True
+                       ))
+            
+            if category_id:
+                try:
+                    pop_query = pop_query.filter(Product.category_id == int(category_id))
+                except ValueError:
+                    pass
+
+            products = (pop_query.filter(search_filter)
+                       .group_by(Product.id)
+                       .order_by(
+                           desc(func.sum(func.coalesce(SaleLine.qty, 0))),
+                           Product.name
+                       )
+                       .limit(20)
+                       .all())
+    else:
+        # No text search, list items with optional category
+        products = (query
+                   .outerjoin(ProductStock)
+                   .order_by(Product.name)
+                   .limit(20)
+                   .all())
+                   
+    return products, exact_barcode_match
+
+
+
+
+
+def get_cart() -> dict:
     """Get cart from session for current tenant."""
     if 'cart_by_tenant' not in session:
         session['cart_by_tenant'] = {}
@@ -29,7 +156,7 @@ def get_cart():
     return session['cart_by_tenant'][tenant_id]
 
 
-def _serialize_value(val):
+def _serialize_value(val) -> Union[str, dict, any]:
     """Helper to ensure values are JSON serializable for session."""
     if isinstance(val, Decimal):
         return str(val)
@@ -37,7 +164,7 @@ def _serialize_value(val):
         return {k: _serialize_value(v) for k, v in val.items()}
     return val
 
-def save_cart(cart):
+def save_cart(cart: dict) -> None:
     """Save cart to session for current tenant."""
     if 'cart_by_tenant' not in session:
         session['cart_by_tenant'] = {}
@@ -56,7 +183,7 @@ def save_cart(cart):
     session.modified = True
 
 
-def get_cart_with_products(db_session, tenant_id):
+def get_cart_with_products(db_session, tenant_id: int) -> Tuple[list, Decimal]:
     """Get cart with product details from database (tenant-scoped)."""
     cart = get_cart()
     cart_items = []
@@ -64,11 +191,7 @@ def get_cart_with_products(db_session, tenant_id):
     
     for product_id_str, item in cart['items'].items():
         product_id = int(product_id_str)
-        # Validate product belongs to tenant
-        product = db_session.query(Product).filter(
-            Product.id == product_id,
-            Product.tenant_id == tenant_id
-        ).first()
+        product = _get_product_or_error(db_session, product_id, tenant_id)
         
         if product:
             qty = Decimal(str(item['qty']))
@@ -86,10 +209,22 @@ def get_cart_with_products(db_session, tenant_id):
     return cart_items, total
 
 
+def _render_cart_content(db_session, tenant_id: int) -> str:
+    """Render cart content template (used for HTMX updates)."""
+    cart_items, cart_total = get_cart_with_products(db_session, tenant_id)
+    subtotal, iva_total = _calculate_tax_breakdown(cart_total)
+    return render_template('sales/_cart_content.html',
+                         cart_items=cart_items,
+                         cart_total=cart_total,
+                         subtotal=subtotal,
+                         iva_total=iva_total)
+
+
+
 @sales_bp.route('/new')
 @require_login
 @require_tenant
-def new_sale():
+def new_sale() -> Union[str, Response]:
     """POS screen for new sale (tenant-scoped)."""
     db_session = get_session()
     
@@ -97,35 +232,8 @@ def new_sale():
         # Get search query if any
         search_query = request.args.get('q', '').strip()
         
-        # Search products (tenant-scoped)
-        products = []
-        if search_query:
-            search_filter = or_(
-                func.lower(Product.name).like(f'%{search_query.lower()}%'),
-                func.lower(Product.sku).like(f'%{search_query.lower()}%'),
-                func.lower(Product.barcode).like(f'%{search_query.lower()}%')
-            )
-            products = (db_session.query(Product)
-                       .outerjoin(ProductStock)
-                       .filter(
-                           Product.tenant_id == g.tenant_id,
-                           Product.active == True
-                       )
-                       .filter(search_filter)
-                       .order_by(Product.name)
-                       .limit(20)
-                       .all())
-        else:
-            # Default: Show catalog (A-Z) if no search query
-            products = (db_session.query(Product)
-                       .outerjoin(ProductStock)
-                       .filter(
-                           Product.tenant_id == g.tenant_id,
-                           Product.active == True
-                       )
-                       .order_by(Product.name)
-                       .limit(20)
-                       .all())
+        # 1. Execute search/catalog via helper
+        products, _ = _search_products_internal(db_session, g.tenant_id, search_query)
         
         # Get persisted draft for this user (rehydration)
         try:
@@ -186,125 +294,23 @@ def new_sale():
 @sales_bp.route('/products/search', methods=['GET'])
 @require_login
 @require_tenant
-def product_search():
+def product_search() -> Union[str, Response]:
     """Search products for POS (HTMX endpoint, tenant-scoped)."""
     db_session = get_session()
     
     try:
-        # Get search query
         search_query = request.args.get('q', '').strip()
         category_id = request.args.get('category_id', '').strip()
         
-        # Get draft for highlighting selected products
+        # 1. Get draft for highlighting selected products
         try:
-            draft, totals = sale_draft_service.get_draft_with_totals(
-                db_session, g.tenant_id, g.user_id
-            )
+            draft, totals = sale_draft_service.get_draft_with_totals(db_session, g.tenant_id, g.user_id)
         except Exception as e:
             current_app.logger.warning(f"Could not load draft in product_search: {e}")
             draft, totals = None, None
         
-        # Build base query
-        query = db_session.query(Product).filter(
-            Product.tenant_id == g.tenant_id,
-            Product.active == True
-        )
-
-        # Apply Category Filter if present
-        if category_id:
-            try:
-                cat_id = int(category_id)
-                query = query.filter(Product.category_id == cat_id)
-            except ValueError:
-                pass
-        
-        products = []
-        exact_barcode_match = None
-        
-        if search_query:
-            # Sanitize input (limit length)
-            search_query = search_query[:100]
-            
-            # Check for exact barcode match first (priority)
-            # IMPORTANT: Only check products with non-null barcode
-            # We also apply category filter to exact match check if present
-            exact_match_query = db_session.query(Product).filter(
-                Product.tenant_id == g.tenant_id,
-                Product.active == True,
-                Product.barcode.isnot(None),
-                func.lower(Product.barcode) == search_query.lower()
-            )
-            
-            if category_id:
-                try:
-                   exact_match_query = exact_match_query.filter(Product.category_id == int(category_id))
-                except ValueError:
-                   pass
-
-            exact_match = exact_match_query.first()
-            
-            if exact_match:
-                exact_barcode_match = exact_match.id
-                products = [exact_match]
-            else:
-                # Build search filter for fuzzy search
-                search_filter = or_(
-                    func.lower(Product.name).like(f'%{search_query.lower()}%'),
-                    and_(Product.sku.isnot(None), func.lower(Product.sku).like(f'%{search_query.lower()}%')),
-                    and_(Product.barcode.isnot(None), func.lower(Product.barcode).like(f'%{search_query.lower()}%'))
-                )
-                
-                # Apply text filter to base query (which already has tenant/active/category)
-                query = query.filter(search_filter)
-                
-                # Popularity Sort Query with Joins
-                # Re-construct query with joins for popularity sort
-                # Note: We need to re-apply filters to this new query structure
-                pop_query = (db_session.query(Product)
-                           .outerjoin(ProductStock)
-                           .outerjoin(SaleLine, SaleLine.product_id == Product.id)
-                           .outerjoin(Sale, and_(
-                               Sale.id == SaleLine.sale_id, 
-                               Sale.status == SaleStatus.CONFIRMED,
-                               Sale.tenant_id == g.tenant_id
-                           ))
-                           .filter(
-                               Product.tenant_id == g.tenant_id,
-                               Product.active == True
-                           ))
-                
-                if category_id:
-                     try:
-                        pop_query = pop_query.filter(Product.category_id == int(category_id))
-                     except ValueError:
-                        pass
-
-                products = (pop_query.filter(search_filter)
-                           .group_by(Product.id)
-                           .order_by(
-                               desc(func.sum(func.coalesce(SaleLine.qty, 0))), # Order by popularity
-                               Product.name                                    # Then alphabetically
-                           )
-                           .limit(20)
-                           .all())
-        elif category_id:
-             # No text search, only category
-             products = (query
-                       .outerjoin(ProductStock)
-                       .order_by(Product.name)
-                       .limit(20)
-                       .all())
-        else:
-             # No filters at all -> Top Products or Default Catalog
-             # If search empty and no category, we usually show top products or catalog
-             # Since this is "search" endpoint, if called with empty everything, maybe return catalog?
-             # But usually frontend won't call search with empty q AND empty category unless reset
-             # Let's fallback to catalog
-             products = (query
-                       .outerjoin(ProductStock)
-                       .order_by(Product.name)
-                       .limit(20)
-                       .all())
+        # 2. Execute search via helper
+        products, exact_barcode_match = _search_products_internal(db_session, g.tenant_id, search_query, category_id)
 
         
         return render_template('sales/_product_results.html',
@@ -326,7 +332,7 @@ def product_search():
 @sales_bp.route('/cart/add', methods=['POST'])
 @require_login
 @require_tenant
-def cart_add():
+def cart_add() -> Union[str, Response]:
     """Add product to cart (HTMX endpoint, tenant-scoped)."""
     db_session = get_session()
     
@@ -352,91 +358,38 @@ def cart_add():
         qty_str = payload.get('qty', '1')
         
         if not product_id_str:
-            msg = 'Falta el ID del producto'
-            current_app.logger.warning(f"[cart_add] {msg}")
-            if is_htmx:
-                return f'<div class="alert alert-danger">{msg}</div>', 400
-            flash(msg, 'danger')
-            return redirect(url_for('sales.new_sale'))
+            raise BusinessLogicError('Falta el ID del producto')
         
         # 3. Convertir con manejo de errores
         try:
             product_id = int(product_id_str)
             qty = Decimal(str(qty_str))
-        except (ValueError, TypeError) as e:
-            msg = f'Datos inválidos: product_id o qty no son numéricos'
-            current_app.logger.warning(f"[cart_add] {msg}: product_id={product_id_str}, qty={qty_str}")
-            if is_htmx:
-                return f'<div class="alert alert-danger">{msg}</div>', 400
-            flash(msg, 'danger')
-            return redirect(url_for('sales.new_sale'))
+        except (ValueError, TypeError):
+            raise BusinessLogicError('Datos inválidos: product_id o qty no son numéricos')
         
         if qty <= 0:
-            msg = 'La cantidad debe ser mayor a 0'
-            if is_htmx:
-                return f'<div class="alert alert-warning">{msg}</div>', 400
-            flash(msg, 'danger')
-            return redirect(url_for('sales.new_sale'))
+            raise BusinessLogicError('La cantidad debe ser mayor a 0')
         
-        # 4. Get product and verify it belongs to tenant
-        product = db_session.query(Product).filter(
-            Product.id == product_id,
-            Product.tenant_id == g.tenant_id
-        ).first()
+        # 4. Get and validate product
+        product = _get_product_or_error(db_session, product_id, g.tenant_id)
+        error_msg = _validate_product_for_cart(product, qty)
+        if error_msg:
+            if 'encontrado' in error_msg:
+                raise NotFoundError(error_msg)
+            raise BusinessLogicError(error_msg)
         
-        if not product:
-            msg = 'Producto no encontrado o no pertenece a su negocio'
-            current_app.logger.warning(f"[cart_add] {msg}: product_id={product_id}")
-            if is_htmx:
-                return f'<div class="alert alert-danger">{msg}</div>', 404
-            flash(msg, 'danger')
-            return redirect(url_for('sales.new_sale'))
-        
-        if not product.active:
-            msg = f'El producto "{product.name}" no está activo'
-            if is_htmx:
-                return f'<div class="alert alert-warning">{msg}</div>', 400
-            flash(msg, 'warning')
-            return redirect(url_for('sales.new_sale'))
-        
-        # 5. Check stock
-        if product.on_hand_qty <= 0:
-            msg = f'El producto "{product.name}" no tiene stock disponible'
-            if is_htmx:
-                return f'<div class="alert alert-danger">{msg}</div>', 400
-            flash(msg, 'danger')
-            return redirect(url_for('sales.new_sale'))
-        
-        # 6. Get cart
+        # 6. Process cart update
         cart = get_cart()
         product_id_str = str(product_id)
+        current_qty = Decimal(str(cart['items'].get(product_id_str, {}).get('qty', 0)))
+        new_qty = current_qty + qty
         
-        # 7. Add or update qty
-        if product_id_str in cart['items']:
-            current_qty = Decimal(str(cart['items'][product_id_str]['qty']))
-            new_qty = current_qty + qty
+        if new_qty > product.on_hand_qty:
+            raise BusinessLogicError(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}')
             
-            # Check if new qty exceeds stock
-            if new_qty > product.on_hand_qty:
-                msg = f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}'
-                if is_htmx:
-                    return f'<div class="alert alert-warning">{msg}</div>', 400
-                flash(msg, 'warning')
-                return redirect(url_for('sales.new_sale'))
-            
-            cart['items'][product_id_str]['qty'] = float(new_qty)
-        else:
-            # Check if qty exceeds stock
-            if qty > product.on_hand_qty:
-                msg = f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}'
-                if is_htmx:
-                    return f'<div class="alert alert-warning">{msg}</div>', 400
-                flash(msg, 'warning')
-                return redirect(url_for('sales.new_sale'))
-            
-            cart['items'][product_id_str] = {'qty': float(qty)}
-        
+        cart['items'][product_id_str] = {'qty': float(new_qty)}
         save_cart(cart)
+        
         flash(f'"{product.name}" agregado al carrito', 'success')
         
         # 8. If HTMX request, return partial content
@@ -445,17 +398,7 @@ def cart_add():
                 f"[HTMX] cart_add SUCCESS: product_id={product_id}, "
                 f"qty={qty}, cart_size={len(cart['items'])}"
             )
-            cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            
-            # Calcular subtotal e IVA en backend (Fix Bug B)
-            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-            iva_total = cart_total - subtotal
-            
-            return render_template('sales/_cart_content.html',
-                                 cart_items=cart_items,
-                                 cart_total=cart_total,
-                                 subtotal=subtotal,
-                                 iva_total=iva_total)
+            return _render_cart_content(db_session, g.tenant_id)
         
         return redirect(url_for('sales.new_sale'))
         
@@ -464,17 +407,13 @@ def cart_add():
         current_app.logger.error(f"Error in cart_add: {str(e)}", exc_info=True)
         
         # Si es HTMX, retornar error parcial
-        if request.headers.get('HX-Request') == 'true':
-            return f'<div class="alert alert-danger">Error al agregar producto: {str(e)}</div>', 500
-        
-        flash(f'Error al agregar producto: {str(e)}', 'danger')
-        return redirect(url_for('sales.new_sale'))
+        return _handle_error(f'Error al agregar producto: {str(e)}', 'danger', 500)
 
 
 @sales_bp.route('/cart/update', methods=['POST'])
 @require_login
 @require_tenant
-def cart_update():
+def cart_update() -> Union[str, Response]:
     """Update cart item quantity (HTMX endpoint, tenant-scoped)."""
     db_session = get_session()
     
@@ -484,27 +423,13 @@ def cart_update():
         
         # Handle empty qty
         if not qty_str:
-            cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-            iva_total = cart_total - subtotal
-            return render_template('sales/_cart_content.html',
-                                 cart_items=cart_items,
-                                 cart_total=cart_total,
-                                 subtotal=subtotal,
-                                 iva_total=iva_total)
+            return _render_cart_content(db_session, g.tenant_id)
         
         try:
             qty = Decimal(qty_str)
         except:
             flash('Cantidad inválida', 'warning')
-            cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-            iva_total = cart_total - subtotal
-            return render_template('sales/_cart_content.html',
-                                 cart_items=cart_items,
-                                 cart_total=cart_total,
-                                 subtotal=subtotal,
-                                 iva_total=iva_total)
+            return _render_cart_content(db_session, g.tenant_id)
         
         # If qty <= 0, remove item automatically
         if qty <= 0:
@@ -514,20 +439,9 @@ def cart_update():
                 session['cart'] = cart
                 session.modified = True
                 flash('Producto eliminado del carrito', 'info')
-            cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-            iva_total = cart_total - subtotal
-            return render_template('sales/_cart_content.html',
-                                 cart_items=cart_items,
-                                 cart_total=cart_total,
-                                 subtotal=subtotal,
-                                 iva_total=iva_total)
+            return _render_cart_content(db_session, g.tenant_id)
         
-        # Get product and verify tenant
-        product = db_session.query(Product).filter(
-            Product.id == product_id,
-            Product.tenant_id == g.tenant_id
-        ).first()
+        product = _get_product_or_error(db_session, product_id, g.tenant_id)
         
         if not product:
             flash('Producto no encontrado o no pertenece a su negocio', 'danger')
@@ -536,14 +450,7 @@ def cart_update():
         # Check stock
         if qty > product.on_hand_qty:
             flash(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}', 'warning')
-            cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-            subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-            iva_total = cart_total - subtotal
-            return render_template('sales/_cart_content.html',
-                                 cart_items=cart_items,
-                                 cart_total=cart_total,
-                                 subtotal=subtotal,
-                                 iva_total=iva_total)
+            return _render_cart_content(db_session, g.tenant_id)
         
         # Update cart
         cart = get_cart()
@@ -558,32 +465,18 @@ def cart_update():
             f"[HTMX] cart_update: tenant_id={g.tenant_id}, "
             f"product_id={product_id}, qty={qty}"
         )
-        cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-        iva_total = cart_total - subtotal
-        return render_template('sales/_cart_content.html',
-                             cart_items=cart_items,
-                             cart_total=cart_total,
-                             subtotal=subtotal,
-                             iva_total=iva_total)
+        return _render_cart_content(db_session, g.tenant_id)
         
     except Exception as e:
         current_app.logger.error(f"Error in cart_update: {str(e)}", exc_info=True)
         flash(f'Error al actualizar carrito: {str(e)}', 'danger')
-        cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-        iva_total = cart_total - subtotal
-        return render_template('sales/_cart_content.html',
-                             cart_items=cart_items,
-                             cart_total=cart_total,
-                             subtotal=subtotal,
-                             iva_total=iva_total)
+        return _render_cart_content(db_session, g.tenant_id)
 
 
 @sales_bp.route('/cart/remove', methods=['POST'])
 @require_login
 @require_tenant
-def cart_remove():
+def cart_remove() -> Union[str, Response]:
     """Remove item from cart (HTMX endpoint)."""
     db_session = get_session()
     
@@ -604,69 +497,43 @@ def cart_remove():
             f"[HTMX] cart_remove: tenant_id={g.tenant_id}, "
             f"product_id={product_id}"
         )
-        cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-        iva_total = cart_total - subtotal
-        return render_template('sales/_cart_content.html',
-                             cart_items=cart_items,
-                             cart_total=cart_total,
-                             subtotal=subtotal,
-                             iva_total=iva_total)
+        return _render_cart_content(db_session, g.tenant_id)
         
     except Exception as e:
         current_app.logger.error(f"Error in cart_remove: {str(e)}", exc_info=True)
         flash(f'Error al remover producto: {str(e)}', 'danger')
-        cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        subtotal = (cart_total / Decimal('1.21')).quantize(Decimal('0.01'))
-        iva_total = cart_total - subtotal
-        return render_template('sales/_cart_content.html',
-                             cart_items=cart_items,
-                             cart_total=cart_total,
-                             subtotal=subtotal,
-                             iva_total=iva_total)
+        return _render_cart_content(db_session, g.tenant_id)
 
 
 @sales_bp.route('/confirm/preview', methods=['GET'])
 @require_login
 @require_tenant
-def confirm_preview():
+def confirm_preview() -> Union[str, Response]:
     """Preview sale before confirmation (HTMX modal, tenant-scoped)."""
     db_session = get_session()
     
-    try:
-        cart = get_cart()
-        
-        # Validate cart not empty
-        if not cart.get('items'):
-            return '''
-                <div class="alert alert-warning">
-                    El carrito está vacío. Agregue productos para continuar.
-                </div>
-            '''
-        
-        # Get cart items with products (tenant-scoped)
-        cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
-        
-        # Get payment method from form (if selected)
-        payment_method = request.args.get('payment_method', 'CASH')
-        
-        return render_template('sales/_confirm_modal.html',
-                             cart_items=cart_items,
-                             cart_total=cart_total,
-                             payment_method=payment_method)
-        
-    except Exception as e:
-        return f'''
-            <div class="alert alert-danger">
-                Error al cargar vista previa: {str(e)}
-            </div>
-        '''
+    cart = get_cart()
+    
+    # Validate cart not empty
+    if not cart.get('items'):
+        raise BusinessLogicError('El carrito está vacío. Agregue productos para continuar.')
+    
+    # Get cart items with products (tenant-scoped)
+    cart_items, cart_total = get_cart_with_products(db_session, g.tenant_id)
+    
+    # Get payment method from form (if selected)
+    payment_method = request.args.get('payment_method', 'CASH')
+    
+    return render_template('sales/_confirm_modal.html',
+                         cart_items=cart_items,
+                         cart_total=cart_total,
+                         payment_method=payment_method)
 
 
 @sales_bp.route('/confirm', methods=['POST'])
 @require_login
 @require_tenant
-def confirm():
+def confirm() -> Union[str, Response]:
     """Confirm sale and process transaction (tenant-scoped)."""
     db_session = get_session()
     
@@ -675,8 +542,7 @@ def confirm():
         
         # Validate cart not empty
         if not cart['items']:
-            flash('El carrito está vacío. Agregue productos antes de confirmar.', 'warning')
-            return redirect(url_for('sales.new_sale'))
+            raise BusinessLogicError('El carrito está vacío. Agregue productos antes de confirmar.')
         
         # Get payment method from form
         payment_method = request.form.get('payment_method', 'CASH').upper()
@@ -700,8 +566,7 @@ def confirm():
                 ).first()
                 
                 if not customer:
-                    flash('Cliente inválido o no pertenece a su negocio', 'danger')
-                    return redirect(url_for('sales.new_sale'))
+                    raise NotFoundError('Cliente inválido o no pertenece a su negocio')
                     
             except ValueError:
                 # Invalid ID format -> use default
@@ -709,8 +574,7 @@ def confirm():
         
         # Validate payment method
         if payment_method not in ['CASH', 'TRANSFER']:
-            flash('Método de pago inválido.', 'danger')
-            return redirect(url_for('sales.new_sale'))
+            raise BusinessLogicError('Método de pago inválido.')
         
         # Call service to confirm sale with tenant_id
         sale_id = confirm_sale(cart, db_session, payment_method, g.tenant_id, customer_id)
@@ -723,21 +587,15 @@ def confirm():
         flash(f'Venta #{sale_id} confirmada exitosamente ({payment_label}). Stock actualizado.', 'success')
         return redirect(url_for('sales.new_sale'))
         
-    except ValueError as e:
+    except (ValueError, BusinessLogicError) as e:
         db_session.rollback()
-        flash(str(e), 'danger')
-        return redirect(url_for('sales.new_sale'))
-        
-    except Exception as e:
-        db_session.rollback()
-        flash(f'Error al confirmar venta: {str(e)}', 'danger')
-        return redirect(url_for('sales.new_sale'))
+        raise BusinessLogicError(str(e))
 
 
 @sales_bp.route('/quote.pdf')
 @require_login
 @require_tenant
-def quote_pdf():
+def quote_pdf() -> Union[str, Response]:
     """Generate PDF quote from cart (tenant-scoped, no sale creation)."""
     db_session = get_session()
     
@@ -754,10 +612,7 @@ def quote_pdf():
         
         for product_id_str, item in cart['items'].items():
             product_id = int(product_id_str)
-            product = db_session.query(Product).filter(
-                Product.id == product_id,
-                Product.tenant_id == g.tenant_id
-            ).first()
+            product = _get_product_or_error(db_session, product_id, g.tenant_id)
             
             if not product:
                 continue
@@ -808,7 +663,7 @@ def quote_pdf():
 @sales_bp.route('/')
 @require_login
 @require_tenant
-def list_sales():
+def list_sales() -> Union[str, Response]:
     """List all confirmed sales (tenant-scoped)."""
     db_session = get_session()
     
@@ -845,7 +700,7 @@ def list_sales():
 @sales_bp.route('/<int:sale_id>')
 @require_login
 @require_tenant
-def detail_sale(sale_id):
+def detail_sale(sale_id: int) -> Union[str, Response]:
     """Show sale detail (tenant-scoped)."""
     db_session = get_session()
     
@@ -868,7 +723,7 @@ def detail_sale(sale_id):
 @sales_bp.route('/<int:sale_id>/edit', methods=['GET'])
 @require_login
 @require_tenant
-def edit_sale_form(sale_id):
+def edit_sale_form(sale_id: int) -> Union[str, Response]:
     """Show form to edit/adjust a sale (tenant-scoped)."""
     db_session = get_session()
     
@@ -898,7 +753,7 @@ def edit_sale_form(sale_id):
 @sales_bp.route('/<int:sale_id>/edit/preview', methods=['POST'])
 @require_login
 @require_tenant
-def edit_sale_preview(sale_id):
+def edit_sale_preview(sale_id: int) -> Union[str, Response]:
     """Preview sale adjustments before applying (HTMX modal, tenant-scoped)."""
     db_session = get_session()
     
@@ -963,10 +818,7 @@ def edit_sale_preview(sale_id):
             
             # Get product and validate tenant
             if product_id not in products_cache:
-                product = db_session.query(Product).filter(
-                    Product.id == product_id,
-                    Product.tenant_id == g.tenant_id
-                ).first()
+                product = _get_product_or_error(db_session, product_id, g.tenant_id)
                 if not product:
                     continue
                 products_cache[product_id] = product
@@ -1054,15 +906,14 @@ def edit_sale_preview(sale_id):
                              diff=diff,
                              changes=changes)
         
-    except Exception as e:
-        current_app.logger.error(f"Error in edit_sale_preview: {str(e)}", exc_info=True)
-        return f'<div class="alert alert-danger">Error al generar vista previa: {str(e)}</div>'
+    except (ValueError, BusinessLogicError) as e:
+        raise BusinessLogicError(f"Error al generar vista previa: {str(e)}")
 
 
 @sales_bp.route('/<int:sale_id>/edit', methods=['POST'])
 @require_login
 @require_tenant
-def edit_sale_save(sale_id):
+def edit_sale_save(sale_id: int) -> Union[str, Response]:
     """Save sale adjustments (tenant-scoped)."""
     db_session = get_session()
     
@@ -1101,14 +952,9 @@ def edit_sale_save(sale_id):
         flash(f'Venta #{sale_id} ajustada exitosamente', 'success')
         return redirect(url_for('sales.detail_sale', sale_id=sale_id))
         
-    except ValueError as e:
+    except (ValueError, BusinessLogicError) as e:
         db_session.rollback()
-        flash(str(e), 'danger')
-        return redirect(url_for('sales.edit_sale_form', sale_id=sale_id))
-    except Exception as e:
-        db_session.rollback()
-        flash(f'Error al guardar ajustes: {str(e)}', 'danger')
-        return redirect(url_for('sales.edit_sale_form', sale_id=sale_id))
+        raise BusinessLogicError(str(e))
 from app.services import sale_draft_service
 from app.services.sales_service import confirm_sale_from_draft
 from app.middleware import require_login, require_tenant
@@ -1122,7 +968,7 @@ import uuid
 @sales_bp.route('/draft/add', methods=['POST'])
 @require_login
 @require_tenant
-def draft_add():
+def draft_add() -> Union[str, Response]:
     """Add product to persistent draft cart (HTMX endpoint)."""
     db_session = get_session()
     
@@ -1230,7 +1076,7 @@ def draft_add():
 @sales_bp.route('/draft/update', methods=['POST'])
 @require_login
 @require_tenant
-def draft_update():
+def draft_update() -> Union[str, Response]:
     """Update draft line quantity or discount (HTMX endpoint)."""
     db_session = get_session()
     
@@ -1327,7 +1173,7 @@ def draft_update():
 @sales_bp.route('/draft/payment/update_cash', methods=['POST'])
 @require_login
 @require_tenant
-def draft_payment_update_cash():
+def draft_payment_update_cash() -> Union[str, Response]:
     """Update cash amount manually and set override flag."""
     db_session = get_session()
     
@@ -1350,7 +1196,7 @@ def draft_payment_update_cash():
 @sales_bp.route('/draft/payment/reset_cash', methods=['POST'])
 @require_login
 @require_tenant
-def draft_payment_reset_cash():
+def draft_payment_reset_cash() -> Union[str, Response]:
     """Reset cash amount to match total and clear override flag."""
     db_session = get_session()
     
@@ -1370,7 +1216,7 @@ def draft_payment_reset_cash():
 @sales_bp.route('/draft/remove', methods=['POST'])
 @require_login
 @require_tenant
-def draft_remove():
+def draft_remove() -> Union[str, Response]:
     """Remove line from draft (HTMX endpoint)."""
     db_session = get_session()
     
@@ -1414,7 +1260,7 @@ def draft_remove():
 @sales_bp.route('/draft/clear', methods=['POST'])
 @require_login
 @require_tenant
-def draft_clear():
+def draft_clear() -> Union[str, Response]:
     """Clear all lines from draft (HTMX endpoint)."""
     db_session = get_session()
     
@@ -1474,7 +1320,7 @@ def draft_clear():
 @sales_bp.route('/confirm_draft', methods=['POST'])
 @require_login
 @require_tenant
-def confirm_draft():
+def confirm_draft() -> Union[str, Response]:
     """Confirm sale from draft with idempotency and mixed payments."""
     db_session = get_session()
     
@@ -1483,7 +1329,7 @@ def confirm_draft():
         idempotency_key = request.form.get('idempotency_key', '').strip()
         
         if not idempotency_key:
-            raise ValueError('Clave de idempotencia requerida')
+            raise BusinessLogicError('Clave de idempotencia requerida')
         
         # ROBUSTEZ: Obtener draft con manejo de errores
         try:
@@ -1492,12 +1338,10 @@ def confirm_draft():
             )
         except Exception as draft_error:
             current_app.logger.error(f"Error getting draft in confirm_draft: {draft_error}", exc_info=True)
-            flash('Error: Carrito no válido. Por favor, intente nuevamente.', 'danger')
-            return redirect(url_for('sales.new_sale'))
+            raise BusinessLogicError('Error: Carrito no válido. Por favor, intente nuevamente.')
         
         if not draft or not draft.lines:
-            flash('Error: El carrito está vacío', 'warning')
-            return redirect(url_for('sales.new_sale'))
+            raise BusinessLogicError('Error: El carrito está vacío')
         
         # Parse payments from form
         # Expected format: payments[0][method], payments[0][amount], etc.
@@ -1533,7 +1377,7 @@ def confirm_draft():
             payment_index += 1
         
         if not payments:
-            raise ValueError('Debe especificar al menos un método de pago')
+            raise BusinessLogicError('Debe especificar al menos un método de pago')
         
         # Get customer_id (optional)
         customer_id = request.form.get('customer_id')
@@ -1573,16 +1417,9 @@ def confirm_draft():
         # Logic: User wants to continue selling
         return redirect(url_for('sales.new_sale'))
         
-    except ValueError as e:
+    except (ValueError, BusinessLogicError) as e:
         db_session.rollback()
-        flash(str(e), 'danger')
-        return redirect(url_for('sales.new_sale'))
-        
-    except Exception as e:
-        db_session.rollback()
-        current_app.logger.error(f"Error in confirm_draft: {str(e)}", exc_info=True)
-        flash(f'Error al confirmar venta: {str(e)}', 'danger')
-        return redirect(url_for('sales.new_sale'))
+        raise BusinessLogicError(str(e))
 
 
 # ============================================================================
@@ -1592,7 +1429,7 @@ def confirm_draft():
 @sales_bp.route('/<int:sale_id>/delete/confirm', methods=['GET'])
 @require_login
 @require_tenant
-def delete_sale_confirm_modal(sale_id):
+def delete_sale_confirm_modal(sale_id: int) -> Union[str, Response]:
     """Load delete confirmation modal (HTMX endpoint, tenant-scoped)."""
     db_session = get_session()
     
@@ -1604,14 +1441,7 @@ def delete_sale_confirm_modal(sale_id):
         ).first()
         
         if not sale:
-            return '''
-                <div class="alert-custom alert-danger">
-                    <i class="alert-custom-icon bi bi-exclamation-circle"></i>
-                    <div class="alert-custom-content">
-                        <strong>Error:</strong> Venta no encontrada o no pertenece a su negocio.
-                    </div>
-                </div>
-            ''', 404
+            raise NotFoundError('Venta no encontrada o no pertenece a su negocio')
         
         # Calculate total units to be restored
         total_units = sum(line.qty for line in sale.lines)
@@ -1627,22 +1457,14 @@ def delete_sale_confirm_modal(sale_id):
         return render_template('sales/_delete_confirm_modal.html', sale=sale_data)
         
     except Exception as e:
-        current_app.logger.error(f"Error loading delete modal for sale {sale_id}: {str(e)}", exc_info=True)
-        return f'''
-            <div class="alert-custom alert-danger">
-                <i class="alert-custom-icon bi bi-exclamation-circle"></i>
-                <div class="alert-custom-content">
-                    <strong>Error:</strong> No se pudo cargar el modal de confirmación.
-                </div>
-            </div>
-        ''', 500
+        raise BusinessLogicError(f"No se pudo cargar el modal de confirmación: {str(e)}")
 
 
 
 @sales_bp.route('/<int:sale_id>/delete', methods=['POST', 'DELETE'])
 @require_login
 @require_tenant
-def delete_sale(sale_id):
+def delete_sale(sale_id: int) -> Union[str, Response]:
     """Delete sale and reverse stock (tenant-scoped, HTMX-compatible)."""
     db_session = get_session()
     
@@ -1669,38 +1491,6 @@ def delete_sale(sale_id):
             flash(result['message'], 'success')
             return redirect(url_for('sales.list_sales'))
         
-    except ValueError as e:
+    except (ValueError, BusinessLogicError) as e:
         db_session.rollback()
-        current_app.logger.warning(f"Business logic error deleting sale {sale_id}: {str(e)}")
-        
-        is_htmx = request.headers.get('HX-Request') == 'true'
-        if is_htmx:
-            return f'''
-                <div class="alert-custom alert-danger">
-                    <i class="alert-custom-icon bi bi-exclamation-circle"></i>
-                    <div class="alert-custom-content">
-                        <strong>Error:</strong> {str(e)}
-                    </div>
-                </div>
-            ''', 400
-        else:
-            flash(str(e), 'danger')
-            return redirect(url_for('sales.list_sales'))
-        
-    except Exception as e:
-        db_session.rollback()
-        current_app.logger.error(f"Error deleting sale {sale_id}: {str(e)}", exc_info=True)
-        
-        is_htmx = request.headers.get('HX-Request') == 'true'
-        if is_htmx:
-            return f'''
-                <div class="alert-custom alert-danger">
-                    <i class="alert-custom-icon bi bi-exclamation-circle"></i>
-                    <div class="alert-custom-content">
-                        <strong>Error:</strong> Error al eliminar venta: {str(e)}
-                    </div>
-                </div>
-            ''', 500
-        else:
-            flash(f'Error al eliminar venta: {str(e)}', 'danger')
-            return redirect(url_for('sales.list_sales'))
+        raise BusinessLogicError(str(e))

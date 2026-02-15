@@ -3,8 +3,9 @@ from datetime import datetime
 import os
 import uuid
 
-# Force test configuration to use localhost instead of docker service name
-os.environ['DB_HOST'] = 'localhost'
+# Force test configuration to use localhost ONLY if not already set (e.g. by Docker)
+if 'DB_HOST' not in os.environ:
+    os.environ['DB_HOST'] = 'localhost'
 
 from app import create_app
 from app.database import db_session, get_session

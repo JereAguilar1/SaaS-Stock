@@ -1,6 +1,7 @@
 """Catalog blueprint for products management - Multi-Tenant."""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, g, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, g, abort, Response
 from sqlalchemy import or_, func, select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 import time
@@ -12,11 +13,16 @@ from app.models import Product, ProductStock, UOM, Category, ProductFeature, Sto
 from app.middleware import require_login, require_tenant
 from app.services.storage_service import get_storage_service
 from app.services.cache_service import get_cache
+from app.exceptions import BusinessLogicError, NotFoundError
+from typing import List, Optional, Union, Tuple, Dict
+import logging
+
+logger = logging.getLogger(__name__)
 
 catalog_bp = Blueprint('catalog', __name__, url_prefix='/products')
 
 
-def invalidate_products_cache(tenant_id: int):
+def invalidate_products_cache(tenant_id: int) -> None:
     """Invalidate all products cache for a tenant (PASO 8)."""
     try:
         cache = get_cache()
@@ -25,7 +31,7 @@ def invalidate_products_cache(tenant_id: int):
         pass  # Graceful degradation
 
 
-def invalidate_categories_cache(tenant_id: int):
+def invalidate_categories_cache(tenant_id: int) -> None:
     """Invalidate categories cache for a tenant (PASO 8)."""
     try:
         cache = get_cache()
@@ -108,10 +114,105 @@ def delete_product_image(image_url: str):
         return False
 
 
+def _sanitize_amount(value: Union[str, float, int, None]) -> str:
+    """
+    Sanitize currency/numeric values from various string formats.
+    e.g. "1.234,56" -> "1234.56"
+    """
+    if value is None:
+        return "0"
+    val_str = str(value).strip()
+    if not val_str:
+        return "0"
+    # Remove thousand separators (dots) and normalize decimal (comma to dot)
+    return val_str.replace('.', '').replace(',', '.')
+
+
+def _normalize_id(value: Optional[str]) -> Optional[str]:
+    """Normalize identifiers like SKU or Barcode: 'none' or empty -> None."""
+    if not value:
+        return None
+    val_str = value.strip()
+    if not val_str or val_str.lower() == 'none':
+        return None
+    return val_str
+
+
+def _validate_product_form(db_session, tenant_id: int, form: dict, files: dict) -> List[str]:
+    """Validate product input and return list of errors."""
+    errors = []
+    name = form.get('name', '').strip()
+    uom_id = form.get('uom_id', '').strip()
+    category_id = form.get('category_id', '').strip() or None
+    sale_price = _sanitize_amount(form.get('sale_price', '0'))
+    cost = _sanitize_amount(form.get('cost', '0'))
+    min_stock_qty = form.get('min_stock_qty', '0').strip()
+
+    if not name:
+        errors.append('El nombre es requerido')
+    
+    if not uom_id:
+        errors.append('La unidad de medida es requerida')
+    else:
+        try:
+            uom = db_session.query(UOM).filter(UOM.id == int(uom_id), UOM.tenant_id == tenant_id).first()
+            if not uom:
+                errors.append('La unidad de medida seleccionada no existe o no pertenece a su negocio')
+        except ValueError:
+            errors.append('ID de unidad de medida inválido')
+
+    if category_id:
+        try:
+            category = db_session.query(Category).filter(Category.id == int(category_id), Category.tenant_id == tenant_id).first()
+            if not category:
+                errors.append('La categoría seleccionada no existe o no pertenece a su negocio')
+        except ValueError:
+            errors.append('ID de categoría inválido')
+
+    try:
+        if float(sale_price) < 0:
+            errors.append('El precio de venta debe ser mayor o igual a 0')
+    except (ValueError, TypeError):
+        errors.append('El precio de venta debe ser un número válido')
+
+    try:
+        if float(cost) < 0:
+            errors.append('El costo debe ser mayor o igual a 0')
+    except (ValueError, TypeError):
+        errors.append('El costo debe ser un número válido')
+
+    try:
+        if float(min_stock_qty or 0) < 0:
+            errors.append('El stock mínimo debe ser mayor o igual a 0')
+    except ValueError:
+        errors.append('El stock mínimo debe ser un número válido')
+
+    return errors
+
+
+def _persist_product_features(db_session, product_id: int, form: dict, tenant_id: int):
+    """Parse and save product features from form data."""
+    # We expect features to be sent as features[0][title], features[0][description], etc.
+    # Note: This logic depends on the specific form field naming convention
+    for feat in form:
+        if feat.startswith('features[') and feat.endswith('][title]'):
+            idx = feat.split('[')[1].split(']')[0]
+            title = form.get(f'features[{idx}][title]', '').strip()
+            description = form.get(f'features[{idx}][description]', '').strip()
+            if title and description:
+                new_feature = ProductFeature(
+                    tenant_id=tenant_id,
+                    product_id=product_id,
+                    title=title,
+                    description=description
+                )
+                db_session.add(new_feature)
+
+
 @catalog_bp.route('/')
 @require_login
 @require_tenant
-def list_products():
+def list_products() -> Union[str, Response]:
     """List all products with stock information (tenant-scoped)."""
     session = get_session()
     
@@ -127,7 +228,7 @@ def list_products():
         ).order_by(Category.name).all()
         
         # Build query with left join to product_stock (tenant-scoped)
-        query = session.query(Product).outerjoin(ProductStock).filter(
+        query = session.query(Product).options(joinedload(Product.category), joinedload(Product.stock)).outerjoin(ProductStock).filter(
             Product.tenant_id == g.tenant_id
         )
         
@@ -217,7 +318,7 @@ def list_products():
 @catalog_bp.route('/<int:product_id>/detalle', methods=['GET'])
 @require_login
 @require_tenant
-def product_detail(product_id):
+def product_detail(product_id: int) -> Union[str, Response]:
     """Show product detail page (tenant-scoped)."""
     session = get_session()
     
@@ -242,7 +343,7 @@ def product_detail(product_id):
 @catalog_bp.route('/new', methods=['GET'])
 @require_login
 @require_tenant
-def new_product():
+def new_product() -> Union[str, Response]:
     """Show form to create a new product (tenant-scoped)."""
     session = get_session()
     
@@ -270,199 +371,87 @@ def new_product():
                              categories=categories,
                              action='new')
         
+    except (BusinessLogicError, NotFoundError) as e:
+        raise e
     except Exception as e:
-        flash(f'Error al cargar formulario: {str(e)}', 'danger')
-        return redirect(url_for('catalog.list_products'))
+        logger.error(f"Error loading new_product form: {str(e)}", exc_info=True)
+        raise BusinessLogicError(f'Error al cargar formulario: {str(e)}')
 
 
 @catalog_bp.route('/new', methods=['POST'])
 @require_login
 @require_tenant
-def create_product():
+def create_product() -> Union[str, Response]:
     """Create a new product (tenant-scoped)."""
     session = get_session()
     
     try:
-        # Get form data
+        # 1. Validation
+        errors = _validate_product_form(session, g.tenant_id, request.form, request.files)
+        if errors:
+            raise BusinessLogicError(", ".join(errors))
+
+        # 2. Sanitization & Normalization
         name = request.form.get('name', '').strip()
-        
-        # NORMALIZACIÓN SKU: Convertir "none" o vacío a NULL
-        sku_raw = request.form.get('sku', '').strip()
-        if sku_raw.lower() == 'none' or sku_raw == '':
-            sku = None
-        else:
-            sku = sku_raw
-        
-        # NORMALIZACIÓN BARCODE: Convertir "none" o vacío a NULL
-        barcode_raw = request.form.get('barcode', '').strip()
-        if barcode_raw.lower() == 'none' or barcode_raw == '':
-            barcode = None
-        else:
-            barcode = barcode_raw
-        
+        sku = _normalize_id(request.form.get('sku'))
+        barcode = _normalize_id(request.form.get('barcode'))
         category_id = request.form.get('category_id', '').strip() or None
         uom_id = request.form.get('uom_id', '').strip()
         
-        # SANITIZER: Limpiar precio de formato local (1.000,00 -> 1000.00)
-        # Algoritmo estricto:
-        # 1. Obtener valor como string
-        # 2. Eliminar TODOS los puntos (separadores de miles)
-        # 3. Reemplazar coma por punto (separador decimal)
-        raw_price = request.form.get('sale_price', '0')
-        # Forzar a string por seguridad
-        raw_price = str(raw_price).strip()
-        # Paso 1: Eliminar puntos de miles (20.000 -> 20000)
-        clean_price = raw_price.replace('.', '')
-        # Paso 2: Normalizar decimal (20000,50 -> 20000.50)
-        clean_price = clean_price.replace(',', '.')
-        sale_price = clean_price
-        
-        # SANITIZER: Limpiar costo de formato local
-        raw_cost = request.form.get('cost', '0')
-        raw_cost = str(raw_cost).strip()
-        clean_cost = raw_cost.replace('.', '').replace(',', '.')
-        cost = clean_cost
-        
-        min_stock_qty = request.form.get('min_stock_qty', '0').strip()
+        sale_price = float(_sanitize_amount(request.form.get('sale_price', '0')))
+        cost = float(_sanitize_amount(request.form.get('cost', '0')))
+        min_stock_qty = int(float(request.form.get('min_stock_qty', '0') or 0))
         active = request.form.get('active') == 'on'
         
-        # Server-side validations
-        errors = []
-        
-        if not name:
-            errors.append('El nombre es requerido')
-        
-        if not uom_id:
-            errors.append('La unidad de medida es requerida')
-        else:
-            # Verify UOM exists in current tenant
-            uom = session.query(UOM).filter(
-                UOM.id == int(uom_id),
-                UOM.tenant_id == g.tenant_id
-            ).first()
-            if not uom:
-                errors.append('La unidad de medida seleccionada no existe o no pertenece a su negocio')
-        
-        # Verify category belongs to tenant if provided
-        if category_id:
-            category = session.query(Category).filter(
-                Category.id == int(category_id),
-                Category.tenant_id == g.tenant_id
-            ).first()
-            if not category:
-                errors.append('La categoría seleccionada no existe o no pertenece a su negocio')
-        
-        # Validación de precio
-        try:
-            sale_price_decimal = float(sale_price)
-            if sale_price_decimal < 0:
-                errors.append('El precio de venta debe ser mayor o igual a 0')
-        except (ValueError, TypeError):
-            errors.append(f'El precio de venta debe ser un número válido. Valor recibido: "{raw_price}"')
-        
-        # Validación de costo
-        try:
-            cost_decimal = float(cost)
-            if cost_decimal < 0:
-                errors.append('El costo debe ser mayor o igual a 0')
-        except (ValueError, TypeError):
-            errors.append(f'El costo debe ser un número válido. Valor recibido: "{raw_cost}"')
-        
-        try:
-            # Parse as integer (floor if decimal provided)
-            min_stock_qty_val = float(min_stock_qty) if min_stock_qty else 0
-            min_stock_qty_int = int(min_stock_qty_val)
-            if min_stock_qty_int < 0:
-                errors.append('El stock mínimo debe ser mayor o igual a 0')
-        except ValueError:
-            errors.append('El stock mínimo debe ser un número válido')
-            min_stock_qty_int = 0
-        
-        if errors:
-            for error in errors:
-                flash(error, 'danger')
-            uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
-            categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
-            return render_template('products/form.html',
-                                 product=None,
-                                 uoms=uoms,
-                                 categories=categories,
-                                 action='new')
-        
-        # Handle image upload (S3/MinIO)
+        # 3. Handle image
         image_url = None
         if 'image' in request.files:
-            image_file = request.files['image']
-            image_url = save_product_image(image_file, g.tenant_id)
+            image_url = save_product_image(request.files['image'], g.tenant_id)
         
-        # Create product with tenant_id
+        # 4. Create Product
         product = Product(
-            tenant_id=g.tenant_id,  # Critical: assign tenant
+            tenant_id=g.tenant_id,
             name=name,
             sku=sku,
             barcode=barcode,
             category_id=int(category_id) if category_id else None,
             uom_id=int(uom_id),
-            sale_price=sale_price_decimal,
-            cost=cost_decimal,
+            sale_price=sale_price,
+            cost=cost,
             active=active,
             image_path=image_url,
-            image_original_path=image_url,  # Save original reference
-            min_stock_qty=min_stock_qty_int
+            image_original_path=image_url,
+            min_stock_qty=min_stock_qty
         )
-        
         session.add(product)
-        session.flush()  # To get product.id
+        session.flush()
         
-        # PERSIST FEATURES
-        for feat in request.form:
-            if feat.startswith('features[') and feat.endswith('][title]'):
-                idx = feat.split('[')[1].split(']')[0]
-                title = request.form.get(f'features[{idx}][title]', '').strip()
-                description = request.form.get(f'features[{idx}][description]', '').strip()
-                if title and description:
-                    new_feature = ProductFeature(
-                        tenant_id=g.tenant_id,
-                        product_id=product.id,
-                        title=title,
-                        description=description
-                    )
-                    session.add(new_feature)
-
+        # 5. Features
+        _persist_product_features(session, product.id, request.form, g.tenant_id)
+        
         session.commit()
-        
-        # PASO 8: Invalidate products cache
         invalidate_products_cache(g.tenant_id)
         
         flash(f'Producto "{product.name}" creado exitosamente', 'success')
         return redirect(url_for('catalog.list_products'))
         
+    except (BusinessLogicError, NotFoundError) as e:
+        session.rollback()
+        raise e
     except IntegrityError as e:
         session.rollback()
-        error_msg = str(e.orig)
-        
-        if 'unique' in error_msg.lower():
-            if 'sku' in error_msg.lower():
-                flash(f'El SKU "{sku}" ya está en uso en su negocio. Por favor, use otro SKU.', 'danger')
-            elif 'barcode' in error_msg.lower():
-                flash(f'El código de barras "{barcode}" ya está en uso en su negocio. Por favor, use otro código.', 'danger')
-            else:
-                flash('Ya existe un producto con estos datos únicos en su negocio.', 'danger')
-        else:
-            flash(f'Error de integridad al crear producto: {error_msg}', 'danger')
-        
-        uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
-        categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
-        return render_template('products/form.html',
-                             product=None,
-                             uoms=uoms,
-                             categories=categories,
-                             action='new')
-        
+        error_msg = str(e.orig).lower()
+        if 'unique' in error_msg:
+            if 'sku' in error_msg:
+                raise BusinessLogicError('El SKU ya está en uso en su negocio.')
+            if 'barcode' in error_msg:
+                raise BusinessLogicError('El código de barras ya está en uso.')
+            raise BusinessLogicError('Ya existe un producto con estos datos únicos.')
+        raise BusinessLogicError(f'Error de integridad: {str(e)}')
     except Exception as e:
         session.rollback()
-        flash(f'Error al crear producto: {str(e)}', 'danger')
-        return redirect(url_for('catalog.list_products'))
+        logger.error(f"Unexpected error in create_product: {str(e)}", exc_info=True)
+        raise e
 
 
 @catalog_bp.route('/<int:product_id>/edit', methods=['GET'])
@@ -504,255 +493,100 @@ def edit_product(product_id):
 @catalog_bp.route('/<int:product_id>/edit', methods=['POST'])
 @require_login
 @require_tenant
-def update_product(product_id):
+def update_product(product_id: int) -> Union[str, Response]:
     """Update a product (tenant-scoped)."""
     session = get_session()
     
     try:
-        # Get product and verify tenant
-        product = session.query(Product).filter(
-            Product.id == product_id,
-            Product.tenant_id == g.tenant_id
-        ).first()
-        
+        product = session.query(Product).filter(Product.id == product_id, Product.tenant_id == g.tenant_id).first()
         if not product:
-            abort(404)
+            raise NotFoundError('Producto no encontrado')
         
-        # Get form data
-        name = request.form.get('name', '').strip()
-        
-        # NORMALIZACIÓN SKU: Convertir "none" o vacío a NULL
-        sku_raw = request.form.get('sku', '').strip()
-        if sku_raw.lower() == 'none' or sku_raw == '':
-            sku = None
-        else:
-            sku = sku_raw
-        
-        # NORMALIZACIÓN BARCODE: Convertir "none" o vacío a NULL
-        barcode_raw = request.form.get('barcode', '').strip()
-        if barcode_raw.lower() == 'none' or barcode_raw == '':
-            barcode = None
-        else:
-            barcode = barcode_raw
-        
-        category_id = request.form.get('category_id', '').strip() or None
-        uom_id = request.form.get('uom_id', '').strip()
-        
-        # SANITIZER: Limpiar precio de formato local (1.000,00 -> 1000.00)
-        # Algoritmo estricto:
-        # 1. Obtener valor como string
-        # 2. Eliminar TODOS los puntos (separadores de miles)
-        # 3. Reemplazar coma por punto (separador decimal)
-        raw_price = request.form.get('sale_price', '0')
-        # Forzar a string por seguridad
-        raw_price = str(raw_price).strip()
-        # Paso 1: Eliminar puntos de miles (20.000 -> 20000)
-        clean_price = raw_price.replace('.', '')
-        # Paso 2: Normalizar decimal (20000,50 -> 20000.50)
-        clean_price = clean_price.replace(',', '.')
-        sale_price = clean_price
-        
-        # SANITIZER: Limpiar costo de formato local
-        raw_cost = request.form.get('cost', '0')
-        raw_cost = str(raw_cost).strip()
-        clean_cost = raw_cost.replace('.', '').replace(',', '.')
-        cost = clean_cost
-        
-        min_stock_qty = request.form.get('min_stock_qty', '0').strip()
-        active = request.form.get('active') == 'on'
-        
-        # Server-side validations
-        errors = []
-        
-        if not name:
-            errors.append('El nombre es requerido')
-        
-        if not uom_id:
-            errors.append('La unidad de medida es requerida')
-        else:
-            uom = session.query(UOM).filter(
-                UOM.id == int(uom_id),
-                UOM.tenant_id == g.tenant_id
-            ).first()
-            if not uom:
-                errors.append('La unidad de medida seleccionada no existe o no pertenece a su negocio')
-        
-        if category_id:
-            category = session.query(Category).filter(
-                Category.id == int(category_id),
-                Category.tenant_id == g.tenant_id
-            ).first()
-            if not category:
-                errors.append('La categoría seleccionada no existe o no pertenece a su negocio')
-        
-        # Validación de precio
-        try:
-            sale_price_decimal = float(sale_price)
-            if sale_price_decimal < 0:
-                errors.append('El precio de venta debe ser mayor o igual a 0')
-        except (ValueError, TypeError):
-            errors.append(f'El precio de venta debe ser un número válido. Valor recibido: "{raw_price}"')
-        
-        # Validación de costo
-        try:
-            cost_decimal = float(cost)
-            if cost_decimal < 0:
-                errors.append('El costo debe ser mayor o igual a 0')
-        except (ValueError, TypeError):
-            errors.append(f'El costo debe ser un número válido. Valor recibido: "{raw_cost}"')
-        
-        try:
-            min_stock_qty_val = float(min_stock_qty) if min_stock_qty else 0
-            min_stock_qty_int = int(min_stock_qty_val)
-            if min_stock_qty_int < 0:
-                errors.append('El stock mínimo debe ser mayor o igual a 0')
-        except ValueError:
-            errors.append('El stock mínimo debe ser un número válido')
-            min_stock_qty_int = 0
-        
+        # 1. Validation
+        errors = _validate_product_form(session, g.tenant_id, request.form, request.files)
         if errors:
-            for error in errors:
-                flash(error, 'danger')
-            uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
-            categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
-            return render_template('products/form.html',
-                                 product=product,
-                                 uoms=uoms,
-                                 categories=categories,
-                                 action='edit')
+            raise BusinessLogicError(", ".join(errors))
         
-        # Handle image upload (S3/MinIO)
+        # 2. Update Basic Info
+        product.name = request.form.get('name', '').strip()
+        product.sku = _normalize_id(request.form.get('sku'))
+        product.barcode = _normalize_id(request.form.get('barcode'))
+        product.category_id = int(request.form.get('category_id')) if request.form.get('category_id') else None
+        product.uom_id = int(request.form.get('uom_id'))
+        product.sale_price = float(_sanitize_amount(request.form.get('sale_price', '0')))
+        product.cost = float(_sanitize_amount(request.form.get('cost', '0')))
+        product.min_stock_qty = int(float(request.form.get('min_stock_qty', '0') or 0))
+        product.active = request.form.get('active') == 'on'
+
+        # 3. Handle Image
         if 'image' in request.files:
             image_file = request.files['image']
             if image_file and image_file.filename != '':
-                # Delete old image from S3 if exists
                 if product.image_path:
                     delete_product_image(product.image_path)
-                
-                # Also delete original if it's different
-                if product.image_original_path and product.image_original_path != product.image_path:
-                    delete_product_image(product.image_original_path)
-                
-                # Upload new image to S3
                 image_url = save_product_image(image_file, g.tenant_id)
                 if image_url:
                     product.image_path = image_url
-                    product.image_original_path = image_url # Update original as well
-        
-        # Update product
-        product.name = name
-        product.sku = sku
-        product.barcode = barcode
-        product.category_id = int(category_id) if category_id else None
-        product.uom_id = int(uom_id)
-        product.sale_price = sale_price_decimal
-        product.cost = cost_decimal
-        product.min_stock_qty = min_stock_qty_int
-        product.active = active
+                    product.image_original_path = image_url
 
-        # STOCK ADJUSTMENT (Refactored)
-        # Check if stock changed
-        new_on_hand_qty_str = request.form.get('on_hand_qty', '').strip()
-        if new_on_hand_qty_str:
+        # 4. Stock Adjustment
+        new_stock_str = request.form.get('on_hand_qty', '').strip()
+        if new_stock_str:
             try:
-                # SANITIZER: Clean stock format (1.000,00 -> 1000.00)
-                clean_qty = new_on_hand_qty_str.replace('.', '').replace(',', '.')
-                new_on_hand_qty = float(clean_qty)
-
-                if new_on_hand_qty >= 0:
-                    current_qty = product.on_hand_qty
-                    delta = new_on_hand_qty - float(current_qty)
-                    
+                new_stock = float(_sanitize_amount(new_stock_str))
+                if new_stock >= 0:
+                    current_qty = float(product.on_hand_qty)
+                    delta = new_stock - current_qty
                     if abs(delta) > 0.001:
-                        # Create Stock Move
                         stock_move = StockMove(
                             tenant_id=g.tenant_id,
                             type=StockMoveType.ADJUST,
                             reference_type=StockReferenceType.MANUAL,
-                            notes=f"Edición directa desde formulario de producto (Usuario: {g.user.email if g.user else 'Unknown'})"
+                            notes=f"Edición desde Catálogo (Usuario: {g.user.email})"
                         )
                         session.add(stock_move)
                         session.flush()
+                        session.add(StockMoveLine(stock_move_id=stock_move.id, product_id=product.id, qty=delta, uom_id=product.uom_id))
                         
-                        # Create Move Line
-                        move_line = StockMoveLine(
-                            stock_move_id=stock_move.id,
-                            product_id=product.id,
-                            qty=delta,
-                            uom_id=product.uom_id
-                        )
-                        session.add(move_line)
-                        
-                        # Update ProductStock (if exists) or Product field logic
-                        # Checking if ProductStock entity is used or if we need to update it
                         product_stock = session.query(ProductStock).filter(ProductStock.product_id == product.id).first()
                         if not product_stock:
                             product_stock = ProductStock(product_id=product.id, on_hand_qty=0)
                             session.add(product_stock)
-                        
-                        product_stock.on_hand_qty = new_on_hand_qty
-                        # Note: product.on_hand_qty is a proxy/property usually, but if it's not we might need to refresh
+                        product_stock.on_hand_qty = new_stock
                 else:
-                    flash('El stock no puede ser negativo. Se ignoró el cambio de stock.', 'warning')
+                    raise BusinessLogicError('El stock no puede ser negativo.')
             except ValueError:
-                flash('Valor de stock inválido. Se ignoró el cambio de stock.', 'warning')
-        
-        # PERSIST FEATURES (Clear and Recreate)
-        product.features = [] # Cascade delete-orphan will handle deletions
-        for feat in request.form:
-            if feat.startswith('features[') and feat.endswith('][title]'):
-                idx = feat.split('[')[1].split(']')[0]
-                title = request.form.get(f'features[{idx}][title]', '').strip()
-                description = request.form.get(f'features[{idx}][description]', '').strip()
-                if title and description:
-                    new_feature = ProductFeature(
-                        tenant_id=g.tenant_id,
-                        product_id=product.id,
-                        title=title,
-                        description=description
-                    )
-                    session.add(new_feature)
+                raise BusinessLogicError('Valor de stock inválido.')
+
+        # 5. Features (Clear and Recreate)
+        product.features = []
+        _persist_product_features(session, product.id, request.form, g.tenant_id)
 
         session.commit()
-        
-        # PASO 8: Invalidate products cache
         invalidate_products_cache(g.tenant_id)
         
         flash(f'Producto "{product.name}" actualizado exitosamente', 'success')
         return redirect(url_for('catalog.list_products'))
         
+    except (BusinessLogicError, NotFoundError) as e:
+        session.rollback()
+        raise e
     except IntegrityError as e:
         session.rollback()
-        error_msg = str(e.orig)
-        
-        if 'unique' in error_msg.lower():
-            if 'sku' in error_msg.lower():
-                flash(f'El SKU "{sku}" ya está en uso en su negocio. Por favor, use otro SKU.', 'danger')
-            elif 'barcode' in error_msg.lower():
-                flash(f'El código de barras "{barcode}" ya está en uso en su negocio. Por favor, use otro código.', 'danger')
-            else:
-                flash('Ya existe un producto con estos datos únicos en su negocio.', 'danger')
-        else:
-            flash(f'Error de integridad al actualizar producto: {error_msg}', 'danger')
-        
-        uoms = session.query(UOM).filter(UOM.tenant_id == g.tenant_id).order_by(UOM.name).all()
-        categories = session.query(Category).filter(Category.tenant_id == g.tenant_id).order_by(Category.name).all()
-        return render_template('products/form.html',
-                             product=product,
-                             uoms=uoms,
-                             categories=categories,
-                             action='edit')
-        
+        error_msg = str(e.orig).lower()
+        if 'unique' in error_msg:
+            raise BusinessLogicError('Error de unicidad: SKU o Barcode ya registrados.')
+        raise BusinessLogicError(f'Error de integridad: {str(e)}')
     except Exception as e:
         session.rollback()
-        flash(f'Error al actualizar producto: {str(e)}', 'danger')
-        return redirect(url_for('catalog.list_products'))
+        logger.error(f"Unexpected error in update_product: {str(e)}", exc_info=True)
+        raise e
 
 
 @catalog_bp.route('/<int:product_id>/toggle-active', methods=['POST'])
 @require_login
 @require_tenant
-def toggle_active(product_id):
+def toggle_active(product_id: int) -> Response:
     """Toggle product active status (tenant-scoped)."""
     session = get_session()
     
@@ -763,26 +597,30 @@ def toggle_active(product_id):
         ).first()
         
         if not product:
-            abort(404)
+            raise NotFoundError('Producto no encontrado')
         
         product.active = not product.active
         session.commit()
+        invalidate_products_cache(g.tenant_id)
         
         status = 'activado' if product.active else 'desactivado'
         flash(f'Producto "{product.name}" {status} exitosamente', 'success')
         
         return redirect(url_for('catalog.list_products'))
         
+    except (BusinessLogicError, NotFoundError) as e:
+        session.rollback()
+        raise e
     except Exception as e:
         session.rollback()
-        flash(f'Error al cambiar estado: {str(e)}', 'danger')
-        return redirect(url_for('catalog.list_products'))
+        logger.error(f"Error toggle_active for product {product_id}: {str(e)}", exc_info=True)
+        raise BusinessLogicError(f'Error al cambiar estado: {str(e)}')
 
 
 @catalog_bp.route('/<int:product_id>/delete', methods=['POST'])
 @require_login
 @require_tenant
-def delete_product(product_id):
+def delete_product(product_id: int) -> Response:
     """
     Delete a product permanently (tenant-scoped).
     
@@ -798,73 +636,56 @@ def delete_product(product_id):
         ).first()
         
         if not product:
-            abort(404)
+            raise NotFoundError('Producto no encontrado')
         
         product_name = product.name
         image_path = product.image_path
         
         try:
-            # FIX: Check for StockMoveLine dependencies
-            # If exists, check if they are all from MANUAL/ADJUST stock moves
-            # If so, we can safely delete the lines first.
-            # If any is from SALE/INVOICE, we block.
-            
+            # Check for StockMoveLine dependencies
             stmt = select(StockMoveLine).filter(StockMoveLine.product_id == product_id)
             lines = session.execute(stmt).scalars().all()
             
             if lines:
-                # Check parents
                 for line in lines:
-                    # Lazy loading might trigger here, better to join if performance critical
-                    # but for deletion of single product it's fine.
                     move = line.stock_move
                     if move.reference_type not in (StockReferenceType.MANUAL,): 
-                        # If we had other safe types like 'INITIAL', add them here.
-                        # Block if SALE or INVOICE
-                        raise IntegrityError("Has commercial history", params=None, orig=None)
+                        raise BusinessLogicError(
+                            f'No se puede eliminar el producto "{product_name}" porque tiene '
+                            'ventas o compras asociadas. Use la opción "Desactivar" en su lugar.'
+                        )
                 
                 # All lines are safe to delete (Manual adjustments)
-                # We delete the lines. The StockMove parent might be left empty or deleted?
-                # Usually StockMove is the header. If we delete the line, the header 
-                # might stay if it has other lines, or become empty.
-                # For this fix, we just delete the lines associated with this product.
                 for line in lines:
                     session.delete(line)
-                
                 session.flush()
 
             session.delete(product)
             session.commit()
             
-            # Delete image file from storage if exists
             if image_path:
                 try:
-                    # Use the helper function which handles S3/MinIO deletion
                     delete_product_image(image_path)
                 except Exception as img_err:
-                    current_app.logger.warning(f"Failed to delete image {image_path}: {img_err}")
+                    logger.warning(f"Failed to delete image {image_path}: {img_err}")
             
-            # PASO 8: Invalidate products cache
             invalidate_products_cache(g.tenant_id)
-            
             flash(f'Producto "{product_name}" eliminado exitosamente', 'success')
             return redirect(url_for('catalog.list_products'))
             
         except IntegrityError:
             session.rollback()
-            flash(
-                f'No se puede eliminar el producto "{product_name}" porque tiene '
-                'ventas o compras asociadas. '
-                'Use la opción "Desactivar" en su lugar.',
-                'warning'
+            raise BusinessLogicError(
+                f'No se puede eliminar el producto "{product_name}" porque tiene historial comercial asociado.'
             )
-            return redirect(url_for('catalog.list_products'))
         
+    except (BusinessLogicError, NotFoundError) as e:
+        session.rollback()
+        raise e
     except Exception as e:
         session.rollback()
-        current_app.logger.error(f"Error deleting product {product_id}: {e}")
-        flash(f'Error al eliminar producto: {str(e)}', 'danger')
-        return redirect(url_for('catalog.list_products'))
+        logger.error(f"Error delete_product {product_id}: {str(e)}", exc_info=True)
+        raise BusinessLogicError(f'Error al eliminar producto: {str(e)}')
 
 
 @catalog_bp.route('/check-sku', methods=['POST'])
@@ -1039,7 +860,7 @@ def crop_product_image(product_id):
 @catalog_bp.route('/<int:product_id>/restore-image', methods=['POST'])
 @require_login
 @require_tenant
-def restore_product_image(product_id):
+def restore_product_image(product_id: int) -> Union[Dict, Tuple[Dict, int]]:
     """Restore the product image to its original uploaded version."""
     session = get_session()
     
@@ -1076,6 +897,7 @@ def restore_product_image(product_id):
 
     except Exception as e:
         session.rollback()
+        logger.error(f"Error in restore_product_image: {str(e)}", exc_info=True)
         return {'error': str(e)}, 500
     # ... existing implementation ...
 

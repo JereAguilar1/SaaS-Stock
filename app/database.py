@@ -43,6 +43,6 @@ def get_session():
     return db_session
 
 
-# Alias for easier imports
-db = db_session
+# Avoid static alias that might point to None if imported early
+# Use get_session() instead
 

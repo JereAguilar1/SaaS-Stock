@@ -85,7 +85,7 @@ def test_create_business_flow(client, app):
     
     assert response.status_code == 200
     assert business_name in response.data.decode('utf-8')
-    assert f'¡Negocio "{business_name}" creado exitosamente!' in response.data.decode('utf-8')
+    assert f'¡Negocio {business_name} creado exitosamente!' in response.data.decode('utf-8')
     
     # 4. Verify DB state
     tenant = db_session.query(Tenant).filter_by(name=business_name).first()

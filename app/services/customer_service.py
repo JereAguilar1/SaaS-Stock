@@ -1,6 +1,7 @@
 """Customer service for default customer management."""
 from app.models import Customer
 from sqlalchemy.exc import IntegrityError
+from app.exceptions import BusinessLogicError
 
 
 def get_or_create_default_customer_id(session, tenant_id: int) -> int:
@@ -18,7 +19,7 @@ def get_or_create_default_customer_id(session, tenant_id: int) -> int:
         customer_id: ID of default customer
         
     Raises:
-        Exception: If unable to create or retrieve default customer
+        BusinessLogicError: If unable to create or retrieve default customer
     """
     # Try to get existing default customer
     default_customer = session.query(Customer).filter(
@@ -55,4 +56,4 @@ def get_or_create_default_customer_id(session, tenant_id: int) -> int:
             return default_customer.id
         
         # This should never happen, but handle it gracefully
-        raise Exception(f'No se pudo crear o recuperar cliente por defecto para tenant {tenant_id}')
+        raise BusinessLogicError(f'No se pudo crear o recuperar el cliente por defecto para el negocio {tenant_id}')

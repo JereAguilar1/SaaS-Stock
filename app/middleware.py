@@ -1,7 +1,7 @@
 """Middleware for authentication and tenant context."""
 from functools import wraps
 from flask import session, g, redirect, url_for, flash, request
-from app.database import db_session
+from app.database import get_session
 from app.models import AppUser, UserTenant
 
 
@@ -18,6 +18,7 @@ def load_user_and_tenant():
     
     user_id = session.get('user_id')
     if user_id:
+        db_session = get_session()
         user = db_session.query(AppUser).filter_by(id=user_id, active=True).first()
         if user:
             g.user = user
@@ -113,6 +114,7 @@ def require_role(min_role='STAFF'):
                 return redirect(url_for('auth.login'))
             
             # Get user's role for current tenant
+            db_session = get_session()
             user_tenant = db_session.query(UserTenant).filter_by(
                 user_id=g.user.id,
                 tenant_id=g.tenant_id,

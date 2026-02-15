@@ -1,6 +1,7 @@
 """Flask application factory."""
-from flask import Flask, g
-from app.database import db, init_db
+from flask import Flask, g, render_template, request, redirect, url_for, flash, jsonify
+from flask_wtf.csrf import CSRFProtect
+from app.database import init_db
 import os
 
 
@@ -8,6 +9,9 @@ def create_app(config_object='config.Config'):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_object(config_object)
+    
+    # Initialize CSRF protection
+    csrf = CSRFProtect(app)
     
     # PASO 5: Initialize Sentry for error tracking in production
     if os.getenv('SENTRY_DSN') and (app.config.get('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production'):
@@ -62,26 +66,60 @@ def create_app(config_object='config.Config'):
     
     # SaaS Multi-Tenant: Load user and tenant context before each request
     from app.middleware import load_user_and_tenant
-    from flask import request, redirect
 
     @app.before_request
     def before_request_handler():
         """Load user and tenant context for each request."""
         load_user_and_tenant()
 
+    # Error Handlers
+    from app.exceptions import SaasError
+    from flask import jsonify
+
+    @app.errorhandler(SaasError)
+    def handle_saas_error(error):
+        """Handle custom application exceptions."""
+        app.logger.error(f"SaaSError [{error.status_code}]: {error.message}")
+        
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        if is_htmx:
+            # Return a styled alert for HTMX requests using the design system
+            return f'''
+            <div class="alert-custom alert-danger" role="alert" style="margin-bottom: var(--spacing-4);">
+                <i class="alert-custom-icon bi bi-exclamation-triangle-fill"></i>
+                <div class="alert-custom-content">{error.message}</div>
+                <button type="button" class="alert-custom-close" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            ''', error.status_code
+        
+        if request.is_json:
+            return jsonify(error.to_dict()), error.status_code
+        
+        return redirect(request.referrer or url_for('main.index')), error.status_code
+
+    @app.errorhandler(404)
+    def not_found_error(error):
+        if request.is_json:
+            return jsonify({'status': 'error', 'message': 'Not Found'}), 404
+        return render_template('errors/404.html'), 404
+
     @app.errorhandler(500)
+    @app.errorhandler(Exception)
     def internal_error(error):
         import traceback
-        app.logger.error(f"Server Error: {error}")
+        app.logger.error(f"Unhandled Exception: {error}")
         app.logger.error(f"Traceback: {traceback.format_exc()}")
-        return "Internal Server Error", 500
-
-    @app.errorhandler(Exception)
-    def handle_exception(e):
-        import traceback
-        app.logger.error(f"Unhandled Exception: {e}")
-        app.logger.error(f"Traceback: {traceback.format_exc()}")
-        return "Internal Server Error", 500
+        
+        if request.is_json:
+            return jsonify({'status': 'error', 'message': 'Internal Server Error'}), 500
+            
+        is_htmx = request.headers.get('HX-Request') == 'true'
+        if is_htmx:
+            return '<div class="alert alert-danger">Error interno del servidor.</div>', 500
+            
+        return render_template('errors/500.html'), 500
 
     def force_https():
         if not request.is_secure and not app.debug:

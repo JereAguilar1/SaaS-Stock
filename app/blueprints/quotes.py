@@ -1,8 +1,10 @@
-"""Quotes blueprint for presupuesto management - Multi-Tenant."""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file, current_app, g, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file, current_app, g, abort, Response
+from typing import List, Dict, Optional, Union, Any, Tuple
 from datetime import datetime, date
-from decimal import Decimal
-from sqlalchemy import or_, func
+from decimal import Decimal, InvalidOperation
+from sqlalchemy import or_, func, cast, String
+from sqlalchemy.orm import joinedload
+from app.exceptions import BusinessLogicError, NotFoundError
 from app.database import get_session
 from app.models import Quote, QuoteLine, Product
 from app.services.quote_service import (
@@ -16,17 +18,92 @@ from app.middleware import require_login, require_tenant
 quotes_bp = Blueprint('quotes', __name__, url_prefix='/quotes')
 
 
-def get_cart():
+def get_cart() -> Dict[str, Any]:
     """Get cart from session."""
     if 'cart' not in session:
         session['cart'] = {'items': {}}
     return session['cart']
 
 
+def _parse_date(date_str: Optional[str]) -> Optional[date]:
+    """Helper to parse date string formatted as YYYY-MM-DD."""
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str.strip(), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
+
+
+def _is_quote_editable(quote: Quote) -> Tuple[bool, Optional[str]]:
+    """Check if a quote can be edited."""
+    if quote.status not in ['DRAFT', 'SENT']:
+        return False, f'El presupuesto está en estado {quote.status}. Solo se pueden editar presupuestos en estado DRAFT o SENT.'
+    
+    # Check if expired
+    today = date.today()
+    if quote.valid_until and quote.valid_until < today:
+        return False, f'Este presupuesto está vencido (válido hasta {quote.valid_until.strftime("%d/%m/%Y")}). No se puede editar.'
+    
+    return True, None
+
+
+def _parse_quote_form_lines(form: Dict[str, Any], db_session, tenant_id: int) -> Union[List[Dict[str, Any]], str]:
+    """Parse and validate quote lines from form data. Returns list of dicts or error message string."""
+    lines_data = []
+    line_index = 0
+    
+    while True:
+        product_id_key = f'lines[{line_index}][product_id]'
+        qty_key = f'lines[{line_index}][qty]'
+        
+        if product_id_key not in form:
+            break
+        
+        product_id_val = form.get(product_id_key, '').strip()
+        qty_val = form.get(qty_key, '').strip()
+        
+        if not product_id_val or not qty_val:
+            line_index += 1
+            continue
+        
+        try:
+            product_id = int(product_id_val)
+            qty = Decimal(str(qty_val))
+            
+            if qty <= 0:
+                return f'La cantidad debe ser mayor a 0 en la línea {line_index + 1}.'
+            
+            # Fetch product and validate tenant
+            product = db_session.query(Product).filter(
+                Product.id == product_id,
+                Product.tenant_id == tenant_id
+            ).first()
+            
+            if not product:
+                return f'Producto no encontrado o no autorizado en la línea {line_index + 1}.'
+            
+            if not product.active:
+                return f'El producto "{product.name}" está inactivo.'
+            
+            lines_data.append({
+                'product_id': product_id,
+                'qty': qty,
+                'product': product  # Include product object for preview
+            })
+            
+        except (ValueError, InvalidOperation) as e:
+            return f'Error de formato en la línea {line_index + 1}: {str(e)}'
+        
+        line_index += 1
+        
+    return lines_data if lines_data else 'Debe agregar al menos una línea.'
+
+
 @quotes_bp.route('/')
 @require_login
 @require_tenant
-def list_quotes():
+def list_quotes() -> Union[str, Response]:
     """List all quotes with filters (tenant-scoped)."""
     db_session = get_session()
     
@@ -36,7 +113,7 @@ def list_quotes():
         search = request.args.get('q', '').strip()
         
         # Build query - filter by tenant
-        query = db_session.query(Quote).filter(
+        query = db_session.query(Quote).options(joinedload(Quote.sale)).filter(
             Quote.tenant_id == g.tenant_id
         )
         
@@ -46,7 +123,6 @@ def list_quotes():
         
         # Search by quote_number, customer_name, customer_phone, etc.
         if search:
-            from sqlalchemy import cast, String
             query = query.filter(
                 or_(
                     Quote.quote_number.ilike(f'%{search}%'),
@@ -94,7 +170,7 @@ def list_quotes():
 @quotes_bp.route('/<int:quote_id>')
 @require_login
 @require_tenant
-def view_quote(quote_id):
+def view_quote(quote_id: int) -> Union[str, Response]:
     """View quote detail (tenant-scoped)."""
     db_session = get_session()
     
@@ -109,15 +185,16 @@ def view_quote(quote_id):
         
         return render_template('quotes/detail.html', quote=quote)
         
+    except (BusinessLogicError, NotFoundError) as e:
+        raise e
     except Exception as e:
-        flash(f'Error al cargar presupuesto: {str(e)}', 'danger')
-        return redirect(url_for('quotes.list_quotes'))
+        raise BusinessLogicError(f'Error al cargar presupuesto: {str(e)}')
 
 
 @quotes_bp.route('/from-cart', methods=['POST'])
 @require_login
 @require_tenant
-def create_from_cart():
+def create_from_cart() -> Response:
     """Create a new quote from current cart (tenant-scoped)."""
     db_session = get_session()
     
@@ -182,7 +259,7 @@ def create_from_cart():
 @quotes_bp.route('/<int:quote_id>/pdf')
 @require_login
 @require_tenant
-def download_pdf(quote_id):
+def download_pdf(quote_id: int) -> Union[Response, Any]:
     """Generate and download PDF for a quote (tenant-scoped)."""
     db_session = get_session()
     
@@ -227,7 +304,7 @@ def download_pdf(quote_id):
 @quotes_bp.route('/<int:quote_id>/convert/preview')
 @require_login
 @require_tenant
-def convert_to_sale_preview(quote_id):
+def convert_to_sale_preview(quote_id: int) -> str:
     """Preview quote conversion (HTMX modal, tenant-scoped)."""
     db_session = get_session()
     
@@ -279,7 +356,7 @@ def convert_to_sale_preview(quote_id):
 @quotes_bp.route('/<int:quote_id>/convert', methods=['POST'])
 @require_login
 @require_tenant
-def convert_to_sale(quote_id):
+def convert_to_sale(quote_id: int) -> Response:
     """Convert quote to sale (tenant-scoped)."""
     db_session = get_session()
     
@@ -308,7 +385,7 @@ def convert_to_sale(quote_id):
 @quotes_bp.route('/<int:quote_id>/cancel', methods=['POST'])
 @require_login
 @require_tenant
-def cancel_quote(quote_id):
+def cancel_quote(quote_id: int) -> Response:
     """Cancel a quote (tenant-scoped)."""
     db_session = get_session()
     
@@ -345,7 +422,7 @@ def cancel_quote(quote_id):
 @quotes_bp.route('/<int:quote_id>/send', methods=['POST'])
 @require_login
 @require_tenant
-def mark_as_sent(quote_id):
+def mark_as_sent(quote_id: int) -> Response:
     """Mark quote as sent (tenant-scoped)."""
     db_session = get_session()
     
@@ -379,23 +456,13 @@ def mark_as_sent(quote_id):
         return redirect(url_for('quotes.view_quote', quote_id=quote_id))
 
 
-def is_quote_editable(quote):
-    """Check if a quote can be edited."""
-    if quote.status not in ['DRAFT', 'SENT']:
-        return False, f'El presupuesto está en estado {quote.status}. Solo se pueden editar presupuestos en estado DRAFT o SENT.'
-    
-    # Check if expired
-    today = date.today()
-    if quote.valid_until and quote.valid_until < today:
-        return False, f'Este presupuesto está vencido (válido hasta {quote.valid_until.strftime("%d/%m/%Y")}). No se puede editar.'
-    
-    return True, None
+# Removed legacy is_quote_editable (utility function replaced by _is_quote_editable)
 
 
 @quotes_bp.route('/<int:quote_id>/edit', methods=['GET'])
 @require_login
 @require_tenant
-def edit_quote(quote_id):
+def edit_quote(quote_id: int) -> Union[str, Response]:
     """Show form to edit a quote (tenant-scoped)."""
     db_session = get_session()
     
@@ -430,89 +497,34 @@ def edit_quote(quote_id):
 @quotes_bp.route('/<int:quote_id>/edit/preview', methods=['POST'])
 @require_login
 @require_tenant
-def edit_quote_preview(quote_id):
+def edit_quote_preview(quote_id: int) -> str:
     """Preview quote changes (HTMX modal, tenant-scoped)."""
     db_session = get_session()
     
     try:
-        quote = db_session.query(Quote).filter(
-            Quote.id == quote_id,
-            Quote.tenant_id == g.tenant_id
-        ).first()
-        
+        quote = db_session.query(Quote).filter(Quote.id == quote_id, Quote.tenant_id == g.tenant_id).first()
         if not quote:
             return '<div class="alert alert-danger">Presupuesto no encontrado.</div>'
         
         # Validate quote is editable
-        can_edit, error_msg = is_quote_editable(quote)
+        can_edit, error_msg = _is_quote_editable(quote)
         if not can_edit:
             return f'<div class="alert alert-danger">{error_msg}</div>'
         
-        # Parse form data
+        # Parse and validate lines
+        result = _parse_quote_form_lines(request.form, db_session, g.tenant_id)
+        if isinstance(result, str):
+            return f'<div class="alert alert-danger">{result}</div>'
+        
+        lines_data = result
+        
+        # Parse basic fields
         payment_method = request.form.get('payment_method', '').strip().upper() or None
         if payment_method and payment_method not in ['CASH', 'TRANSFER']:
             payment_method = None
         
-        valid_until_str = request.form.get('valid_until', '').strip()
-        valid_until = None
-        if valid_until_str:
-            try:
-                valid_until = datetime.strptime(valid_until_str, '%Y-%m-%d').date()
-            except ValueError:
-                return '<div class="alert alert-danger">Fecha de validez inválida.</div>'
-        
+        valid_until = _parse_date(request.form.get('valid_until'))
         notes = request.form.get('notes', '').strip() or None
-        
-        # Parse lines from form
-        lines_data = []
-        line_index = 0
-        
-        while True:
-            product_id_key = f'lines[{line_index}][product_id]'
-            qty_key = f'lines[{line_index}][qty]'
-            
-            if product_id_key not in request.form:
-                break
-            
-            product_id = request.form.get(product_id_key, '').strip()
-            qty = request.form.get(qty_key, '').strip()
-            
-            if not product_id or not qty:
-                line_index += 1
-                continue
-            
-            try:
-                product_id_int = int(product_id)
-                qty_decimal = Decimal(str(qty))
-                
-                if qty_decimal <= 0:
-                    return f'<div class="alert alert-danger">La cantidad debe ser mayor a 0 en la línea {line_index + 1}.</div>'
-                
-                # Get product and validate tenant
-                product = db_session.query(Product).filter(
-                    Product.id == product_id_int,
-                    Product.tenant_id == g.tenant_id
-                ).first()
-                
-                if not product:
-                    return f'<div class="alert alert-danger">Producto con ID {product_id_int} no encontrado o no pertenece a su negocio.</div>'
-                
-                if not product.active:
-                    return f'<div class="alert alert-danger">El producto "{product.name}" está inactivo.</div>'
-                
-                lines_data.append({
-                    'product_id': product_id_int,
-                    'qty': qty_decimal,
-                    'product': product
-                })
-                
-            except (ValueError, TypeError) as e:
-                return f'<div class="alert alert-danger">Error en línea {line_index + 1}: {str(e)}</div>'
-            
-            line_index += 1
-        
-        if not lines_data:
-            return '<div class="alert alert-danger">Debe agregar al menos una línea.</div>'
         
         # Build comparison (same logic as before)
         old_lines_by_product = {line.product_id: line for line in quote.lines}
@@ -609,81 +621,36 @@ def edit_quote_preview(quote_id):
 @quotes_bp.route('/<int:quote_id>/edit', methods=['POST'])
 @require_login
 @require_tenant
-def save_quote_edit(quote_id):
+def save_quote_edit(quote_id: int) -> Response:
     """Save quote changes (tenant-scoped, transactional)."""
     db_session = get_session()
     
     try:
-        quote = db_session.query(Quote).filter(
-            Quote.id == quote_id,
-            Quote.tenant_id == g.tenant_id
-        ).first()
-        
+        quote = db_session.query(Quote).filter(Quote.id == quote_id, Quote.tenant_id == g.tenant_id).first()
         if not quote:
             abort(404)
         
         # Validate quote is editable
-        can_edit, error_msg = is_quote_editable(quote)
+        can_edit, error_msg = _is_quote_editable(quote)
         if not can_edit:
             flash(error_msg, 'danger')
             return redirect(url_for('quotes.view_quote', quote_id=quote_id))
         
-        # Parse form data
+        # Parse lines
+        result = _parse_quote_form_lines(request.form, db_session, g.tenant_id)
+        if isinstance(result, str):
+            flash(result, 'danger')
+            return redirect(url_for('quotes.edit_quote', quote_id=quote_id))
+        
+        lines_data = result
+        
+        # Parse basics
         payment_method = request.form.get('payment_method', '').strip().upper() or None
         if payment_method and payment_method not in ['CASH', 'TRANSFER']:
             payment_method = None
         
-        valid_until_str = request.form.get('valid_until', '').strip()
-        valid_until = None
-        if valid_until_str:
-            try:
-                valid_until = datetime.strptime(valid_until_str, '%Y-%m-%d').date()
-            except ValueError:
-                flash('Fecha de validez inválida.', 'danger')
-                return redirect(url_for('quotes.edit_quote', quote_id=quote_id))
-        
+        valid_until = _parse_date(request.form.get('valid_until'))
         notes = request.form.get('notes', '').strip() or None
-        
-        # Parse lines from form
-        lines_data = []
-        line_index = 0
-        
-        while True:
-            product_id_key = f'lines[{line_index}][product_id]'
-            qty_key = f'lines[{line_index}][qty]'
-            
-            if product_id_key not in request.form:
-                break
-            
-            product_id = request.form.get(product_id_key, '').strip()
-            qty = request.form.get(qty_key, '').strip()
-            
-            if not product_id or not qty:
-                line_index += 1
-                continue
-            
-            try:
-                product_id_int = int(product_id)
-                qty_decimal = Decimal(str(qty))
-                
-                if qty_decimal <= 0:
-                    flash(f'La cantidad debe ser mayor a 0 en la línea {line_index + 1}.', 'danger')
-                    return redirect(url_for('quotes.edit_quote', quote_id=quote_id))
-                
-                lines_data.append({
-                    'product_id': product_id_int,
-                    'qty': qty_decimal
-                })
-                
-            except (ValueError, TypeError) as e:
-                flash(f'Error en línea {line_index + 1}: {str(e)}', 'danger')
-                return redirect(url_for('quotes.edit_quote', quote_id=quote_id))
-            
-            line_index += 1
-        
-        if not lines_data:
-            flash('Debe agregar al menos una línea.', 'danger')
-            return redirect(url_for('quotes.edit_quote', quote_id=quote_id))
         
         # Call service to update quote (tenant validated)
         update_quote(

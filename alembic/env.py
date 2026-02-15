@@ -7,12 +7,14 @@ from alembic import context
 
 import os
 import sys
+from dotenv import load_dotenv
+load_dotenv()
 
 # Add the project directory to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import models for autogenerate
-from app.database import db
+from app.database import Base
 from app.models import *  # Import all models
 
 # this is the Alembic Config object, which provides
@@ -28,7 +30,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = db.metadata
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -37,6 +39,16 @@ target_metadata = db.metadata
 
 # Override sqlalchemy.url with environment variable if present
 database_url = os.getenv('DATABASE_URL')
+if not database_url:
+    # Try DB_* variables (Docker style)
+    db_host = os.getenv('DB_HOST') or os.getenv('POSTGRES_HOST', 'localhost')
+    db_port = os.getenv('DB_PORT') or os.getenv('POSTGRES_PORT', '5432')
+    db_name = os.getenv('DB_NAME') or os.getenv('POSTGRES_DB', 'stock')
+    db_user = os.getenv('DB_USER') or os.getenv('POSTGRES_USER', 'stock')
+    db_password = os.getenv('DB_PASSWORD') or os.getenv('POSTGRES_PASSWORD', 'stock')
+    
+    database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
 if database_url:
     config.set_main_option('sqlalchemy.url', database_url)
 
