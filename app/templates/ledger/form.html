@@ -19,6 +19,7 @@
             </div>
             <div class="card-body-custom">
                 <form method="POST" action="{{ url_for('ledger.create_ledger') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <!-- Type -->
                     <div class="form-group">
                         <label for="type" class="form-label-custom">

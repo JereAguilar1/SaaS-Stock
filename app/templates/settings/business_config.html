@@ -44,6 +44,7 @@
                 <form method="POST" action="{{ url_for('settings.upload_logo') }}" enctype="multipart/form-data"
                     hx-post="{{ url_for('settings.upload_logo') }}" hx-target="#sidebar-logo" hx-swap="outerHTML"
                     hx-encoding="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="form-group">
                         <label for="logo" class="form-label-custom">

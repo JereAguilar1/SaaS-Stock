@@ -331,6 +331,7 @@
 
             <!-- Email Form -->
             <form method="POST" action="{{ url_for('auth.login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="email" class="form-label">Email</label>
                     <div class="input-wrapper">

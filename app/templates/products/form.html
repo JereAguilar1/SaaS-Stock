@@ -80,6 +80,7 @@
                 <form method="POST"
                     action="{% if action == 'new' %}{{ url_for('catalog.create_product') }}{% else %}{{ url_for('catalog.update_product', product_id=product.id) }}{% endif %}"
                     enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <!-- Name -->
                     <div class="form-group">
