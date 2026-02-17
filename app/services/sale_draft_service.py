@@ -154,6 +154,7 @@ def calculate_draft_totals(draft: SaleDraft) -> Dict[str, Any]:
         lines_details.append({
             'product_id': line.product.id,
             'product_name': line.product.name,
+            'product_uom_name': line.product.uom.name if line.product.uom else '',
             'qty': line.qty,
             'unit_price': unit_price,
             'line_subtotal': line_subtotal,

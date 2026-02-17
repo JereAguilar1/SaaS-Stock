@@ -1121,6 +1121,24 @@ def draft_update() -> Union[str, Response]:
             
         discount_value = Decimal(discount_value_str) if discount_value_str else Decimal('0')
         
+        # Validation strict based on UOM
+        # 1. Get product to check UOM
+        product = _get_product_or_error(db_session, product_id, g.tenant_id)
+        if not product:
+            raise NotFoundError('Producto no encontrado')
+            
+        # 2. Check if UOM allows decimals
+        uom_name = product.uom.name.lower() if product.uom else ''
+        divisible_keywords = ['kg', 'kilo', 'gram', 'mt', 'metro', 'longitud']
+        is_divisible = any(kw in uom_name for kw in divisible_keywords)
+        
+        # 3. Sanitize Qty
+        if qty is not None:
+            if not is_divisible:
+                # If not divisible, round to nearest integer
+                # Example: 1.2 -> 1, 1.8 -> 2
+                qty = qty.quantize(Decimal('1'), rounding=decimal.ROUND_HALF_UP)
+        
         # Update line
         sale_draft_service.update_draft_line(
             db_session, draft.id, product_id,
