@@ -47,6 +47,7 @@
                     <option value="CASH" selected>Efectivo</option>
                     <option value="TRANSFER">Transferencia</option>
                     <option value="CARD">Tarjeta</option>
+                    <option value="CUENTA_CORRIENTE">Cuenta Corriente</option>
                 </select>
             </div>
         </div>
@@ -68,7 +69,17 @@
             </div>
         </div>
 
+        <!-- Cuenta Corriente Warning -->
+        <div id="cuenta-corriente-warning" class="mb-3" style="display: none;">
+            <div class="alert alert-info py-2 px-3 mb-0" style="font-size: 0.85rem;">
+                <i class="bi bi-info-circle me-1"></i>
+                <strong>Cuenta Corriente:</strong> La venta quedará pendiente de pago.
+                Asegúrese de seleccionar un cliente.
+            </div>
+        </div>
+
         <form id="confirm-form" method="POST" action="{{ url_for('sales.confirm_draft') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="idempotency_key" id="idempotency-key" value="">
             <input type="hidden" name="customer_id" id="submit_customer_id" value="">
             <input type="hidden" name="payments[0][method]" id="payment-method-input" value="CASH">

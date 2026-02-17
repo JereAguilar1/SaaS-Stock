@@ -54,6 +54,11 @@
                                 class="btn-custom btn-secondary-custom btn-sm" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            <a href="{{ url_for('customers.account', customer_id=customer.id) }}"
+                                class="btn-custom btn-sm" title="Ver Cuenta Corriente"
+                                style="background-color: var(--color-info, #17a2b8); color: #fff; border-color: var(--color-info, #17a2b8);">
+                                <i class="bi bi-wallet2"></i>
+                            </a>
                             <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
                                 data-bs-toggle="modal" data-bs-target="#deleteCustomerModal"
                                 data-customer-id="{{ customer.id }}" data-customer-name="{{ customer.name }}">

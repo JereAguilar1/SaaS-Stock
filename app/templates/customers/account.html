@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Cuenta Corriente - {{ customer.name }}{% endblock %}
+
+{% block page_title %}Cuenta Corriente{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('customers.list_customers') }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-arrow-left"></i>
+    Volver a Clientes
+</a>
+<a href="{{ url_for('customers.view_customer', customer_id=customer.id) }}" class="btn-custom btn-secondary-custom">
+    <i class="bi bi-person"></i>
+    Ver Cliente
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card-custom" style="margin-bottom: var(--spacing-6);">
+    <div class="card-body-custom">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--spacing-4);">
+            <div>
+                <h2
+                    style="margin: 0 0 var(--spacing-2) 0; color: var(--color-text-primary); font-weight: var(--font-weight-bold);">
+                    <i class="bi bi-wallet2" style="margin-right: var(--spacing-2); color: var(--color-primary);"></i>
+                    {{ customer.name }}
+                </h2>
+                <p style="margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                    Cuenta Corriente &mdash; Estado de deuda
+                </p>
+            </div>
+            <div style="text-align: right;">
+                <span
+                    style="font-size: var(--font-size-sm); color: var(--color-text-muted); display: block; margin-bottom: var(--spacing-1);">
+                    Deuda Total
+                </span>
+                {% if total_debt > 0 %}
+                <span style="font-size: 1.75rem; font-weight: var(--font-weight-bold); color: var(--color-danger);">
+                    ${{ '{:,.2f}'.format(total_debt) }}
+                </span>
+                {% else %}
+                <span
+                    style="font-size: 1.75rem; font-weight: var(--font-weight-bold); color: var(--color-success, #28a745);">
+                    $0,00
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if pending_sales %}
+<div class="card-custom">
+    <div class="table-container">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th style="width: 120px;">Fecha</th>
+                    <th style="width: 90px;">Venta #</th>
+                    <th style="text-align: right;">Total Original</th>
+                    <th style="text-align: right;">Pagado</th>
+                    <th style="text-align: right;">Saldo</th>
+                    <th style="text-align: center; width: 100px;">Estado</th>
+                    <th style="text-align: center; min-width: 260px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in pending_sales %}
+                {% set saldo = (sale.total|float) - (sale.amount_paid|float) %}
+                <tr>
+                    <td>{{ sale.datetime.strftime('%d/%m/%Y %H:%M') if sale.datetime else '-' }}</td>
+                    <td>
+                        <strong style="color: var(--color-text-primary);">#{{ sale.id }}</strong>
+                    </td>
+                    <td style="text-align: right; font-family: monospace;">
+                        ${{ '{:,.2f}'.format(sale.total|float) }}
+                    </td>
+                    <td style="text-align: right; font-family: monospace; color: var(--color-success, #28a745);">
+                        ${{ '{:,.2f}'.format(sale.amount_paid|float) }}
+                    </td>
+                    <td
+                        style="text-align: right; font-family: monospace; font-weight: var(--font-weight-bold); color: var(--color-danger);">
+                        ${{ '{:,.2f}'.format(saldo) }}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if sale.payment_status == 'PENDING' %}
+                        <span
+                            style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); background-color: rgba(220, 53, 69, 0.12); color: var(--color-danger);">
+                            Pendiente
+                        </span>
+                        {% elif sale.payment_status == 'PARTIAL' %}
+                        <span
+                            style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); background-color: rgba(255, 193, 7, 0.15); color: #e6a800;">
+                            Parcial
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        <form method="POST" action="{{ url_for('customers.pay_debt', sale_id=sale.id) }}"
+                            style="display: flex; align-items: center; justify-content: center; gap: var(--spacing-2);">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div style="position: relative;">
+                                <span
+                                    style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); font-size: var(--font-size-sm);">$</span>
+                                <input type="number" name="amount" step="any" min="0"
+                                    max="{{ (sale.total - sale.amount_paid)|round(2) }}"
+                                    placeholder="{{ (sale.total - sale.amount_paid)|round(2) }}" required
+                                    class="form-input-custom" onkeydown="
+                                        if(event.key === 'ArrowUp') { 
+                                            event.preventDefault(); 
+                                            let val = parseFloat(this.value) || 0;
+                                            this.value = Math.min(parseFloat(this.max), val + 100).toFixed(2);
+                                            this.dispatchEvent(new Event('input'));
+                                        }
+                                        if(event.key === 'ArrowDown') { 
+                                            event.preventDefault(); 
+                                            let val = parseFloat(this.value) || 0;
+                                            this.value = Math.max(0, val - 100).toFixed(2);
+                                            this.dispatchEvent(new Event('input'));
+                                        }
+                                        if(event.key === ',') { 
+                                            event.preventDefault(); 
+                                            if(!this.value.includes('.')) { this.value += '.'; }
+                                        }
+                                    "
+                                    oninput="if(parseFloat(this.value) > parseFloat(this.max)) this.value = this.max;"
+                                    style="width: 130px; padding-left: 22px; padding-top: 6px; padding-bottom: 6px; font-size: var(--font-size-sm);">
+                            </div>
+                            <button type="submit" class="btn-custom btn-primary-custom btn-sm"
+                                title="Imputar pago a esta factura" style="white-space: nowrap;">
+                                <i class="bi bi-cash-coin"></i> Pagar
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-footer-custom">
+        <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+            <strong>{{ pending_sales|length }}</strong> factura(s) pendiente(s)
+        </p>
+    </div>
+</div>
+{% else %}
+<div class="card-custom">
+    <div class="card-body-custom">
+        <div class="empty-state">
+            <i class="empty-state-icon bi bi-check-circle" style="color: var(--color-success, #28a745);"></i>
+            <div class="empty-state-title">Sin deudas pendientes</div>
+            <p class="empty-state-description">
+                Este cliente no tiene facturas pendientes de pago. ¡Todo al día!
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

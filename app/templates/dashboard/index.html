@@ -25,6 +25,16 @@
 <!-- KPI Stats Grid -->
 <div
     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-6); margin-bottom: var(--spacing-8);">
+    <!-- Caja Real (Cobrado) -->
+    <div class="stat-card">
+        <div class="stat-label">Caja Real (Cobrado)</div>
+        <div class="stat-value" style="color: var(--color-success);">$ {{ daily_total|money_ar }}</div>
+        <div class="stat-change">
+            <i class="bi bi-wallet2"></i>
+            Ventas efectivo + Cobros (Hoy)
+        </div>
+    </div>
+
     <!-- Balance del Día -->
     <div class="stat-card">
         <div class="stat-label">Balance del Día</div>

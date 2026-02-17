@@ -9,7 +9,7 @@ from sqlalchemy import text
 from app.models import (
     Product, ProductStock, Sale, SaleLine, SalePayment, SaleDraft,
     StockMove, StockMoveLine, FinanceLedger,
-    SaleStatus, StockMoveType, StockReferenceType,
+    SaleStatus, StockMoveType, StockReferenceType, PaymentStatus,
     LedgerType, LedgerReferenceType, normalize_payment_method
 )
 from app.exceptions import BusinessLogicError, NotFoundError, InsufficientStockError
@@ -79,8 +79,10 @@ def confirm_sale(cart: dict, session, payment_method: str = 'CASH', tenant_id: i
             tenant_id=tenant_id,
             datetime=datetime.now(),
             total=sale_total.quantize(Decimal('0.01')),
-            status=SaleStatus.CONFIRMED,
-            customer_id=customer_id
+            status='CONFIRMED', # Explicit string
+            customer_id=customer_id,
+            payment_status=PaymentStatus.PAID,
+            amount_paid=sale_total.quantize(Decimal('0.01'))
         )
         session.add(sale)
         session.flush()
@@ -142,10 +144,21 @@ def confirm_sale_from_draft(
         sale_total = totals['total']
         if sale_total <= 0:
             raise BusinessLogicError('El total de la venta debe ser mayor a 0')
-            
-        payments_total = sum(Decimal(str(p.get('amount', 0))) for p in payments)
-        if payments_total != sale_total:
-            raise BusinessLogicError(f'La suma de pagos (${payments_total}) no coincide con el total (${sale_total})')
+        
+        # Detect if this is a Cuenta Corriente (credit) sale
+        is_cuenta_corriente = (
+            len(payments) == 1 and
+            payments[0].get('method', '').upper() == 'CUENTA_CORRIENTE'
+        )
+        
+        if is_cuenta_corriente:
+            # Cuenta Corriente requires a customer
+            if not customer_id:
+                raise BusinessLogicError('Para usar Cuenta Corriente debe seleccionar un Cliente registrado')
+        else:
+            payments_total = sum(Decimal(str(p.get('amount', 0))) for p in payments)
+            if payments_total != sale_total:
+                raise BusinessLogicError(f'La suma de pagos (${payments_total}) no coincide con el total (${sale_total})')
             
         # 4. Lock and validate stock
         product_ids = [line['product_id'] for line in totals['lines']]
@@ -160,9 +173,11 @@ def confirm_sale_from_draft(
             tenant_id=tenant_id,
             datetime=datetime.now(),
             total=sale_total,
-            status=SaleStatus.CONFIRMED,
+            status='CONFIRMED', # Explicit string
             idempotency_key=idempotency_key,
-            customer_id=customer_id
+            customer_id=customer_id,
+            payment_status=PaymentStatus.PENDING if is_cuenta_corriente else PaymentStatus.PAID,
+            amount_paid=Decimal('0') if is_cuenta_corriente else sale_total
         )
         session.add(sale)
         session.flush()
@@ -186,21 +201,24 @@ def confirm_sale_from_draft(
                 'product': product
             })
             
-        for p in payments:
-            method = p['method'].upper()
-            if method not in ['CASH', 'TRANSFER', 'CARD']:
-                raise BusinessLogicError(f'Método de pago inválido: {method}')
-            session.add(SalePayment(
-                sale_id=sale.id,
-                payment_method=method,
-                amount=Decimal(str(p['amount'])),
-                amount_received=Decimal(str(p.get('amount_received', 0))) if method == 'CASH' else None,
-                change_amount=Decimal(str(p.get('change_amount', 0))) if method == 'CASH' else None
-            ))
+        # Create SalePayments (skip for Cuenta Corriente)
+        if not is_cuenta_corriente:
+            for p in payments:
+                method = p['method'].upper()
+                if method not in ['CASH', 'TRANSFER', 'CARD']:
+                    raise BusinessLogicError(f'Método de pago inválido: {method}')
+                session.add(SalePayment(
+                    sale_id=sale.id,
+                    payment_method=method,
+                    amount=Decimal(str(p['amount'])),
+                    amount_received=Decimal(str(p.get('amount_received', 0))) if method == 'CASH' else None,
+                    change_amount=Decimal(str(p.get('change_amount', 0))) if method == 'CASH' else None
+                ))
             
         # 7. Create Stock Movement & Finance Entries
         _create_stock_movement(session, tenant_id, sale.id, sale_lines_data)
-        _create_ledger_entries(session, tenant_id, sale.id, payments, sale_total)
+        if not is_cuenta_corriente:
+            _create_ledger_entries(session, tenant_id, sale.id, payments, sale_total)
         
         # 8. Clean up
         session.delete(draft)

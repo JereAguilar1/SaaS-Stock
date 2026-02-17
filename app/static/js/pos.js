@@ -10,6 +10,62 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initial check
     initializePOSState();
 
+    // Event Delegation: Intercept confirm-form submission
+    document.addEventListener('submit', function (e) {
+        if (e.target && e.target.id === 'confirm-form') {
+            e.preventDefault(); // Always prevent default to use Fetch
+
+            const form = e.target;
+            const paymentMethodInput = document.getElementById('payment-method-input');
+            const method = paymentMethodInput ? paymentMethodInput.value : '';
+
+            // Validation for Cuenta Corriente
+            if (method === 'CUENTA_CORRIENTE') {
+                const customerIdInput = document.getElementById('customer_id');
+                const customerId = customerIdInput ? customerIdInput.value.trim() : '';
+
+                if (!customerId) {
+                    alert('Error: Para usar Cuenta Corriente debe seleccionar un Cliente registrado.');
+                    return false;
+                }
+            }
+
+            // Prepare Fetch Request with CSRF Header
+            const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+            const formData = new FormData(form);
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            })
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        // Check if success but no redirect (unlikely for this flow) or error
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            // Attempt to read error message
+                            response.text().then(text => {
+                                // Simple fallback: alert error or reload to show flash
+                                console.error('Submission error:', text);
+                                alert('Error al confirmar venta. Por favor revise los datos.');
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Network error:', error);
+                    alert('Error de conexión al confirmar venta.');
+                });
+        }
+    });
+
     // Event Delegation: Watch for changes in payment method select
     document.addEventListener('change', function (e) {
         if (e.target && e.target.id === 'cart_payment_method') {
@@ -197,6 +253,7 @@ function handlePaymentMethodChange(selectElement, isInit = false) {
     const changeDisplay = document.getElementById('change-display');
     const paymentMethodInput = document.getElementById('payment-method-input');
     const amountReceivedInput = document.getElementById('amount_received');
+    const cuentaCorrienteWarning = document.getElementById('cuenta-corriente-warning');
 
     // Sync hidden input
     if (paymentMethodInput) {
@@ -208,6 +265,11 @@ function handlePaymentMethodChange(selectElement, isInit = false) {
     let total = 0;
     if (paymentAmountInput) {
         total = parseFloat(paymentAmountInput.value) || 0;
+    }
+
+    // Show/hide cuenta corriente warning
+    if (cuentaCorrienteWarning) {
+        cuentaCorrienteWarning.style.display = (method === 'CUENTA_CORRIENTE') ? 'block' : 'none';
     }
 
     if (method === 'CASH') {

@@ -5,6 +5,8 @@ from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from app.database import get_session
 from app.models import Customer
+from app.models.payment_log import PaymentLog
+from datetime import datetime
 from app.middleware import require_login, require_tenant
 
 customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
@@ -285,3 +287,104 @@ def delete_customer(customer_id: int) -> Response:
     except Exception as e:
         session.rollback()
         raise BusinessLogicError(f'Error al eliminar cliente: {str(e)}')
+
+
+@customers_bp.route('/<int:customer_id>/account')
+@require_login
+@require_tenant
+def account(customer_id: int) -> str:
+    """View customer cuenta corriente (current account / ledger)."""
+    session = get_session()
+    customer = session.query(Customer).filter(
+        Customer.id == customer_id,
+        Customer.tenant_id == g.tenant_id
+    ).first()
+    if not customer:
+        abort(404)
+
+    from app.models import Sale, SaleStatus, PaymentStatus
+    
+    # Get pending/partial sales ordered by date (oldest first)
+    pending_sales = session.query(Sale).filter(
+        Sale.customer_id == customer_id,
+        Sale.tenant_id == g.tenant_id,
+        Sale.status == SaleStatus.CONFIRMED,
+        Sale.payment_status.in_([PaymentStatus.PENDING, PaymentStatus.PARTIAL])
+    ).order_by(Sale.datetime.asc()).all()
+
+    # Calculate total debt
+    total_debt = sum(
+        float(sale.total or 0) - float(sale.amount_paid or 0)
+        for sale in pending_sales
+    )
+
+    return render_template(
+        'customers/account.html',
+        customer=customer,
+        pending_sales=pending_sales,
+        total_debt=total_debt
+    )
+
+
+@customers_bp.route('/pay/<int:sale_id>', methods=['POST'])
+@require_login
+@require_tenant
+def pay_debt(sale_id: int) -> Response:
+    """Apply a payment to a specific sale (cuenta corriente)."""
+    from decimal import Decimal, InvalidOperation
+    from app.models import Sale, SaleStatus, PaymentStatus
+    
+    session = get_session()
+    sale = session.query(Sale).filter(
+        Sale.id == sale_id,
+        Sale.tenant_id == g.tenant_id,
+        Sale.status == SaleStatus.CONFIRMED
+    ).first()
+    
+    if not sale:
+        raise NotFoundError('Venta no encontrada')
+    
+    if not sale.customer_id:
+        raise BusinessLogicError('Esta venta no tiene cliente asociado')
+    
+    customer_id = sale.customer_id
+
+    try:
+        amount_str = request.form.get('amount', '0').strip().replace(',', '.')
+        amount = Decimal(amount_str)
+    except (InvalidOperation, ValueError):
+        raise BusinessLogicError('Monto inválido')
+    
+    if amount <= 0:
+        raise BusinessLogicError('El monto debe ser mayor a 0')
+    
+    current_due = Decimal(str(sale.total)) - Decimal(str(sale.amount_paid or 0))
+    
+    if amount > current_due:
+        amount = current_due  # Cap at remaining balance
+    
+    try:
+        sale.amount_paid = Decimal(str(sale.amount_paid or 0)) + amount
+        
+        if sale.amount_paid >= Decimal(str(sale.total)):
+            sale.amount_paid = sale.total  # Exact match, no overpayment
+            sale.payment_status = PaymentStatus.PAID
+        else:
+            sale.payment_status = PaymentStatus.PARTIAL
+        
+        # Nuevo: Registrar movimiento de caja
+        try:
+            new_log = PaymentLog(sale_id=sale.id, amount=amount, date=datetime.now())
+            session.add(new_log)
+        except Exception as e:
+            current_app.logger.error(f"Error logueando pago: {e}")
+        
+        session.commit()
+        flash(f'Pago de ${amount:,.2f} aplicado exitosamente a la venta #{sale.id}', 'success')
+    except Exception as e:
+        session.rollback()
+        current_app.logger.error(f"Error applying payment to sale {sale_id}: {e}")
+        raise BusinessLogicError(f'Error al aplicar pago: {str(e)}')
+    
+    return redirect(url_for('customers.account', customer_id=customer_id))
+

@@ -37,8 +37,35 @@ def index():
         # Get all dashboard data
         data = get_dashboard_data(db_session, tenant_id, start_dt, end_dt)
         
+        # --- CASH FLOW LOGIC ---
+        from sqlalchemy import func
+        from datetime import date
+        from app.models import Sale, SalePayment
+        from app.models.payment_log import PaymentLog
+        
+        today = date.today()
+        
+        # A. Cash Sales Today (SalePayment joined with Sale)
+        # Filter: Sale date is today AND SalePayment method is NOT Cuenta Corriente (redundant but safe)
+        cash_today = db_session.query(func.coalesce(func.sum(SalePayment.amount), 0)).join(Sale).filter(
+            func.date(Sale.datetime) == today,
+            Sale.tenant_id == tenant_id,
+            SalePayment.payment_method != 'CUENTA_CORRIENTE'
+        ).scalar()
+        
+        # B. Debt Payments Today (PaymentLog)
+        debt_today = db_session.query(func.coalesce(func.sum(PaymentLog.amount), 0)).join(Sale).filter(
+            func.date(PaymentLog.date) == today,
+            Sale.tenant_id == tenant_id
+        ).scalar()
+        
+        # Total Real Cash Flow
+        daily_total = (cash_today or 0) + (debt_today or 0)
+        
         return render_template(
             'dashboard/index.html',
+            daily_total=daily_total,
+            debt_today=debt_today,
             income_today=data['income_today'],
             expense_today=data['expense_today'],
             balance_today=data['balance_today'],
