@@ -12,7 +12,7 @@ from app.services import sale_draft_service
 from app.services.top_products_service import get_top_selling_products
 from app.services.quote_service import generate_quote_pdf
 from app.middleware import require_login, require_tenant
-from app.exceptions import BusinessLogicError, NotFoundError
+from app.exceptions import BusinessLogicError, NotFoundError, InsufficientStockError
 
 from typing import Optional, Tuple, Union
 sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
@@ -1031,6 +1031,23 @@ def draft_add() -> Union[str, Response]:
         flash('Producto agregado al carrito', 'success')
         return redirect(url_for('sales.new_sale'))
         
+    except InsufficientStockError as e:
+        db_session.rollback()
+        current_app.logger.warning(f"Stock error in draft_add: {str(e)}")
+        if is_htmx:
+            try:
+                 draft, totals = sale_draft_service.get_draft_with_totals(db_session, g.tenant_id, g.user_id)
+            except:
+                 draft, totals = None, None
+            
+            return render_template('sales/_cart_content_draft.html', 
+                                 draft=draft, 
+                                 totals=totals, 
+                                 error_message=str(e)) # Show friendly error
+        
+        flash(str(e), 'warning')
+        return redirect(url_for('sales.new_sale'))
+
     except ValueError as e:
         db_session.rollback()
         current_app.logger.warning(f"Validation error in draft_add: {str(e)}")
@@ -1134,6 +1151,27 @@ def draft_update() -> Union[str, Response]:
                                   draft=draft,
                                   totals=totals)
         
+    except InsufficientStockError as e:
+        db_session.rollback()
+        # Re-render the row with the error message
+        draft, totals = sale_draft_service.get_draft_with_totals(
+            db_session, g.tenant_id, g.user_id
+        )
+        
+        # Locate the line
+        error_line = next((l for l in totals['lines'] if l['product_id'] == product_id), None)
+        
+        if error_line:
+             return render_template('sales/_cart_line.html',
+                                  line=error_line,
+                                  error_message=str(e),
+                                  error_line_id=str(product_id))
+        else:
+             return render_template('sales/_cart_content_draft.html',
+                                  draft=draft,
+                                  totals=totals,
+                                  error_message=str(e))
+
     except ValueError as e:
         db_session.rollback()
         # On error, we re-render the row with the error message

@@ -59,7 +59,7 @@ def add_product_to_draft(
         raise BusinessLogicError(f'El producto "{product.name}" no está activo.')
     
     if product.on_hand_qty <= 0:
-        raise InsufficientStockError(f'Stock agotado para "{product.name}".')
+        raise InsufficientStockError(product.name, qty, product.on_hand_qty)
     
     line = session.query(SaleDraftLine).filter(
         SaleDraftLine.draft_id == draft_id,
@@ -69,11 +69,11 @@ def add_product_to_draft(
     if line:
         new_qty = line.qty + qty
         if new_qty > product.on_hand_qty:
-            raise InsufficientStockError(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}')
+            raise InsufficientStockError(product.name, new_qty, product.on_hand_qty)
         line.qty = new_qty
     else:
         if qty > product.on_hand_qty:
-            raise InsufficientStockError(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}')
+            raise InsufficientStockError(product.name, qty, product.on_hand_qty)
         line = SaleDraftLine(draft_id=draft_id, product_id=product_id, qty=qty)
         session.add(line)
         
@@ -87,9 +87,11 @@ def update_draft_line(
     draft_id: int,
     product_id: int,
     qty: Optional[Decimal] = None,
+    discount_type: Optional[str] = None,
+    discount_value: Optional[Decimal] = Decimal('0'),
     tenant_id: int = None
 ) -> SaleDraftLine:
-    """Update draft line quantity."""
+    """Update draft line quantity or discount."""
     draft = session.query(SaleDraft).filter(SaleDraft.id == draft_id, SaleDraft.tenant_id == tenant_id).first()
     if not draft:
         raise NotFoundError('Borrador no encontrado.')
@@ -102,8 +104,12 @@ def update_draft_line(
         if qty <= 0:
             raise BusinessLogicError('La cantidad debe ser mayor a 0.')
         if qty > line.product.on_hand_qty:
-            raise InsufficientStockError(f'Stock insuficiente para "{line.product.name}". Disponible: {line.product.on_hand_qty}')
+            raise InsufficientStockError(line.product.name, qty, line.product.on_hand_qty)
         line.qty = qty
+    
+    # Update discount fields
+    line.discount_type = discount_type
+    line.discount_value = discount_value if discount_value is not None else Decimal('0')
     
     draft.updated_at = datetime.now()
     session.flush()

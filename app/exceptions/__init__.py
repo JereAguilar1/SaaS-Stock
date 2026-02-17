@@ -27,7 +27,9 @@ class NotFoundError(SaasError):
 class InsufficientStockError(BusinessLogicError):
     """Raised when an operation fails due to lack of stock."""
     def __init__(self, product_name, required, available):
-        message = f"Stock insuficiente para {product_name}: se requieren {required}, disponible {available}"
+        req_fmt = f"{int(required)}" if required % 1 == 0 else f"{required:.2f}".rstrip('0').rstrip('.')
+        avail_fmt = f"{int(available)}" if available % 1 == 0 else f"{available:.2f}".rstrip('0').rstrip('.')
+        message = f"Stock insuficiente para {product_name}: se requieren {req_fmt}, disponible {avail_fmt}"
         super().__init__(message, status_code=409)
 
 class UnauthorizedError(SaasError):
