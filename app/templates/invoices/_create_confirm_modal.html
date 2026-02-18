@@ -122,6 +122,7 @@
                 </button>
 
                 <form method="POST" action="{{ url_for('invoices.create_invoice') }}" id="confirmCreateForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-custom btn-primary-custom" id="confirmCreateBtn">
                         <i class="bi bi-check-circle"></i> Confirmar Creación
                     </button>

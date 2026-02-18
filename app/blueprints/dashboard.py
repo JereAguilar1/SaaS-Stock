@@ -62,13 +62,16 @@ def index():
         # Total Real Cash Flow
         daily_total = (cash_today or 0) + (debt_today or 0)
         
+        # Calculate Balance based on Real Cash Flow
+        daily_balance = daily_total - (data['expense_today'] or 0)
+        
         return render_template(
             'dashboard/index.html',
             daily_total=daily_total,
             debt_today=debt_today,
             income_today=data['income_today'],
             expense_today=data['expense_today'],
-            balance_today=data['balance_today'],
+            balance_today=daily_balance,
             product_count=data['product_count'],
             low_stock_products=data['low_stock_products'],
             recent_sales=data['recent_sales']

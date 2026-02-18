@@ -6,6 +6,7 @@
 
 {% block content %}
 <form method="POST" action="{{ url_for('invoices.create_invoice') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
         <!-- Header Section -->
         <div class="card-custom">

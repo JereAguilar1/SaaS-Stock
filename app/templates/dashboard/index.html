@@ -25,203 +25,198 @@
 <!-- KPI Stats Grid -->
 <div
     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-6); margin-bottom: var(--spacing-8);">
+
     <!-- Caja Real (Cobrado) -->
     <div class="stat-card">
         <div class="stat-label">Caja Real (Cobrado)</div>
-        <div class="stat-value" style="color: var(--color-success);">$ {{ daily_total|money_ar }}</div>
+        <div class="stat-value" style="color: var(--color-success);">
+            $ {{ daily_total|money_ar }}
+        </div>
         <div class="stat-change">
-            <i class="bi bi-wallet2"></i>
-            Ingresos + C.C
+            <i class="bi bi-wallet2"></i> Ingresos + C.C
+        </div>
+    </div>
+
+    <!-- Egresos Hoy -->
+    <div class="stat-card">
+        <div class="stat-label">Egresos Hoy</div>
+        <div class="stat-value" style="color: var(--color-danger);">
+            $ {{ expense_today|money_ar }}
+        </div>
+        <div class="stat-change negative">
+            <i class="bi bi-cart-dash"></i> Salidas
         </div>
     </div>
 
     <!-- Balance del Día -->
-    <div class="stat-card">
+    <div class="stat-card"
+        style="border-left: 4px solid {% if balance_today >= 0 %}var(--color-success){% else %}var(--color-danger){% endif %};">
         <div class="stat-label">Balance del Día</div>
         <div class="stat-value"
             style="color: {% if balance_today >= 0 %}var(--color-success){% else %}var(--color-danger){% endif %};">
+            {% if balance_today > 0 %}+{% endif %}$ {{ balance_today|money_ar }}
+        </div>
+        <div class="stat-change {% if balance_today >= 0 %}positive{% else %}negative{% endif %}">
             {% if balance_today >= 0 %}
-            $ {{ balance_today|money_ar }}
+            <i class="bi bi-arrow-up-circle-fill"></i> Superávit
             {% else %}
-            -$ {{ (balance_today * -1)|money_ar }}
+            <i class="bi bi-arrow-down-circle-fill"></i> Déficit
             {% endif %}
         </div>
-        <div class="stat-change {% if balance_today > 0 %}positive{% elif balance_today < 0 %}negative{% endif %}">
-            <i
-                class="bi bi-{% if balance_today > 0 %}arrow-up-circle-fill{% elif balance_today < 0 %}arrow-down-circle-fill{% else %}dash-circle-fill{% endif %}"></i>
-            {% if balance_today > 0 %}Positivo{% elif balance_today < 0 %}Negativo{% else %}Neutral{% endif %} </div>
-        </div>
+    </div>
 
-        <!-- Ingresos Hoy -->
-        <div class="stat-card">
-            <div class="stat-label">Ingresos Hoy</div>
-            <div class="stat-value" style="color: var(--color-success);">$ {{ income_today|money_ar }}</div>
-            <div class="stat-change">
-                <i class="bi bi-cash-stack"></i>
-                Entradas
-            </div>
+    <!-- Productos Activos -->
+    <div class="stat-card">
+        <div class="stat-label">Productos Activos</div>
+        <div class="stat-value" style="color: var(--color-primary);">
+            {{ product_count }}
         </div>
-
-        <!-- Egresos Hoy -->
-        <div class="stat-card">
-            <div class="stat-label">Egresos Hoy</div>
-            <div class="stat-value" style="color: var(--color-danger);">$ {{ expense_today|money_ar }}</div>
-            <div class="stat-change">
-                <i class="bi bi-cart-dash"></i>
-                Salidas
-            </div>
-        </div>
-
-        <!-- Productos Activos -->
-        <div class="stat-card">
-            <div class="stat-label">Productos Activos</div>
-            <div class="stat-value" style="color: var(--color-primary);">{{ product_count|num_ar }}</div>
-            <div class="stat-change">
-                <i class="bi bi-check-circle"></i>
-                En catálogo
-            </div>
+        <div class="stat-change">
+            <i class="bi bi-box-seam"></i> En Catálogo
         </div>
     </div>
 
-    <!-- Content Grid -->
-    <div
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
-        <!-- Low Stock Products -->
-        <div class="card-custom">
-            <div class="card-header-custom">
-                <h2 class="card-title">
-                    <i class="bi bi-exclamation-triangle" style="color: var(--color-warning);"></i>
-                    Productos Bajos en Stock
-                </h2>
+</div>
+
+<!-- Content Grid -->
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: var(--spacing-6); margin-bottom: var(--spacing-6);">
+    <!-- Low Stock Products -->
+    <div class="card-custom">
+        <div class="card-header-custom">
+            <h2 class="card-title">
+                <i class="bi bi-exclamation-triangle" style="color: var(--color-warning);"></i>
+                Productos Bajos en Stock
+            </h2>
+        </div>
+        <div class="card-body-custom" style="padding: 0;">
+            {% if product_count == 0 %}
+            <div class="empty-state">
+                <i class="empty-state-icon bi bi-box-seam" style="color: var(--color-primary);"></i>
+                <div class="empty-state-title">Todavía no tenés productos cargados</div>
+                <p class="empty-state-description">Cargá tu primer producto para empezar a vender.</p>
+                <a href="{{ url_for('catalog.create_product') }}" class="btn-custom btn-primary-custom">
+                    <i class="bi bi-plus-lg"></i>
+                    Agregar primer producto
+                </a>
             </div>
-            <div class="card-body-custom" style="padding: 0;">
-                {% if product_count == 0 %}
-                <div class="empty-state">
-                    <i class="empty-state-icon bi bi-box-seam" style="color: var(--color-primary);"></i>
-                    <div class="empty-state-title">Todavía no tenés productos cargados</div>
-                    <p class="empty-state-description">Cargá tu primer producto para empezar a vender.</p>
-                    <a href="{{ url_for('catalog.create_product') }}" class="btn-custom btn-primary-custom">
-                        <i class="bi bi-plus-lg"></i>
-                        Agregar primer producto
-                    </a>
-                </div>
-                {% elif low_stock_products %}
-                <div style="display: flex; flex-direction: column;">
-                    {% for product in low_stock_products %}
+            {% elif low_stock_products %}
+            <div style="display: flex; flex-direction: column;">
+                {% for product in low_stock_products %}
+                <div
+                    style="padding: var(--spacing-4); border-bottom: 1px solid var(--color-border-light); {% if product.percentage < 25 %}border-left: 3px solid var(--color-danger); background-color: var(--color-danger-light);{% elif product.percentage < 50 %}border-left: 3px solid var(--color-warning); background-color: var(--color-warning-light);{% else %}border-left: 3px solid var(--color-success); background-color: var(--color-success-light);{% endif %}">
                     <div
-                        style="padding: var(--spacing-4); border-bottom: 1px solid var(--color-border-light); {% if product.percentage < 25 %}border-left: 3px solid var(--color-danger); background-color: var(--color-danger-light);{% elif product.percentage < 50 %}border-left: 3px solid var(--color-warning); background-color: var(--color-warning-light);{% else %}border-left: 3px solid var(--color-success); background-color: var(--color-success-light);{% endif %}">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-2);">
-                            <div style="flex: 1;">
-                                <h6 style="margin: 0; margin-bottom: var(--spacing-1);">
-                                    <a href="{{ url_for('catalog.edit_product', product_id=product.id) }}"
-                                        style="color: var(--color-text-primary); text-decoration: none;">
-                                        {{ product.name }}
-                                    </a>
-                                </h6>
-                                <small style="color: var(--color-text-muted);">
-                                    <i class="bi bi-tag"></i> {{ product.category_name }}
-                                </small>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-weight: var(--font-weight-semibold);">
-                                    {{ product.on_hand_qty|num_ar }} {{ product.uom_symbol }}
-                                </div>
-                                <small style="color: var(--color-text-muted);">
-                                    Mín: {{ product.min_stock_qty|num_ar }} {{ product.uom_symbol }}
-                                </small>
-                            </div>
+                        style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-2);">
+                        <div style="flex: 1;">
+                            <h6 style="margin: 0; margin-bottom: var(--spacing-1);">
+                                <a href="{{ url_for('catalog.edit_product', product_id=product.id) }}"
+                                    style="color: var(--color-text-primary); text-decoration: none;">
+                                    {{ product.name }}
+                                </a>
+                            </h6>
+                            <small style="color: var(--color-text-muted);">
+                                <i class="bi bi-tag"></i> {{ product.category_name }}
+                            </small>
                         </div>
-                        <div
-                            style="height: 4px; background-color: var(--color-bg-hover); border-radius: var(--radius-full); overflow: hidden;">
-                            <div
-                                style="height: 100%; width: {{ product.percentage }}%; background-color: {% if product.percentage < 25 %}var(--color-danger){% elif product.percentage < 50 %}var(--color-warning){% else %}var(--color-success){% endif %}; transition: width var(--transition-base);">
+                        <div style="text-align: right;">
+                            <div style="font-weight: var(--font-weight-semibold);">
+                                {{ product.on_hand_qty|num_ar }} {{ product.uom_symbol }}
                             </div>
+                            <small style="color: var(--color-text-muted);">
+                                Mín: {{ product.min_stock_qty|num_ar }} {{ product.uom_symbol }}
+                            </small>
                         </div>
                     </div>
-                    {% endfor %}
+                    <div
+                        style="height: 4px; background-color: var(--color-bg-hover); border-radius: var(--radius-full); overflow: hidden;">
+                        <div
+                            style="height: 100%; width: {{ product.percentage }}%; background-color: {% if product.percentage < 25 %}var(--color-danger){% elif product.percentage < 50 %}var(--color-warning){% else %}var(--color-success){% endif %}; transition: width var(--transition-base);">
+                        </div>
+                    </div>
                 </div>
-                <div style="padding: var(--spacing-4); text-align: center; background-color: var(--color-bg-muted);">
-                    <a href="{{ url_for('catalog.list_products', stock_filter='low') }}"
-                        class="btn-custom btn-secondary-custom btn-sm">
-                        <i class="bi bi-list"></i>
-                        Ver todos los productos
-                    </a>
-                </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="empty-state-icon bi bi-check-circle-fill" style="color: var(--color-success);"></i>
-                    <div class="empty-state-title">¡Todo en orden!</div>
-                    <p class="empty-state-description">Todos los productos tienen stock suficiente.</p>
-                </div>
-                {% endif %}
+                {% endfor %}
             </div>
-        </div>
-
-        <!-- Recent Sales -->
-        <div class="card-custom">
-            <div class="card-header-custom">
-                <h2 class="card-title">
-                    <i class="bi bi-receipt" style="color: var(--color-primary);"></i>
-                    Últimas Ventas
-                </h2>
+            <div style="padding: var(--spacing-4); text-align: center; background-color: var(--color-bg-muted);">
+                <a href="{{ url_for('catalog.list_products', stock_filter='low') }}"
+                    class="btn-custom btn-secondary-custom btn-sm">
+                    <i class="bi bi-list"></i>
+                    Ver todos los productos
+                </a>
             </div>
-            <div class="card-body-custom" style="padding: 0;">
-                {% if recent_sales %}
-                <div class="table-container" style="border: none;">
-                    <table class="table-custom">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px; text-align: center;">ID</th>
-                                <th>Fecha y Hora</th>
-                                <th style="text-align: right;">Total</th>
-                                <th style="width: 100px; text-align: center;">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for sale in recent_sales %}
-                            <tr>
-                                <td style="text-align: center;">
-                                    <span class="badge-custom badge-secondary">#{{ sale.id }}</span>
-                                </td>
-                                <td>
-                                    <i class="bi bi-calendar3" style="color: var(--color-text-muted);"></i>
-                                    {{ sale.datetime|datetime_ar }}
-                                </td>
-                                <td style="text-align: right;">
-                                    <strong style="color: var(--color-success);">$ {{ sale.total|money_ar }}</strong>
-                                </td>
-                                <td style="text-align: center;">
-                                    <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}"
-                                        class="btn-custom btn-secondary-custom btn-sm" title="Ver detalle">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <div
-                    style="padding: var(--spacing-4); text-align: center; background-color: var(--color-bg-muted); border-top: 1px solid var(--color-border-light);">
-                    <a href="{{ url_for('sales.list_sales') }}" class="btn-custom btn-secondary-custom btn-sm">
-                        <i class="bi bi-list"></i>
-                        Ver todas las ventas
-                    </a>
-                </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="empty-state-icon bi bi-cart-x"></i>
-                    <div class="empty-state-title">Sin ventas hoy</div>
-                    <p class="empty-state-description">No hay ventas registradas para hoy.</p>
-                    <a href="{{ url_for('sales.new_sale') }}" class="btn-custom btn-primary-custom">
-                        <i class="bi bi-plus-circle"></i>
-                        Registrar Primera Venta
-                    </a>
-                </div>
-                {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <i class="empty-state-icon bi bi-check-circle-fill" style="color: var(--color-success);"></i>
+                <div class="empty-state-title">¡Todo en orden!</div>
+                <p class="empty-state-description">Todos los productos tienen stock suficiente.</p>
             </div>
+            {% endif %}
         </div>
     </div>
 
-    {% endblock %}
+    <!-- Recent Sales -->
+    <div class="card-custom">
+        <div class="card-header-custom">
+            <h2 class="card-title">
+                <i class="bi bi-receipt" style="color: var(--color-primary);"></i>
+                Últimas Ventas
+            </h2>
+        </div>
+        <div class="card-body-custom" style="padding: 0;">
+            {% if recent_sales %}
+            <div class="table-container" style="border: none;">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px; text-align: center;">ID</th>
+                            <th>Fecha y Hora</th>
+                            <th style="text-align: right;">Total</th>
+                            <th style="width: 100px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in recent_sales %}
+                        <tr>
+                            <td style="text-align: center;">
+                                <span class="badge-custom badge-secondary">#{{ sale.id }}</span>
+                            </td>
+                            <td>
+                                <i class="bi bi-calendar3" style="color: var(--color-text-muted);"></i>
+                                {{ sale.datetime|datetime_ar }}
+                            </td>
+                            <td style="text-align: right;">
+                                <strong style="color: var(--color-success);">$ {{ sale.total|money_ar }}</strong>
+                            </td>
+                            <td style="text-align: center;">
+                                <a href="{{ url_for('sales.detail_sale', sale_id=sale.id) }}"
+                                    class="btn-custom btn-secondary-custom btn-sm" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div
+                style="padding: var(--spacing-4); text-align: center; background-color: var(--color-bg-muted); border-top: 1px solid var(--color-border-light);">
+                <a href="{{ url_for('sales.list_sales') }}" class="btn-custom btn-secondary-custom btn-sm">
+                    <i class="bi bi-list"></i>
+                    Ver todas las ventas
+                </a>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="empty-state-icon bi bi-cart-x"></i>
+                <div class="empty-state-title">Sin ventas hoy</div>
+                <p class="empty-state-description">No hay ventas registradas para hoy.</p>
+                <a href="{{ url_for('sales.new_sale') }}" class="btn-custom btn-primary-custom">
+                    <i class="bi bi-plus-circle"></i>
+                    Registrar Primera Venta
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

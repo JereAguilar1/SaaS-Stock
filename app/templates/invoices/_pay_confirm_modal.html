@@ -34,6 +34,8 @@
                 <form hx-post="{{ url_for('invoices.register_payment_route', invoice_id=invoice.id) }}"
                     hx-target="#modal-errors" hx-swap="innerHTML" id="confirmPayForm">
 
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                     <div id="modal-errors" style="margin-bottom: var(--spacing-4);"></div>
 
                     <div
