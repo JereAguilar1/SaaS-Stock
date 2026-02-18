@@ -13,6 +13,16 @@ def create_app(config_object='config.Config'):
     # Initialize CSRF protection
     csrf = CSRFProtect(app)
     
+    from flask_wtf.csrf import CSRFError
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        app.logger.warning(f"CSRF Error: {e.description}")
+        if request.is_json or request.headers.get('HX-Request'):
+             return jsonify({'status': 'error', 'message': 'La sesión ha expirado. Recarga la página.'}), 400
+        flash('Tu sesión ha expirado o el formulario es inválido. Por favor intenta de nuevo.', 'warning')
+        return redirect(request.referrer or '/')
+    
     # PASO 5: Initialize Sentry for error tracking in production
     if os.getenv('SENTRY_DSN') and (app.config.get('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production'):
         import sentry_sdk
@@ -65,12 +75,20 @@ def create_app(config_object='config.Config'):
     app.jinja_env.filters['money_ar_2'] = money_ar_2
     
     # SaaS Multi-Tenant: Load user and tenant context before each request
-    from app.middleware import load_user_and_tenant
+    # SaaS Multi-Tenant: Load user and tenant context before each request
+    from app.middleware import load_user_and_tenant, check_subscription_status
 
     @app.before_request
     def before_request_handler():
         """Load user and tenant context for each request."""
         load_user_and_tenant()
+        # SUBSCRIPTIONS_V1: Check subscription status
+        try:
+            check_subscription_status()
+        except Exception as e:
+            # Log error but don't block request if subscription check fails
+            # This prevents infinite loops or hard crashes on DB errors
+            app.logger.error(f"Error checking subscription status: {e}")
 
     # Error Handlers
     from app.exceptions import SaasError
@@ -97,7 +115,9 @@ def create_app(config_object='config.Config'):
         if request.is_json:
             return jsonify(error.to_dict()), error.status_code
         
-        return redirect(request.referrer or url_for('main.index')), error.status_code
+        # For regular requests: flash message and redirect back
+        flash(error.message, 'danger')
+        return redirect(request.referrer or '/')
 
     @app.errorhandler(404)
     def not_found_error(error):
@@ -131,7 +151,7 @@ def create_app(config_object='config.Config'):
         """Inject invoice alert counts into all templates (tenant-scoped)."""
         try:
             # Only load alerts if user is authenticated AND tenant is selected
-            if g.user and g.tenant_id:
+            if g.get('user') and g.get('tenant_id'):
                 from app.database import get_session
                 from app.services.invoice_alerts_service import get_invoice_alert_counts
                 from datetime import date
@@ -150,8 +170,8 @@ def create_app(config_object='config.Config'):
     @app.context_processor
     def inject_tenant_info():
         """Inject current tenant information into templates."""
-        if g.get('tenant_id') and g.get('user'):
-            try:
+        try:
+            if g.get('tenant_id') and g.get('user'):
                 from app.database import get_session
                 from app.models import Tenant
                 from app.services.storage_service import get_storage_service
@@ -169,10 +189,40 @@ def create_app(config_object='config.Config'):
                         'current_tenant': tenant,
                         'logo_public_url': logo_public_url
                     }
-            except Exception:
-                pass
+        except Exception as e:
+            app.logger.error(f"Error injecting tenant info: {e}")
+            pass
         
         return {'current_tenant': None, 'logo_public_url': None}
+
+    # Context processor for plan features (SUBSCRIPTIONS_V1)
+    @app.context_processor
+    def inject_plan_features():
+        """Inject plan feature checking functions into templates."""
+        from app.decorators.permissions import has_feature, get_feature_value
+        
+        def check_feature(feature_key):
+            """Check if current tenant has a feature."""
+            if not g.get('tenant_id'):
+                return False
+            try:
+                return has_feature(g.tenant_id, feature_key)
+            except Exception:
+                return False
+        
+        def get_feature(feature_key, default=None):
+            """Get feature value for current tenant."""
+            if not g.get('tenant_id'):
+                return default
+            try:
+                return get_feature_value(g.tenant_id, feature_key, default)
+            except Exception:
+                return default
+        
+        return {
+            'has_feature': check_feature,
+            'get_feature': get_feature
+        }
 
     
     
@@ -200,6 +250,7 @@ def create_app(config_object='config.Config'):
     from app.blueprints.metrics import metrics_bp  # PASO 9
     from app.blueprints.auth_google import auth_google_bp  # GOOGLE_AUTH
     from app.blueprints.admin import admin_bp  # ADMIN_PANEL_V1
+    from app.blueprints.webhooks import webhooks_bp  # SUBSCRIPTIONS_V1
 
     
     app.register_blueprint(auth_bp)
@@ -220,6 +271,10 @@ def create_app(config_object='config.Config'):
     app.register_blueprint(missing_products_bp)  # MEJORA 18
     app.register_blueprint(debug_bp)
     app.register_blueprint(metrics_bp)  # PASO 9
+    
+    # Webhooks must be exempt from CSRF
+    csrf.exempt(webhooks_bp)
+    app.register_blueprint(webhooks_bp)  # SUBSCRIPTIONS_V1
     
     # Register CLI commands (ADMIN_PANEL_V1)
     from app.cli_commands import init_cli_commands

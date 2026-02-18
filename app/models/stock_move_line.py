@@ -12,9 +12,9 @@ class StockMoveLine(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     stock_move_id = Column(BigInteger, ForeignKey('stock_move.id'), nullable=False)
     product_id = Column(BigInteger, ForeignKey('product.id'), nullable=False)
-    qty = Column(Numeric(10, 2), nullable=False)
+    qty = Column(Numeric(12, 3), nullable=False)
     uom_id = Column(BigInteger, ForeignKey('uom.id'), nullable=False)
-    unit_cost = Column(Numeric(10, 2), nullable=True)
+    unit_cost = Column(Numeric(12, 4), nullable=True)
     
     # Relationships
     stock_move = relationship('StockMove', back_populates='lines')

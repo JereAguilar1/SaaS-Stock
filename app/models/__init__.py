@@ -11,6 +11,7 @@ from app.models.category import Category
 from app.models.product import Product
 from app.models.product_feature import ProductFeature
 from app.models.product_stock import ProductStock
+from app.models.product_packaging import ProductPackaging
 from app.models.sale import Sale, SaleStatus
 from app.models.sale_line import SaleLine
 from app.models.sale_draft import SaleDraft
@@ -31,13 +32,14 @@ from app.models.audit_log import AuditLog, AuditAction  # PASO 6
 
 # Admin Panel V2
 from app.models.subscription import Subscription, Payment
+from app.models.plan import Plan, PlanFeature
 from app.models.admin_audit import AdminAuditLog, AuditAction as AdminAuditAction
 
 __all__ = [
     # SaaS Core
     'Tenant', 'AppUser', 'UserTenant', 'UserRole',
     # Business
-    'UOM', 'Category', 'Product', 'ProductFeature', 'ProductStock',
+    'UOM', 'Category', 'Product', 'ProductFeature', 'ProductStock', 'ProductPackaging',
     'Sale', 'SaleStatus', 'SaleLine', 'SaleDraft', 'SaleDraftLine', 'SalePayment',
     'StockMove', 'StockMoveType', 'StockReferenceType', 'StockMoveLine',
     'FinanceLedger', 'LedgerType', 'LedgerReferenceType', 'PaymentMethod', 'normalize_payment_method',
@@ -46,6 +48,6 @@ __all__ = [
     'MissingProductRequest', 'normalize_missing_product_name',
     'AuditLog', 'AuditAction',  # PASO 6
     # Admin Panel V2
-    'AdminUser', 'Subscription', 'Payment', 'AdminAuditLog', 'AdminAuditAction',
+    'AdminUser', 'Subscription', 'Payment', 'Plan', 'PlanFeature', 'AdminAuditLog', 'AdminAuditAction',
 ]
 

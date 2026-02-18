@@ -282,6 +282,7 @@
 
             <!-- Registration Form -->
             <form method="POST" action="{{ url_for('auth.register') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-3">
                     <label for="full_name" class="form-label-custom">Nombre Completo</label>
                     <input type="text" class="form-control-custom" id="full_name" name="full_name"

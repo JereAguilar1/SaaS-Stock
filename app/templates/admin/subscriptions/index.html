@@ -1,0 +1,168 @@
+{% extends "admin/base_admin.html" %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none">
+        <div class="row align-items-center">
+            <div class="col">
+                <div class="page-pretitle">
+                    Administración
+                </div>
+                <h2 class="page-title">
+                    Monitor de Suscripciones
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-body">
+        <div class="row row-cards">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Suscripciones</h3>
+                        <div class="card-actions">
+                            <form action="" method="get" class="d-flex gap-2">
+                                <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
+                                    <option value="">Todos los estados</option>
+                                    <option value="active" {% if status_filter=='active' %}selected{% endif %}>Activas
+                                    </option>
+                                    <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>
+                                        Pendientes</option>
+                                    <option value="authorized" {% if status_filter=='authorized' %}selected{% endif %}>
+                                        Autorizadas</option>
+                                    <option value="paused" {% if status_filter=='paused' %}selected{% endif %}>Pausadas
+                                    </option>
+                                    <option value="cancelled" {% if status_filter=='cancelled' %}selected{% endif %}>
+                                        Canceladas</option>
+                                </select>
+                                <select class="form-select form-select-sm" name="plan" onchange="this.form.submit()">
+                                    <option value="">Todos los planes</option>
+                                    {% for plan in plans %}
+                                    <option value="{{ plan.code }}" {% if plan_filter==plan.code %}selected{% endif %}>
+                                        {{ plan.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if status_filter or plan_filter %}
+                                <a href="{{ url_for('admin.list_subscriptions') }}"
+                                    class="btn btn-ghost-secondary btn-sm">
+                                    Limpiar
+                                </a>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table card-table table-vcenter text-nowrap datatable">
+                            <thead>
+                                <tr>
+                                    <th>Tenant</th>
+                                    <th>Plan</th>
+                                    <th>Estado / Próx. Cobro</th>
+                                    <th>MP ID</th>
+                                    <th>Creada</th>
+                                    <th class="w-1"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in subscriptions %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex py-1 align-items-center">
+                                            {% if sub.tenant.logo_url %}
+                                            <span class="avatar me-2"
+                                                style="background-image: url({{ sub.tenant.logo_url }})"></span>
+                                            {% else %}
+                                            <span class="avatar me-2 bg-blue-lt">{{ sub.tenant.name[:2] }}</span>
+                                            {% endif %}
+                                            <div class="flex-fill">
+                                                <div class="font-weight-medium">
+                                                    <a href="{{ url_for('admin.get_tenant', tenant_id=sub.tenant_id) }}"
+                                                        class="text-reset">{{ sub.tenant.name }}</a>
+                                                </div>
+                                                <div class="text-muted"><a href="#" class="text-reset">{{
+                                                        sub.tenant.owner_email or 'Sin email' }}</a></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-muted">{{ sub.plan_type }}</div>
+                                    </td>
+                                    <td>
+                                        {% if sub.status == 'active' or sub.status == 'authorized' %}
+                                        <span class="badge bg-success me-1"></span> {{ sub.status }}
+                                        <div class="small text-muted mt-1">
+                                            Vence: {{ sub.next_payment_date.strftime('%d/%m/%Y') if
+                                            sub.next_payment_date else 'N/A' }}
+                                        </div>
+                                        {% elif sub.status == 'pending' %}
+                                        <span class="badge bg-warning me-1"></span> {{ sub.status }}
+                                        {% else %}
+                                        <span class="badge bg-secondary me-1"></span> {{ sub.status }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if sub.mp_subscription_id %}
+                                        <div class="text-muted small">{{ sub.mp_subscription_id }}</div>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ sub.created_at.strftime('%d/%m/%Y') }}
+                                    </td>
+                                    <td>
+                                        {% if sub.mp_subscription_id %}
+                                        <form action="{{ url_for('admin.sync_subscription', subscription_id=sub.id) }}"
+                                            method="post" class="d-inline"
+                                            onsubmit="return confirm('¿Forzar sincronización con Mercado Pago?');">
+                                            <button type="submit" class="btn btn-white btn-sm btn-icon"
+                                                title="Sincronizar">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24"
+                                                    height="24" viewBox="0 0 24 24" stroke-width="2"
+                                                    stroke="currentColor" fill="none" stroke-linecap="round"
+                                                    stroke-linejoin="round">
+                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+                                                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <div class="empty">
+                                            <div class="empty-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24"
+                                                    height="24" viewBox="0 0 24 24" stroke-width="2"
+                                                    stroke="currentColor" fill="none" stroke-linecap="round"
+                                                    stroke-linejoin="round">
+                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                    <circle cx="12" cy="12" r="9" />
+                                                    <line x1="9" y1="10" x2="9.01" y2="10" />
+                                                    <line x1="15" y1="10" x2="15.01" y2="10" />
+                                                    <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+                                                </svg>
+                                            </div>
+                                            <p class="empty-title">No hay suscripciones encontradas</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if subscriptions %}
+                    <div class="card-footer d-flex align-items-center">
+                        <p class="m-0 text-muted">Mostrando {{ subscriptions|length }} suscripciones</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

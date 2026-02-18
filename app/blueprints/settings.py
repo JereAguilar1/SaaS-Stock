@@ -521,11 +521,178 @@ def delete_logo() -> Union[str, Response]:
         session.commit()
         
         return render_template('settings/_sidebar_logo.html', current_tenant=tenant, logo_public_url=None)
-    except (BusinessLogicError, NotFoundError) as e:
-        session.rollback()
-        raise e
     except Exception as e:
         session.rollback()
         current_app.logger.error(f"Error deleting logo for tenant {g.tenant_id}: {e}")
         raise BusinessLogicError(f'Error al eliminar logo: {str(e)}')
+
+
+# ============================================================================
+# SUBSCRIPTION BILLING ROUTES (SUBSCRIPTIONS_V1)
+# ============================================================================
+
+@settings_bp.route('/billing')
+@require_login
+@require_tenant
+def billing() -> str:
+    """Billing portal: Show current plan, status, and invoices."""
+    from app.services.subscription_service import get_subscription_status
+    from app.services.mercadopago_service import MercadoPagoService
+    from app.models.plan import Plan
+    
+    session_db = get_session()
+    
+    # Get current subscription details
+    sub_details = get_subscription_status(g.tenant_id, session_db)
+    
+    # Get available plans for upgrade/change
+    available_plans = session_db.query(Plan).filter_by(is_active=True).order_by(Plan.price.asc()).all()
+    
+    return render_template('settings/billing/index.html', 
+                         subscription=sub_details,
+                         plans=available_plans)
+
+
+@settings_bp.route('/billing/plans')
+@require_login
+@require_tenant
+def list_plans() -> str:
+    """Pricing page: List available plans for subscription."""
+    from app.models.plan import Plan
+    from app.services.subscription_service import get_subscription_status
+    
+    session_db = get_session()
+    plans = session_db.query(Plan).filter_by(is_active=True).order_by(Plan.price.asc()).all()
+    sub_details = get_subscription_status(g.tenant_id, session_db)
+    
+    return render_template('settings/billing/plans.html', 
+                         plans=plans,
+                         current_plan_id=sub_details.get('plan_id'))
+
+
+@settings_bp.route('/billing/subscribe/<int:plan_id>', methods=['POST'])
+@require_login
+@require_tenant
+def subscribe(plan_id: int) -> Response:
+    """Initiate subscription flow to a specific plan."""
+    from app.services.mercadopago_service import MercadoPagoService
+    from app.models.plan import Plan
+    from app.models.subscription import Subscription
+    
+    session_db = get_session()
+    plan = session_db.query(Plan).filter_by(id=plan_id).first()
+    
+    if not plan:
+        raise NotFoundError('Plan no encontrado')
+    
+    if not plan.mp_preapproval_plan_id:
+        raise BusinessLogicError('Este plan no está habilitado para pagos online.')
+    
+    try:
+        # Create MP Preference or Preapproval
+        mp_service = MercadoPagoService()
+        
+        # Get user email
+        email = g.user.email
+        
+        # Create preapproval (subscription)
+        # Note: In a real flow, we might redirect to a checkout page first
+        # Here we redirect directly to MP subscription checkout
+        
+        # For simplicity, we assume we redirect to the MP INIT POINT
+        # But for subscriptions (auto-recurring), we need to create a "preapproval" request 
+        # or use the "subscribe" button link if we generated one.
+        
+        # However, the standard flow is often:
+        # 1. Create a "subscription preference" (preapproval)
+        # 2. Redirect user to init_point
+        
+        # Checking if we already have a pending subscription for this plan? No, just create new intent
+        
+        back_url = url_for('settings.billing_success', _external=True)
+        
+        preapproval_data = {
+            "preapproval_plan_id": plan.mp_preapproval_plan_id,
+            "payer_email": email,
+            "external_reference": str(g.tenant_id),
+            "back_url": back_url,
+            "reason": f"Suscripción {plan.name} - {g.current_tenant.name}",
+            "auto_recurring": {
+                "frequency": 1,
+                "frequency_type": "months",
+                "transaction_amount": float(plan.price),
+                "currency_id": "ARS"
+            }
+        }
+        
+        # In V1, we might just return the plan's init_point if it's a generic link, 
+        # but for per-user tracking we usually prefer creating a unique preapproval request.
+        # If the SDK doesn't support it easily, we might resort to the plan's generic link 
+        # BUT we need to pass external_reference to know WHO subscribed.
+        
+        # Alternative: We use the simpler "Preference" for unrelated payments, but for subscriptions 
+        # we need the subscription flow.
+        
+        # Let's assume we use the plan's generic link with `external_reference` appended if possible,
+        # OR we create a specific preapproval.
+        
+        # For this implementation, we'll try to create a dynamic preapproval if supported, 
+        # otherwise we guide the user to a constructed URL.
+        
+        # SIMPLIFICATION: We'll Create a local pending subscription and redirect to a 
+        # placeholder success route for now, assuming MP integration is fully handled in the service
+        # or we return a mock URL if in dev.
+        
+        # Update: We need to redirect to MP.
+        # Let's use the MP Service to get the init_point.
+        
+        init_point = mp_service.create_subscription_preference(
+            plan_id=plan.mp_preapproval_plan_id,
+            payer_email=email,
+            external_reference=str(g.tenant_id),
+            back_url=back_url,
+            reason=f"Suscripción {plan.name}"
+        )
+        
+        return redirect(init_point)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error initiating subscription: {e}")
+        flash(f'Error al iniciar suscripción: {str(e)}', 'danger')
+        return redirect(url_for('settings.list_plans'))
+
+
+@settings_bp.route('/billing/success')
+@require_login
+@require_tenant
+def billing_success() -> str:
+    """Callback after successful payment/subscription."""
+    # MP redirects here. We should sync the status.
+    from app.services.subscription_service import sync_subscription_status
+    
+    session_db = get_session()
+    try:
+        sync_subscription_status(g.tenant_id, session_db)
+        flash('¡Suscripción exitosa! Tu plan ha sido actualizado.', 'success')
+    except Exception:
+        flash('Pago procesado. Tu plan se actualizará en breve.', 'info')
+        
+    return redirect(url_for('settings.billing'))
+
+
+@settings_bp.route('/billing/cancel', methods=['POST'])
+@require_login
+@require_tenant
+def cancel_subscription() -> Response:
+    """Cancel current subscription."""
+    from app.services.subscription_service import cancel_subscription
+    
+    session_db = get_session()
+    try:
+        cancel_subscription(g.tenant_id, session_db)
+        flash('Tu suscripción ha sido cancelada. Tendrás acceso hasta el final del período actual.', 'success')
+    except Exception as e:
+        flash(f'Error al cancelar: {str(e)}', 'danger')
+        
+    return redirect(url_for('settings.billing'))
 

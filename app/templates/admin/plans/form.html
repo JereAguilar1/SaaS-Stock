@@ -1,0 +1,124 @@
+{% extends "admin/base_admin.html" %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none">
+        <div class="row align-items-center">
+            <div class="col">
+                <div class="page-pretitle">
+                    Administración
+                </div>
+                <h2 class="page-title">
+                    {% if plan %}Editar Plan{% else %}Nuevo Plan{% endif %}
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-body">
+        <div class="row row-cards">
+            <div class="col-12 col-md-8 mx-auto">
+                <form action="" method="post" class="card">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="card-header">
+                        <h3 class="card-title">Información del Plan</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label required">Nombre del Plan</label>
+                            <input type="text" class="form-control" name="name" value="{{ plan.name if plan else '' }}"
+                                placeholder="Ej: Plan Pro Mensual" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label required">Código Único</label>
+                                    <input type="text" class="form-control" name="code"
+                                        value="{{ plan.code if plan else '' }}" placeholder="Ej: pro_monthly" {% if plan
+                                        %}readonly{% else %}required{% endif %}>
+                                    {% if plan %}
+                                    <small class="form-hint">El código no se puede cambiar una vez creado.</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label required">Frecuencia de Cobro</label>
+                                    <select class="form-select" name="billing_frequency">
+                                        <option value="monthly" {% if plan and plan.billing_frequency=='monthly'
+                                            %}selected{% endif %}>Mensual</option>
+                                        <option value="annual" {% if plan and plan.billing_frequency=='annual'
+                                            %}selected{% endif %}>Anual</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label required">Moneda</label>
+                                    <select class="form-select" name="currency">
+                                        <option value="ARS" {% if plan and plan.currency=='ARS' %}selected{% endif %}>
+                                            ARS (Pesos Argentinos)</option>
+                                        <option value="USD" {% if plan and plan.currency=='USD' %}selected{% endif %}>
+                                            USD (Dólares)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label required">Precio</label>
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" name="price"
+                                            value="{{ plan.price if plan else '' }}" placeholder="0.00" step="0.01"
+                                            required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" name="description" rows="3"
+                                placeholder="Descripción pública del plan...">{{ plan.description if plan else '' }}</textarea>
+                        </div>
+
+                        {% if not plan %}
+                        <div class="mb-3">
+                            <label class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="sync_mp" checked>
+                                <span class="form-check-label">Sincronizar automáticamente con Mercado Pago</span>
+                            </label>
+                            <small class="form-hint">
+                                Esto creará el plan correspondiente en tu cuenta de Mercado Pago para procesar pagos
+                                recurrentes.
+                            </small>
+                        </div>
+                        {% else %}
+                        <div class="mb-3">
+                            <label class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" {% if plan.is_active
+                                    %}checked{% endif %}>
+                                <span class="form-check-label">Plan Activo</span>
+                            </label>
+                            <small class="form-hint">
+                                Los planes inactivos no se muestran a los usuarios para nuevas suscripciones.
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer text-end">
+                        <a href="{{ url_for('admin.list_plans') }}" class="btn btn-link link-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary ms-auto">
+                            {% if plan %}Guardar Cambios{% else %}Crear Plan{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

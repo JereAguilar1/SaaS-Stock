@@ -56,11 +56,13 @@ def login() -> Union[str, Response]:
         password = request.form.get('password', '')
         
         if not email or not password:
-            raise BusinessLogicError('Email y contraseña son requeridos.')
+            flash('Email y contraseña son requeridos.', 'danger')
+            return render_template('admin/login.html'), 400
         
         admin_user = session_db.query(AdminUser).filter_by(email=email).first()
         if not admin_user or not admin_user.check_password(password):
-            raise UnauthorizedError('Email o contraseña incorrectos.')
+            flash('Email o contraseña incorrectos.', 'danger')
+            return render_template('admin/login.html'), 401
         
         session.clear()
         session['admin_user_id'] = admin_user.id
@@ -338,3 +340,274 @@ def void_payment(payment_id: int) -> Union[str, Response, Tuple[str, int]]:
     flash(message, 'success')
     payments = admin_payment_service.get_payments_by_tenant(session_db, tenant_id)
     return render_template('admin/tenants/tabs/_payments.html', tenant_id=tenant_id, payments=payments)
+
+
+# ============================================================================
+# PLAN MANAGEMENT (SUBSCRIPTIONS_V1)
+# ============================================================================
+
+@admin_bp.route('/plans')
+@admin_required
+def list_plans() -> str:
+    """List all subscription plans."""
+    from app.models.plan import Plan
+    session_db = get_session()
+    
+    plans = session_db.query(Plan).order_by(Plan.price.asc()).all()
+    
+    return render_template('admin/plans/index.html', plans=plans)
+
+
+@admin_bp.route('/plans/new', methods=['GET', 'POST'])
+@admin_required
+def create_plan() -> Union[str, Response]:
+    """Create a new subscription plan."""
+    from app.models.plan import Plan
+    from app.services.mercadopago_service import MercadoPagoService
+    
+    session_db = get_session()
+    
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        code = request.form.get('code', '').strip()
+        price = request.form.get('price', '').strip()
+        currency = request.form.get('currency', 'ARS').strip()
+        billing_frequency = request.form.get('billing_frequency', 'monthly').strip()
+        description = request.form.get('description', '').strip()
+        sync_mp = request.form.get('sync_mp') == 'on'
+        
+        if not name or not code or not price:
+            raise BusinessLogicError('Nombre, código y precio son requeridos')
+        
+        # Check if code already exists
+        existing = session_db.query(Plan).filter_by(code=code).first()
+        if existing:
+            raise BusinessLogicError(f'Ya existe un plan con el código: {code}')
+        
+        try:
+            price_decimal = Decimal(price)
+        except:
+            raise BusinessLogicError('Precio inválido')
+        
+        # Create plan in DB
+        plan = Plan(
+            name=name,
+            code=code,
+            price=price_decimal,
+            currency=currency,
+            billing_frequency=billing_frequency,
+            description=description,
+            is_active=True
+        )
+        
+        session_db.add(plan)
+        session_db.flush()
+        
+        # Optionally sync with Mercado Pago
+        mp_plan_id = None
+        if sync_mp:
+            try:
+                mp_service = MercadoPagoService()
+                mp_plan_data = mp_service.create_plan(
+                    reason=name,
+                    auto_recurring={
+                        "frequency": 1,
+                        "frequency_type": "months",
+                        "transaction_amount": float(price_decimal),
+                        "currency_id": currency
+                    },
+                    back_url=current_app.config.get('PREFERRED_URL_SCHEME', 'http') + '://' + request.host + '/subscription/success'
+                )
+                mp_plan_id = mp_plan_data.get('id')
+                plan.mp_preapproval_plan_id = mp_plan_id
+            except Exception as e:
+                current_app.logger.error(f"Error syncing plan with MP: {e}")
+                flash(f'Plan creado localmente, pero falló la sincronización con MP: {str(e)}', 'warning')
+        
+        session_db.commit()
+        
+        flash(f'Plan "{name}" creado exitosamente' + (f' (MP ID: {mp_plan_id})' if mp_plan_id else ''), 'success')
+        return redirect(url_for('admin.list_plans'))
+    
+    return render_template('admin/plans/form.html', plan=None)
+
+
+@admin_bp.route('/plans/<int:plan_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_plan(plan_id: int) -> Union[str, Response]:
+    """Edit an existing subscription plan."""
+    from app.models.plan import Plan
+    
+    session_db = get_session()
+    plan = session_db.query(Plan).filter_by(id=plan_id).first()
+    
+    if not plan:
+        raise NotFoundError('Plan no encontrado')
+    
+    if request.method == 'POST':
+        plan.name = request.form.get('name', '').strip()
+        plan.price = Decimal(request.form.get('price', '0'))
+        plan.currency = request.form.get('currency', 'ARS').strip()
+        plan.billing_frequency = request.form.get('billing_frequency', 'monthly').strip()
+        plan.description = request.form.get('description', '').strip()
+        plan.is_active = request.form.get('is_active') == 'on'
+        
+        session_db.commit()
+        
+        flash(f'Plan "{plan.name}" actualizado exitosamente', 'success')
+        return redirect(url_for('admin.list_plans'))
+    
+    return render_template('admin/plans/form.html', plan=plan)
+
+
+@admin_bp.route('/plans/<int:plan_id>/features', methods=['GET', 'POST'])
+@admin_required
+def manage_plan_features(plan_id: int) -> Union[str, Response]:
+    """Manage features for a specific plan."""
+    from app.models.plan import Plan
+    from app.models.plan_feature import PlanFeature
+    
+    session_db = get_session()
+    plan = session_db.query(Plan).filter_by(id=plan_id).first()
+    
+    if not plan:
+        raise NotFoundError('Plan no encontrado')
+    
+    if request.method == 'POST':
+        feature_key = request.form.get('feature_key', '').strip()
+        feature_value = request.form.get('feature_value', '').strip()
+        
+        if not feature_key:
+            raise BusinessLogicError('La clave de feature es requerida')
+        
+        # Check if feature already exists
+        existing = session_db.query(PlanFeature).filter_by(
+            plan_id=plan_id,
+            feature_key=feature_key
+        ).first()
+        
+        if existing:
+            raise BusinessLogicError(f'La feature "{feature_key}" ya existe para este plan')
+        
+        feature = PlanFeature(
+            plan_id=plan_id,
+            feature_key=feature_key,
+            feature_value=feature_value if feature_value else None,
+            is_active=True
+        )
+        
+        session_db.add(feature)
+        session_db.commit()
+        
+        flash(f'Feature "{feature_key}" agregada exitosamente', 'success')
+        return redirect(url_for('admin.manage_plan_features', plan_id=plan_id))
+    
+    features = session_db.query(PlanFeature).filter_by(plan_id=plan_id).all()
+    
+    return render_template('admin/plans/features.html', plan=plan, features=features)
+
+
+@admin_bp.route('/plans/<int:plan_id>/features/<int:feature_id>/toggle', methods=['POST'])
+@admin_required
+def toggle_feature(plan_id: int, feature_id: int) -> Response:
+    """Toggle feature active status."""
+    from app.models.plan_feature import PlanFeature
+    
+    session_db = get_session()
+    feature = session_db.query(PlanFeature).filter_by(
+        id=feature_id,
+        plan_id=plan_id
+    ).first()
+    
+    if not feature:
+        raise NotFoundError('Feature no encontrada')
+    
+    feature.is_active = not feature.is_active
+    session_db.commit()
+    
+    status = 'activada' if feature.is_active else 'desactivada'
+    flash(f'Feature "{feature.feature_key}" {status}', 'success')
+    
+    return redirect(url_for('admin.manage_plan_features', plan_id=plan_id))
+
+
+@admin_bp.route('/plans/<int:plan_id>/features/<int:feature_id>/delete', methods=['POST'])
+@admin_required
+def delete_feature(plan_id: int, feature_id: int) -> Response:
+    """Delete a feature from a plan."""
+    from app.models.plan_feature import PlanFeature
+    
+    session_db = get_session()
+    feature = session_db.query(PlanFeature).filter_by(
+        id=feature_id,
+        plan_id=plan_id
+    ).first()
+    
+    if not feature:
+        raise NotFoundError('Feature no encontrada')
+    
+    feature_key = feature.feature_key
+    session_db.delete(feature)
+    session_db.commit()
+    
+    flash(f'Feature "{feature_key}" eliminada', 'success')
+    
+    return redirect(url_for('admin.manage_plan_features', plan_id=plan_id))
+
+
+@admin_bp.route('/subscriptions')
+@admin_required
+def list_subscriptions() -> str:
+    """Monitor all tenant subscriptions."""
+    from app.models.subscription import Subscription
+    from app.models.plan import Plan
+    
+    session_db = get_session()
+    
+    # Get filter parameters
+    status_filter = request.args.get('status', '')
+    plan_filter = request.args.get('plan', '')
+    
+    query = session_db.query(Subscription).join(Tenant)
+    
+    if status_filter:
+        query = query.filter(Subscription.status == status_filter)
+    
+    if plan_filter:
+        query = query.filter(Subscription.plan_type == plan_filter)
+    
+    subscriptions = query.order_by(Subscription.created_at.desc()).all()
+    plans = session_db.query(Plan).all()
+    
+    return render_template('admin/subscriptions/index.html', 
+                         subscriptions=subscriptions,
+                         plans=plans,
+                         status_filter=status_filter,
+                         plan_filter=plan_filter)
+
+
+@admin_bp.route('/subscriptions/<int:subscription_id>/sync', methods=['POST'])
+@admin_required
+def sync_subscription(subscription_id: int) -> Response:
+    """Manually sync subscription from Mercado Pago."""
+    from app.models.subscription import Subscription
+    from app.services.subscription_service import sync_subscription_from_mp
+    
+    session_db = get_session()
+    subscription = session_db.query(Subscription).filter_by(id=subscription_id).first()
+    
+    if not subscription:
+        raise NotFoundError('Suscripción no encontrada')
+    
+    if not subscription.mp_subscription_id:
+        raise BusinessLogicError('Esta suscripción no tiene ID de Mercado Pago')
+    
+    try:
+        sync_subscription_from_mp(subscription.mp_subscription_id, session_db)
+        session_db.commit()
+        flash('Suscripción sincronizada exitosamente', 'success')
+    except Exception as e:
+        current_app.logger.error(f"Error syncing subscription: {e}")
+        raise BusinessLogicError(f'Error al sincronizar: {str(e)}')
+    
+    return redirect(url_for('admin.list_subscriptions'))

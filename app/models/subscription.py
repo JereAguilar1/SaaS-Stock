@@ -1,7 +1,7 @@
 """
 Subscription and Payment models for tenant monetization.
 """
-from sqlalchemy import Column, BigInteger, String, Numeric, Date, DateTime, ForeignKey, CheckConstraint, Text
+from sqlalchemy import Column, BigInteger, String, Numeric, Date, DateTime, ForeignKey, CheckConstraint, Text, Boolean
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from app.database import Base
@@ -22,12 +22,22 @@ class Subscription(Base):
     plan_type = Column(String(20), nullable=False)
     status = Column(String(20), nullable=False)
     
+    # Plan Reference (new)
+    plan_id = Column(BigInteger, ForeignKey('plans.id'))
+    
     # Dates
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
     current_period_end = Column(DateTime(timezone=True), nullable=True)
+    next_billing_date = Column(DateTime(timezone=True), nullable=True)
     
     # Pricing
     amount = Column(Numeric(10, 2), default=0.00)
+    
+    # Mercado Pago Integration (new)
+    mp_subscription_id = Column(String(255))
+    mp_payer_id = Column(String(255))
+    mp_status = Column(String(50))
+    auto_recurring = Column(Boolean, default=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -36,6 +46,7 @@ class Subscription(Base):
     # Relationships
     # Use backref to avoid circular import in Tenant model
     tenant = relationship('Tenant', backref=backref('subscription', uselist=False))
+    plan = relationship('Plan', back_populates='subscriptions')
     
     # Table constraints
     __table_args__ = (

@@ -45,7 +45,9 @@ class AuditAction(enum.Enum):
     SETTINGS_CHANGED = "SETTINGS_CHANGED"
 
 
-class AuditLog(object):
+from app.database import Base
+
+class AuditLog(Base):
     """
     Audit log for tracking user actions.
     Multi-tenant: filtered by tenant_id.

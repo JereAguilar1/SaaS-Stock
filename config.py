@@ -104,5 +104,14 @@ class Config:
     CACHE_BALANCE_TTL = int(os.getenv('CACHE_BALANCE_TTL', '60'))
     CACHE_NEGATIVE_TTL = int(os.getenv('CACHE_NEGATIVE_TTL', '15'))  # For "cache miss"
     CACHE_KEY_PREFIX = os.getenv('CACHE_KEY_PREFIX', 'stock')
-
-
+    
+    # Google OAuth Configuration (GOOGLE_AUTH)
+    GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+    GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+    GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5000/auth/google/callback')
+    
+    # Mercado Pago Configuration (SUBSCRIPTIONS_V1)
+    MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN')
+    MP_PUBLIC_KEY = os.getenv('MP_PUBLIC_KEY')
+    MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET')
+    MP_ENVIRONMENT = os.getenv('MP_ENVIRONMENT', 'sandbox')  # 'sandbox' or 'production'

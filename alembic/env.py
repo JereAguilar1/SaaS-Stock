@@ -30,6 +30,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+import app.models  # Force load all models
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -65,12 +66,25 @@ def run_migrations_offline() -> None:
     script output.
 
     """
+    def include_object(object, name, type_, reflected, compare_to):
+        if type_ == "table" and name in [
+            "mp_subscription", 
+            "mp_webhook_event", 
+            "pack_opening_log",
+            "mp_payment",
+            "product_packaging",
+            "billing_plan"
+        ]:
+            return False
+        return True
+
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -90,9 +104,25 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
+    def include_object(object, name, type_, reflected, compare_to):
+        if type_ == "table" and name in [
+            "mp_subscription", 
+            "mp_webhook_event", 
+            "pack_opening_log",
+            "mp_payment",
+            "product_packaging",
+            "billing_plan"
+        ]:
+            return False
+        return True
+
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, 
+            target_metadata=target_metadata,
+            include_object=include_object,
+            compare_type=False,
+            compare_server_default=False,
         )
 
         with context.begin_transaction():

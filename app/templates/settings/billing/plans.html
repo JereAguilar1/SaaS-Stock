@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none">
+        <div class="row align-items-center">
+            <div class="col">
+                <div class="page-pretitle">
+                    Suscripciones
+                </div>
+                <h2 class="page-title">
+                    Elige el plan ideal para tu negocio
+                </h2>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <a href="{{ url_for('settings.billing') }}" class="btn btn-white">
+                    Volver a Facturación
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-body">
+        <div class="row row-cards justify-content-center">
+            {% for plan in plans %}
+            <div class="col-sm-6 col-lg-4">
+                <div class="card card-md h-100 {% if plan.id == current_plan_id %}border-primary{% endif %}">
+                    {% if plan.id == current_plan_id %}
+                    <div class="ribbon ribbon-top ribbon-bookmark bg-primary">Actual</div>
+                    {% endif %}
+
+                    <div class="card-body text-center">
+                        <div class="text-uppercase text-muted font-weight-medium">{{ plan.name }}</div>
+                        <div class="display-5 fw-bold my-3">{{ plan.currency }} ${{ plan.price }}</div>
+                        <div class="text-muted mb-2">por {{ 'mes' if plan.billing_frequency == 'monthly' else 'año' }}
+                        </div>
+
+                        <ul class="list-unstyled lh-lg mt-4 mb-0 text-start">
+                            {% if plan.description %}
+                            <li class="mb-3 text-muted border-bottom pb-3">
+                                {{ plan.description }}
+                            </li>
+                            {% endif %}
+
+                            <!-- Features hardcodeadas o dinámicas si las cargáramos del backend -->
+                            <!-- Por ahora visualizamos features comunes basadas en el código del plan -->
+                            {% if 'free' in plan.code %}
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Hasta 10 productos
+                            </li>
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Gestión de Stock
+                            </li>
+                            {% elif 'basic' in plan.code %}
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Productos ilimitados
+                            </li>
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Módulo de Ventas
+                            </li>
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Reportes Básicos
+                            </li>
+                            {% elif 'pro' in plan.code %}
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                <strong>Todo lo del plan Básico</strong>
+                            </li>
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Múltiples Usuarios
+                            </li>
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Facturación Electrónica
+                            </li>
+                            <li><svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="24"
+                                    height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M5 12l5 5l10 -10" />
+                                </svg>
+                                Soporte Prioritario
+                            </li>
+                            {% endif %}
+                        </ul>
+
+                        <div class="text-center mt-4">
+                            {% if plan.id == current_plan_id %}
+                            <button class="btn btn-outline-primary w-100" disabled>
+                                Tu plan actual
+                            </button>
+                            {% else %}
+                            <form action="{{ url_for('settings.subscribe', plan_id=plan.id) }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    Suscribirse
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

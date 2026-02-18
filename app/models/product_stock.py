@@ -12,6 +12,11 @@ class ProductStock(Base):
     
     product_id = Column(BigInteger, ForeignKey('product.id'), primary_key=True)
     on_hand_qty = Column(BigInteger, nullable=False, default=0)
+    
+    # Fractional support (loose units)
+    on_hand_loose_base = Column(Numeric(12, 3), nullable=False, default=0, server_default='0')
+    reserved_loose_base = Column(Numeric(12, 3), nullable=False, default=0, server_default='0')
+    
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     
     # Relationship

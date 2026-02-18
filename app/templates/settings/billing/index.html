@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none">
+        <div class="row align-items-center">
+            <div class="col">
+                <div class="page-pretitle">
+                    Configuración
+                </div>
+                <h2 class="page-title">
+                    Facturación y Suscripción
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-body">
+        <div class="row row-cards">
+            <!-- Estado de la Suscripción -->
+            <div class="col-md-6 col-lg-7">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Tu Plan Actual</h3>
+                        <div class="card-actions">
+                            {% if subscription.status == 'active' %}
+                            <span class="badge bg-success">Activo</span>
+                            {% elif subscription.status == 'past_due' %}
+                            <span class="badge bg-danger">Vencido</span>
+                            {% elif subscription.status == 'cancelled' %}
+                            <span class="badge bg-secondary">Cancelado</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ subscription.status }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-control-plaintext">
+                                    <span class="fs-2 fw-bold">{{ subscription.plan.name }}</span>
+                                    {% if subscription.plan.price > 0 %}
+                                    <span class="text-muted ms-2">{{ subscription.plan.currency }} ${{
+                                        subscription.plan.price }} / mes</span>
+                                    {% else %}
+                                    <span class="text-muted ms-2">Gratis</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% if subscription.plan.features %}
+                            <div class="col-12">
+                                <h4 class="subheader">Incluye:</h4>
+                                <ul class="list-unstyled mb-0">
+                                    {% for feature in subscription.plan.features %}
+                                    <li>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success" width="24"
+                                            height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                            fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                            <path d="M5 12l5 5l10 -10" />
+                                        </svg>
+                                        {{ feature.key }}
+                                        {% if feature.value %}
+                                        <span class="text-muted">({{ feature.value }})</span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+
+                            {% if subscription.next_billing_date %}
+                            <div class="col-12 mt-4">
+                                <div class="alert alert-info" role="alert">
+                                    <div class="d-flex">
+                                        <div>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24"
+                                                height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                                                fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                                <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                <rect x="4" y="5" width="16" height="16" rx="2" />
+                                                <line x1="16" y1="3" x2="16" y2="7" />
+                                                <line x1="8" y1="3" x2="8" y2="7" />
+                                                <line x1="4" y1="11" x2="20" y2="11" />
+                                                <line x1="11" y1="15" x2="12" y2="15" />
+                                                <line x1="12" y1="15" x2="12" y2="18" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            Tu próxima renovación automática es el <strong>{{
+                                                subscription.next_billing_date
+                                                }}</strong>.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if subscription.status == 'past_due' %}
+                            <div class="col-12 mt-4">
+                                <div class="alert alert-danger" role="alert">
+                                    <h4 class="alert-title">Pago pendiente</h4>
+                                    <div class="text-muted">Tu suscripción ha vencido. Por favor actualiza tu método de
+                                        pago para evitar la interrupción del servicio.</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex">
+                            <a href="{{ url_for('settings.list_plans') }}" class="btn btn-primary">
+                                Cambiar de Plan
+                            </a>
+
+                            {% if subscription.status in ['active', 'authorized'] and subscription.mp_subscription_id %}
+                            <form action="{{ url_for('settings.cancel_subscription') }}" method="post" class="ms-auto"
+                                onsubmit="return confirm('¿Estás seguro? Perderás acceso a las funciones premium al finalizar el período actual.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-link text-danger">Cancelar Suscripción</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historial de Pagos (Placeholder) -->
+            <div class="col-md-6 col-lg-5">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Historial de Pagos</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">
+                            Aquí aparecerán tus últimas facturas y comprobantes de pago.
+                        </p>
+                        <!-- TODO: Implementar lista de invoices reales cuando estén disponibles -->
+                        <div class="empty">
+                            <div class="empty-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24"
+                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                                    <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+                                    <line x1="9" y1="7" x2="10" y2="7" />
+                                    <line x1="9" y1="13" x2="15" y2="13" />
+                                    <line x1="13" y1="17" x2="15" y2="17" />
+                                </svg>
+                            </div>
+                            <p class="empty-title">No hay facturas disponibles</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

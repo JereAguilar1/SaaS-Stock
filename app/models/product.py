@@ -18,11 +18,13 @@ class Product(Base):
     category_id = Column(BigInteger, ForeignKey('category.id'), nullable=True)
     uom_id = Column(BigInteger, ForeignKey('uom.id'), nullable=False)
     active = Column(Boolean, nullable=False, default=True)
-    sale_price = Column(Numeric(10, 2), nullable=False)
+    sale_price = Column(Numeric(12, 2), nullable=False)
     cost = Column(Numeric(10, 2), nullable=False, default=0, server_default='0.00')  # Precio de compra
     image_path = Column(String(255), nullable=True)
     image_original_path = Column(String(255), nullable=True)
-    min_stock_qty = Column(BigInteger, nullable=False, default=0, server_default='0')  # MEJORA 11 - Changed to INTEGER
+    min_stock_qty = Column(Numeric(12, 2), nullable=False, default=0, server_default='0')
+    is_fractional = Column(Boolean, nullable=False, default=False, server_default='false')
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     

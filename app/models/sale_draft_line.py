@@ -1,5 +1,5 @@
 """Sale Draft Line model for cart items (multi-tenant via draft)."""
-from sqlalchemy import Column, BigInteger, Numeric, String, ForeignKey
+from sqlalchemy import Column, BigInteger, Numeric, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -19,6 +19,11 @@ class SaleDraftLine(Base):
     
     qty = Column(Numeric(10, 2), nullable=False)
     
+    # New fields for fractional/packaging support
+    is_loose = Column(Boolean, nullable=False, default=False, server_default='false')
+    unit_price_override = Column(Numeric(12, 2), nullable=True)
+    packaging_id = Column(BigInteger, ForeignKey('product_packaging.id', ondelete='SET NULL'), nullable=True)
+
     # Item-level discount (applied to this line only)
     discount_type = Column(String(10))  # 'PERCENT' or 'AMOUNT' or NULL
     discount_value = Column(Numeric(10, 2), default=0)

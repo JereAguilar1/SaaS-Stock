@@ -1,0 +1,127 @@
+{% extends "admin/base_admin.html" %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none">
+        <div class="row align-items-center">
+            <div class="col">
+                <div class="page-pretitle">
+                    Administración
+                </div>
+                <h2 class="page-title">
+                    Planes de Suscripción
+                </h2>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <div class="btn-list">
+                    <a href="{{ url_for('admin.create_plan') }}" class="btn btn-primary d-none d-sm-inline-block">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                            stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"
+                            stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Nuevo Plan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-body">
+        <div class="row row-cards">
+            <div class="col-12">
+                <div class="card">
+                    <div class="table-responsive">
+                        <table class="table card-table table-vcenter text-nowrap datatable">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Precio</th>
+                                    <th>Frecuencia</th>
+                                    <th>MP ID</th>
+                                    <th>Estado</th>
+                                    <th class="w-1"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plan in plans %}
+                                <tr>
+                                    <td>
+                                        <span class="text-muted">{{ plan.code }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin.edit_plan', plan_id=plan.id) }}" class="text-reset"
+                                            tabindex="-1">{{ plan.name }}</a>
+                                    </td>
+                                    <td>
+                                        {{ plan.currency }} ${{ plan.price }}
+                                    </td>
+                                    <td>
+                                        {{ plan.billing_frequency|capitalize }}
+                                    </td>
+                                    <td>
+                                        {% if plan.mp_preapproval_plan_id %}
+                                        <span class="badge bg-green text-green-fg">Sync</span>
+                                        <small class="text-muted ms-1">{{ plan.mp_preapproval_plan_id }}</small>
+                                        {% else %}
+                                        <span class="badge bg-warning text-warning-fg">Local</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if plan.is_active %}
+                                        <span class="badge bg-success me-1"></span> Activo
+                                        {% else %}
+                                        <span class="badge bg-secondary me-1"></span> Inactivo
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-list flex-nowrap">
+                                            <a href="{{ url_for('admin.manage_plan_features', plan_id=plan.id) }}"
+                                                class="btn btn-white btn-sm">
+                                                Features
+                                            </a>
+                                            <a href="{{ url_for('admin.edit_plan', plan_id=plan.id) }}"
+                                                class="btn btn-white btn-sm">
+                                                Editar
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="empty">
+                                            <div class="empty-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24"
+                                                    height="24" viewBox="0 0 24 24" stroke-width="2"
+                                                    stroke="currentColor" fill="none" stroke-linecap="round"
+                                                    stroke-linejoin="round">
+                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                    <circle cx="12" cy="12" r="9" />
+                                                    <line x1="9" y1="10" x2="9.01" y2="10" />
+                                                    <line x1="15" y1="10" x2="15.01" y2="10" />
+                                                    <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+                                                </svg>
+                                            </div>
+                                            <p class="empty-title">No hay planes creados</p>
+                                            <div class="empty-action">
+                                                <a href="{{ url_for('admin.create_plan') }}" class="btn btn-primary">
+                                                    Crear el primero
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

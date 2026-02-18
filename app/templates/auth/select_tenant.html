@@ -196,6 +196,7 @@
             {% endwith %}
 
             <form method="POST" action="{{ url_for('auth.select_tenant') }}" id="tenant-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% for user_tenant in user_tenants %}
                 <label class="tenant-item" for="tenant-{{ user_tenant.Tenant.id }}">
                     <input type="radio" name="tenant_id" value="{{ user_tenant.Tenant.id }}"

@@ -16,41 +16,51 @@ def load_user_and_tenant():
     g.tenant_id = None
     g.user_role = None  # PASO 6: Add role to context
     
-    user_id = session.get('user_id')
-    if user_id:
-        db_session = get_session()
-        user = db_session.query(AppUser).filter_by(id=user_id, active=True).first()
-        if user:
-            g.user = user
-            g.user_id = user.id # Expose user_id directly for convenience
-            
-            # Load tenant_id from session
-            tenant_id = session.get('tenant_id')
-            if tenant_id:
-                # Verify user has access to this tenant
-                user_tenant = db_session.query(UserTenant).filter_by(
-                    user_id=user.id,
-                    tenant_id=tenant_id,
-                    active=True
-                ).first()
+    try:
+        user_id = session.get('user_id')
+        if user_id:
+            db_session = get_session()
+            if not db_session:
+                return
+
+            user = db_session.query(AppUser).filter_by(id=user_id, active=True).first()
+            if user:
+                g.user = user
+                g.user_id = user.id # Expose user_id directly for convenience
                 
-                if user_tenant:
-                    # ADMIN PANEL: Check if tenant is suspended
-                    from app.models import Tenant
-                    tenant = db_session.query(Tenant).filter_by(id=tenant_id).first()
+                # Load tenant_id from session
+                tenant_id = session.get('tenant_id')
+                if tenant_id:
+                    # Verify user has access to this tenant
+                    user_tenant = db_session.query(UserTenant).filter_by(
+                        user_id=user.id,
+                        tenant_id=tenant_id,
+                        active=True
+                    ).first()
                     
-                    if tenant and tenant.is_suspended:
-                        # Tenant is suspended - block access immediately
-                        session.clear()
-                        flash('Este negocio ha sido suspendido. Contacta soporte.', 'danger')
-                        # Don't set g.user or g.tenant_id - force re-login
-                        return
-                    
-                    g.tenant_id = tenant_id
-                    g.user_role = user_tenant.role  # PASO 6: Set user role
-                else:
-                    # User doesn't have access to this tenant, clear it
-                    session.pop('tenant_id', None)
+                    if user_tenant:
+                        # ADMIN PANEL: Check if tenant is suspended
+                        from app.models import Tenant
+                        tenant = db_session.query(Tenant).filter_by(id=tenant_id).first()
+                        
+                        if tenant and tenant.is_suspended:
+                            # Tenant is suspended - block access immediately
+                            session.clear()
+                            flash('Este negocio ha sido suspendido. Contacta soporte.', 'danger')
+                            # Don't set g.user or g.tenant_id - force re-login
+                            return
+                        
+                        g.tenant_id = tenant_id
+                        g.user_role = user_tenant.role  # PASO 6: Set user role
+                    else:
+                        # User doesn't have access to this tenant, clear it
+                        session.pop('tenant_id', None)
+    except Exception as e:
+        # Avoid crashing the whole app if context loading fails
+        # Log it so we can see it in docker logs
+        from flask import current_app
+        current_app.logger.error(f"Error in load_user_and_tenant: {e}")
+
 
 
 def require_login(f):
@@ -137,3 +147,49 @@ def require_role(min_role='STAFF'):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+
+def check_subscription_status():
+    """
+    Middleware to check if the current tenant has an active subscription.
+    Should be registered as @app.before_request in factory.
+    """
+    # Skip if static assets or certain endpoints
+    if not request.endpoint or request.endpoint == 'static':
+        return
+        
+    # List of endpoints that are always accessible even with expired subscription
+    exempt_endpoints = [
+        'auth.login', 'auth.logout', 'auth.select_tenant', 'auth.register', 
+        'main.index', 'settings.billing', 'settings.subscription', 
+        'webhooks.mercadopago', 'admin.login', 'static'
+    ]
+    
+    # Allow all auth routes
+    if request.endpoint.startswith('auth.') or request.endpoint.startswith('admin.'):
+        return
+
+    # Check if exempt
+    if request.endpoint in exempt_endpoints:
+        return
+        
+    # Check if tenant is selected
+    if not g.get('tenant_id'):
+        return
+        
+    # Check subscription status
+    from app.services.subscription_service import check_trial_expiration
+    from app.database import get_session
+    
+    session_db = get_session()
+    status_info = check_trial_expiration(g.tenant_id, session_db)
+    
+    if not status_info['exists']:
+        # Should initiate subscription flow? For now, allow (legacy support)
+        return
+        
+    if status_info.get('status') in ('past_due', 'canceled'):
+        # Block access and redirect to billing
+        if request.endpoint != 'settings.billing':
+            flash('Tu suscripción ha vencido. Por favor actualiza tu pago para continuar.', 'danger')
+            return redirect(url_for('settings.billing'))
