@@ -103,29 +103,39 @@
                             <div style="position: relative;">
                                 <span
                                     style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); font-size: var(--font-size-sm);">$</span>
-                                <input type="number" name="amount" step="any" min="0"
-                                    max="{{ (sale.total - sale.amount_paid)|round(2) }}"
-                                    placeholder="{{ (sale.total - sale.amount_paid)|round(2) }}" required
-                                    class="form-input-custom" onkeydown="
+                                <input type="text" name="amount" id="paymentAmountInput" inputmode="decimal"
+                                    autocomplete="off" placeholder="{{ (sale.total - sale.amount_paid)|round(2) }}"
+                                    required class="form-input-custom"
+                                    style="width: 130px; padding-left: 22px; padding-top: 6px; padding-bottom: 6px; font-size: var(--font-size-sm);"
+                                    onkeydown="
                                         if(event.key === 'ArrowUp') { 
                                             event.preventDefault(); 
-                                            let val = parseFloat(this.value) || 0;
-                                            this.value = Math.min(parseFloat(this.max), val + 100).toFixed(2);
-                                            this.dispatchEvent(new Event('input'));
+                                            let valStr = this.value.replace(',', '.') || '0';
+                                            let val = parseFloat(valStr);
+                                            let max = parseFloat('{{ (sale.total - sale.amount_paid)|round(2) }}');
+                                            
+                                            this.value = (Math.min(max, val + 100).toFixed(2)).replace('.', ',');
                                         }
                                         if(event.key === 'ArrowDown') { 
                                             event.preventDefault(); 
-                                            let val = parseFloat(this.value) || 0;
-                                            this.value = Math.max(0, val - 100).toFixed(2);
-                                            this.dispatchEvent(new Event('input'));
+                                            let valStr = this.value.replace(',', '.') || '0';
+                                            let val = parseFloat(valStr);
+                                            
+                                            this.value = (Math.max(0, val - 100).toFixed(2)).replace('.', ',');
                                         }
-                                        if(event.key === ',') { 
-                                            event.preventDefault(); 
-                                            if(!this.value.includes('.')) { this.value += '.'; }
+                                    " oninput="
+                                        this.value = this.value.replace(/[^0-9,]/g, '');
+                                        
+                                        if((this.value.match(/,/g) || []).length > 1) {
+                                            this.value = this.value.substring(0, this.value.length - 1);
                                         }
-                                    "
-                                    oninput="if(parseFloat(this.value) > parseFloat(this.max)) this.value = this.max;"
-                                    style="width: 130px; padding-left: 22px; padding-top: 6px; padding-bottom: 6px; font-size: var(--font-size-sm);">
+
+                                        let valStr = this.value.replace(',', '.');
+                                        let max = parseFloat('{{ (sale.total - sale.amount_paid)|round(2) }}');
+                                        if(valStr && parseFloat(valStr) > max) {
+                                            this.value = max.toFixed(2).replace('.', ',');
+                                        }
+                                    ">
                             </div>
                             <button type="submit" class="btn-custom btn-primary-custom btn-sm"
                                 title="Imputar pago a esta factura" style="white-space: nowrap;">

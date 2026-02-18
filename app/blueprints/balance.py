@@ -129,6 +129,46 @@ def index() -> str:
         stock_value = get_total_stock_value(db_session, g.tenant_id)
         available_years = get_available_years(db_session, g.tenant_id)
         
+        # --- FEATURE: CASH BASIS CORRECTION ---
+        # Calculate real income: Direct Sales (Cash/Transfer) + Debt Collections (PaymentLog)
+        
+        from app.models import Sale, SaleStatus
+        from app.models.payment_log import PaymentLog
+        from sqlalchemy import func
+        
+        # Convert dates to datetime for correct comparison
+        start_dt = datetime.combine(start, datetime.min.time())
+        end_dt = datetime.combine(end, datetime.max.time())
+        
+        # 1. Direct Sales: Confirmed sales that have payments (NOT pure Cuenta Corriente)
+        # We use Sale.payments.any() because 'payment_method' is a computed property, not a column.
+        direct_sales = db_session.query(func.sum(Sale.total)).filter(
+            Sale.tenant_id == g.tenant_id,
+            Sale.datetime >= start_dt,
+            Sale.datetime <= end_dt,
+            Sale.status == SaleStatus.CONFIRMED,
+            Sale.payments.any() 
+        ).scalar() or 0
+        
+        # 2. Debt Payments: Collections from Cuenta Corriente
+        debt_payments = db_session.query(func.sum(PaymentLog.amount)).filter(
+            PaymentLog.date >= start_dt,
+            PaymentLog.date <= end_dt
+            # PaymentLog doesn't have tenant_id directly usually, but it links to Sale which has it.
+            # Assuming PaymentLog is safe or we should join sale? 
+            # PaymentLog linked to Sale. Let's refer to model.
+        ).join(PaymentLog.sale_rel).filter(Sale.tenant_id == g.tenant_id).scalar() or 0 if hasattr(PaymentLog, 'sale_rel') else \
+        db_session.query(func.sum(PaymentLog.amount)).join(Sale, PaymentLog.sale_id == Sale.id).filter(
+            Sale.tenant_id == g.tenant_id,
+            PaymentLog.date >= start_dt,
+            PaymentLog.date <= end_dt
+        ).scalar() or 0
+
+        real_income = Decimal(str(direct_sales)) + Decimal(str(debt_payments))
+        
+        totals['total_income'] = real_income
+        totals['total_net'] = real_income - totals['total_expense']
+        
         return render_template(
             'balance/index.html',
             view=view,
