@@ -219,6 +219,19 @@ def confirm_sale_from_draft(
         _create_stock_movement(session, tenant_id, sale.id, sale_lines_data)
         if not is_cuenta_corriente:
             _create_ledger_entries(session, tenant_id, sale.id, payments, sale_total)
+        else:
+            # Register CC sale in ledger as devengado income
+            session.add(FinanceLedger(
+                tenant_id=tenant_id,
+                datetime=datetime.now(),
+                type=LedgerType.INCOME,
+                amount=sale_total,
+                category='Ventas',
+                reference_type=LedgerReferenceType.SALE,
+                reference_id=sale.id,
+                notes='Creacion de factura',
+                payment_method='CUENTA_CORRIENTE'
+            ))
         
         # 8. Clean up
         session.delete(draft)

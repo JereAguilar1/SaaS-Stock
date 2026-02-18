@@ -479,7 +479,7 @@ CREATE TABLE IF NOT EXISTS finance_ledger (
   notes          TEXT,
   payment_method VARCHAR(20) NOT NULL DEFAULT 'CASH',
   
-  CONSTRAINT chk_finance_ledger_payment_method CHECK (payment_method IN ('CASH', 'TRANSFER', 'CARD'))
+  CONSTRAINT chk_finance_ledger_payment_method CHECK (payment_method IN ('CASH', 'TRANSFER', 'CARD', 'CUENTA_CORRIENTE'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_finance_ledger_payment_method ON finance_ledger(payment_method);

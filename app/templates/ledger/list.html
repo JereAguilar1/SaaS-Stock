@@ -85,17 +85,29 @@
                         <td>{{ entry.id }}</td>
                         <td>{{ entry.datetime|datetime_ar(with_time=True) }}</td>
                         <td>
-                            {% if entry.type.value == 'INCOME' %}
+                            {% if entry.payment_method == 'CUENTA_CORRIENTE' and entry.reference_type.value == 'SALE' %}
+                            <span class="badge" style="color: white; background-color: #6c757d;">
+                                <i class="bi bi-receipt"></i> Factura
+                            </span>
+                            {% elif entry.type.value == 'INCOME' %}
                             <span class="badge bg-success">INGRESO</span>
                             {% else %}
                             <span class="badge bg-danger">EGRESO</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% if entry.payment_method == 'CASH' %}
+                            {% if entry.payment_method == 'CUENTA_CORRIENTE' %}
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-person-badge-fill" style="color: var(--color-primary);"></i>
+                                <span>Cuenta Corriente</span>
+                            </div>
+                            {% elif entry.payment_method == 'CASH' %}
                             <span class="badge bg-light text-dark"><i class="bi bi-cash"></i> Efectivo</span>
-                            {% else %}
+                            {% elif entry.payment_method == 'TRANSFER' %}
                             <span class="badge bg-primary"><i class="bi bi-bank"></i> Transferencia</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">{{ entry.payment_method|replace('_', ' ')|title
+                                }}</span>
                             {% endif %}
                         </td>
                         <td
