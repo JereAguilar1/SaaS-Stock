@@ -35,7 +35,7 @@ def list_ledger():
         )
         
         # Filter by type
-        if entry_type and entry_type in ['INCOME', 'EXPENSE']:
+        if entry_type and entry_type in ['INCOME', 'EXPENSE', 'INVOICE']:
             query = query.filter(FinanceLedger.type == LedgerType[entry_type])
         
         # Filter by payment method
@@ -96,19 +96,29 @@ def create_ledger():
     
     try:
         # Get form data
-        entry_type = request.form.get('type', '').upper()
+        raw_type = request.form.get('type', '').upper()
         amount_str = request.form.get('amount', '').strip()
         datetime_str = request.form.get('datetime', '').strip()
         category = request.form.get('category', '').strip() or None
         notes = request.form.get('notes', '').strip() or None
         payment_method = request.form.get('payment_method', 'CASH').upper()
         
+        # Handle type and reference_type logic
+        if raw_type == 'INVOICE':
+            entry_type = 'INVOICE'
+            ref_type = LedgerReferenceType.SALE  # Blue "Venta" badge
+            if not category:
+                category = 'Ventas'
+        else:
+            entry_type = raw_type
+            ref_type = LedgerReferenceType.MANUAL
+        
         # Validations
-        if entry_type not in ['INCOME', 'EXPENSE']:
+        if entry_type not in ['INCOME', 'EXPENSE', 'INVOICE']:
             flash('Tipo de movimiento inválido', 'danger')
             return redirect(url_for('ledger.new_ledger'))
         
-        if payment_method not in ['CASH', 'TRANSFER']:
+        if payment_method not in ['CASH', 'TRANSFER', 'CARD', 'CUENTA_CORRIENTE']:
             flash('Método de pago inválido', 'danger')
             return redirect(url_for('ledger.new_ledger'))
         
@@ -144,7 +154,7 @@ def create_ledger():
             datetime=entry_datetime,
             type=LedgerType[entry_type],
             amount=amount,
-            reference_type=LedgerReferenceType.MANUAL,
+            reference_type=ref_type,
             reference_id=None,
             category=category,
             notes=notes,
@@ -154,7 +164,13 @@ def create_ledger():
         db_session.add(ledger)
         db_session.commit()
         
-        payment_label = 'Efectivo' if payment_method == 'CASH' else 'Transferencia'
+        method_labels = {
+            'CASH': 'Efectivo',
+            'TRANSFER': 'Transferencia',
+            'CARD': 'Tarjeta',
+            'CUENTA_CORRIENTE': 'Cuenta Corriente'
+        }
+        payment_label = method_labels.get(payment_method, payment_method)
         flash(f'Movimiento manual de tipo {entry_type} por ${amount} ({payment_label}) registrado exitosamente', 'success')
         return redirect(url_for('ledger.list_ledger'))
         

@@ -224,7 +224,7 @@ def confirm_sale_from_draft(
             session.add(FinanceLedger(
                 tenant_id=tenant_id,
                 datetime=datetime.now(),
-                type=LedgerType.INCOME,
+                type=LedgerType.INVOICE,
                 amount=sale_total,
                 category='Ventas',
                 reference_type=LedgerReferenceType.SALE,

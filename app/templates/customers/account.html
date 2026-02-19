@@ -61,7 +61,7 @@
                     <th style="text-align: right;">Total Original</th>
                     <th style="text-align: right;">Pagado</th>
                     <th style="text-align: right;">Saldo</th>
-                    <th style="text-align: center; width: 100px;">Estado</th>
+                    <th style="text-align: center; min-width: 160px;">Método de Pago</th>
                     <th style="text-align: center; min-width: 260px;">Acciones</th>
                 </tr>
             </thead>
@@ -84,20 +84,20 @@
                         ${{ '{:,.2f}'.format(saldo) }}
                     </td>
                     <td style="text-align: center;">
-                        {% if sale.payment_status == 'PENDING' %}
-                        <span
-                            style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); background-color: rgba(220, 53, 69, 0.12); color: var(--color-danger);">
-                            Pendiente
-                        </span>
-                        {% elif sale.payment_status == 'PARTIAL' %}
-                        <span
-                            style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); background-color: rgba(255, 193, 7, 0.15); color: #e6a800;">
-                            Parcial
-                        </span>
-                        {% endif %}
+                        <div
+                            style="display: flex; align-items: center; gap: 4px; justify-content: center; min-width: 140px;">
+                            <i class="bi bi-wallet2" style="color: var(--color-text-muted);"></i>
+                            <select class="form-input-custom" name="payment_method" form="pay-form-{{ sale.id }}"
+                                style="padding: 4px 8px; font-size: var(--font-size-sm); min-width: 120px;">
+                                <option value="CASH" selected>Efectivo</option>
+                                <option value="TRANSFER">Transferencia</option>
+                                <option value="CARD">Tarjeta</option>
+                            </select>
+                        </div>
                     </td>
                     <td style="text-align: center;">
-                        <form method="POST" action="{{ url_for('customers.pay_debt', sale_id=sale.id) }}"
+                        <form id="pay-form-{{ sale.id }}" method="POST"
+                            action="{{ url_for('customers.pay_debt', sale_id=sale.id) }}"
                             style="display: flex; align-items: center; justify-content: center; gap: var(--spacing-2);">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div style="position: relative;">

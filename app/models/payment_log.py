@@ -1,5 +1,5 @@
 from app.database import Base
-from sqlalchemy import Column, Integer, Numeric, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Numeric, DateTime, String, ForeignKey
 from sqlalchemy.sql import func
 from datetime import datetime
 
@@ -10,3 +10,5 @@ class PaymentLog(Base):
     sale_id = Column(Integer, ForeignKey('sale.id'), nullable=False)
     amount = Column(Numeric(10, 2), default=0)
     date = Column(DateTime(timezone=True), default=func.now(), server_default=func.now())
+    payment_method = Column(String(20), nullable=False, default='CASH', server_default='CASH')
+

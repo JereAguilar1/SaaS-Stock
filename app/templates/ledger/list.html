@@ -85,7 +85,7 @@
                         <td>{{ entry.id }}</td>
                         <td>{{ entry.datetime|datetime_ar(with_time=True) }}</td>
                         <td>
-                            {% if entry.payment_method == 'CUENTA_CORRIENTE' and entry.reference_type.value == 'SALE' %}
+                            {% if entry.type.value == 'INVOICE' %}
                             <span class="badge" style="color: white; background-color: #6c757d;">
                                 <i class="bi bi-receipt"></i> Factura
                             </span>
@@ -105,18 +105,36 @@
                             <span class="badge bg-light text-dark"><i class="bi bi-cash"></i> Efectivo</span>
                             {% elif entry.payment_method == 'TRANSFER' %}
                             <span class="badge bg-primary"><i class="bi bi-bank"></i> Transferencia</span>
+                            {% elif entry.payment_method == 'CARD' %}
+                            <span class="badge" style="background-color: #6f42c1; color: white;"><i
+                                    class="bi bi-credit-card"></i> Tarjeta</span>
                             {% else %}
                             <span class="badge bg-light text-dark">{{ entry.payment_method|replace('_', ' ')|title
                                 }}</span>
                             {% endif %}
                         </td>
-                        <td
-                            class="text-end {% if entry.type.value == 'INCOME' %}text-success{% else %}text-danger{% endif %}">
-                            <strong>${{ entry.amount|money_ar }}</strong>
+                        <td class="text-end" style="white-space: nowrap;">
+                            {% if entry.type.value == 'INVOICE' %}
+                            <span style="color: #6c757d; font-weight: 600;">
+                                $ {{ entry.amount | money_ar }}
+                            </span>
+                            {% elif entry.type.value == 'INCOME' %}
+                            <span class="text-success" style="font-weight: 600;">
+                                $ {{ entry.amount | money_ar }}
+                            </span>
+                            {% else %}
+                            <span class="text-danger" style="font-weight: 600;">
+                                $ {{ entry.amount | money_ar }}
+                            </span>
+                            {% endif %}
                         </td>
                         <td>
                             {% if entry.reference_type.value == 'SALE' %}
                             <span class="badge bg-info">Venta</span>
+                            {% elif entry.reference_type.value == 'DEBT_COLLECTION' %}
+                            <span class="badge" style="background-color: #20c997; color: white;">
+                                <i class="bi bi-receipt-cutoff"></i> Cobro factura
+                            </span>
                             {% elif entry.reference_type.value == 'INVOICE_PAYMENT' %}
                             <span class="badge bg-warning text-dark">Pago Boleta</span>
                             {% else %}

@@ -20,33 +20,30 @@
             <div class="card-body-custom">
                 <form method="POST" action="{{ url_for('ledger.create_ledger') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <!-- Type -->
                     <div class="form-group">
                         <label for="type" class="form-label-custom">
                             Tipo de Movimiento <span class="text-danger">*</span>
                         </label>
                         <select class="form-select-custom" id="type" name="type" required>
                             <option value="">Seleccione...</option>
-                            <option value="INCOME">Ingreso</option>
-                            <option value="EXPENSE">Egreso</option>
+                            <option value="INCOME">Ingreso (Dinero entra)</option>
+                            <option value="EXPENSE">Egreso (Dinero sale)</option>
+                            <option value="INVOICE">Factura (Venta Cta. Cte.)</option>
                         </select>
                         <small class="form-text-custom">
-                            Ingreso: entrada de dinero | Egreso: salida de dinero
+                            Ingreso: entrada de dinero | Egreso: salida de dinero | Factura: venta a crédito
                         </small>
                     </div>
 
-                    <!-- Payment Method -->
                     <div class="form-group">
                         <label for="payment_method" class="form-label-custom">
                             Método de Pago/Cobro <span class="text-danger">*</span>
                         </label>
                         <select class="form-select-custom" id="payment_method" name="payment_method" required>
-                            <option value="CASH" selected>
-                                <i class="bi bi-cash"></i> Efectivo
-                            </option>
-                            <option value="TRANSFER">
-                                <i class="bi bi-bank"></i> Transferencia
-                            </option>
+                            <option value="CASH" selected>Efectivo</option>
+                            <option value="TRANSFER">Transferencia</option>
+                            <option value="CARD">Tarjeta</option>
+                            <option value="CUENTA_CORRIENTE">Cuenta Corriente</option>
                         </select>
                         <small class="form-text-custom">
                             Forma en que se realizó el ingreso o egreso
@@ -85,7 +82,14 @@
                     <div class="form-group">
                         <label for="category" class="form-label-custom">Categoría</label>
                         <input type="text" class="form-input-custom" id="category" name="category" maxlength="100"
-                            placeholder="Ej: Servicios, Impuestos, Otros ingresos, etc.">
+                            placeholder="Ej: Ventas, Cobro factura, Gastos Generales..." list="category_list">
+                        <datalist id="category_list">
+                            <option value="Ventas">
+                            <option value="Cobro factura">
+                            <option value="Pago Boleta">
+                            <option value="Gastos Generales">
+                            <option value="Proveedores">
+                        </datalist>
                         <small class="form-text-custom">
                             Opcional. Categoría o concepto del movimiento
                         </small>
@@ -159,4 +163,43 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const typeSelect = document.getElementById('type');
+        const methodSelect = document.getElementById('payment_method');
+        const options = methodSelect.options;
+
+        function updateFormRules() {
+            const selectedType = typeSelect.value;
+
+            if (selectedType === 'INVOICE') {
+                methodSelect.value = 'CUENTA_CORRIENTE';
+                methodSelect.style.pointerEvents = 'none';
+                methodSelect.style.backgroundColor = '#e9ecef';
+                for (let i = 0; i < options.length; i++) {
+                    options[i].disabled = false;
+                    options[i].hidden = false;
+                }
+            } else {
+                methodSelect.style.pointerEvents = 'auto';
+                methodSelect.style.backgroundColor = '';
+                if (methodSelect.value === 'CUENTA_CORRIENTE') {
+                    methodSelect.value = 'CASH';
+                }
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].value === 'CUENTA_CORRIENTE') {
+                        options[i].disabled = true;
+                        options[i].hidden = true;
+                    } else {
+                        options[i].disabled = false;
+                    }
+                }
+            }
+        }
+
+        typeSelect.addEventListener('change', updateFormRules);
+        updateFormRules();
+    });
+</script>
 {% endblock %}

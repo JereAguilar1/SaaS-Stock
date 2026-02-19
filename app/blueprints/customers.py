@@ -372,12 +372,27 @@ def pay_debt(sale_id: int) -> Response:
         else:
             sale.payment_status = PaymentStatus.PARTIAL
         
-        # Nuevo: Registrar movimiento de caja
-        try:
-            new_log = PaymentLog(sale_id=sale.id, amount=amount, date=datetime.now())
-            session.add(new_log)
-        except Exception as e:
-            current_app.logger.error(f"Error logueando pago: {e}")
+        # Registrar movimiento de caja y asiento contable
+        selected_method = request.form.get('payment_method', 'CASH').upper()
+        if selected_method not in ('CASH', 'TRANSFER', 'CARD'):
+            selected_method = 'CASH'
+        new_log = PaymentLog(sale_id=sale.id, amount=amount, date=datetime.now(), payment_method=selected_method)
+        session.add(new_log)
+        
+        # Registrar asiento en Libro Mayor
+        from app.models.finance_ledger import FinanceLedger, LedgerType, LedgerReferenceType
+        ledger_entry = FinanceLedger(
+            tenant_id=g.tenant_id,
+            datetime=datetime.now(),
+            type=LedgerType.INCOME,
+            amount=amount,
+            category='Cobro factura',
+            reference_type=LedgerReferenceType.DEBT_COLLECTION,
+            reference_id=sale.id,
+            notes=f'Cobranza de factura #{sale.id}',
+            payment_method=selected_method
+        )
+        session.add(ledger_entry)
         
         session.commit()
         flash(f'Pago de ${amount:,.2f} aplicado exitosamente a la venta #{sale.id}', 'success')

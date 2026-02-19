@@ -176,11 +176,11 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ledger_type') THEN
-    CREATE TYPE ledger_type AS ENUM ('INCOME', 'EXPENSE');
+    CREATE TYPE ledger_type AS ENUM ('INCOME', 'EXPENSE', 'INVOICE');
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ledger_ref_type') THEN
-    CREATE TYPE ledger_ref_type AS ENUM ('SALE', 'INVOICE_PAYMENT', 'MANUAL');
+    CREATE TYPE ledger_ref_type AS ENUM ('SALE', 'INVOICE_PAYMENT', 'MANUAL', 'DEBT_COLLECTION');
   END IF;
 END$$;
 

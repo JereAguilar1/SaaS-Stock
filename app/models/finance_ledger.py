@@ -10,6 +10,7 @@ class LedgerType(enum.Enum):
     """Ledger type enum."""
     INCOME = "INCOME"
     EXPENSE = "EXPENSE"
+    INVOICE = "INVOICE"
 
 
 class LedgerReferenceType(enum.Enum):
@@ -17,6 +18,7 @@ class LedgerReferenceType(enum.Enum):
     SALE = "SALE"
     INVOICE_PAYMENT = "INVOICE_PAYMENT"
     MANUAL = "MANUAL"
+    DEBT_COLLECTION = "DEBT_COLLECTION"
 
 
 class PaymentMethod(enum.Enum):
