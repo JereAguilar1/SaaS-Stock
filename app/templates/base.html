@@ -1,7 +1,17 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="light">
 
 <head>
+    <script>
+        (function () {
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            if (currentTheme === 'dark') {
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+                document.documentElement.classList.add('dark-mode-preload');
+            }
+        })();
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Sistema de Gestión{% endblock %}</title>
@@ -217,6 +227,15 @@
                                     <span>Unidades de Medida</span>
                                 </a>
                             </li>
+                            <li class="nav-item mt-2">
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li class="sidebar-nav-item sidebar-dropdown-item">
+                                <a href="#" class="sidebar-nav-link" id="darkModeToggle">
+                                    <i class="bi bi-moon-stars"></i>
+                                    <span id="darkModeText">Modo Oscuro</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
@@ -371,6 +390,44 @@
         // Global HTMX configuration for CSRF
         document.body.addEventListener('htmx:configRequest', (event) => {
             event.detail.headers['X-CSRFToken'] = '{{ csrf_token() }}';
+        });
+    </script>
+
+    <!-- Dark Mode Toggle Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('darkModeToggle');
+            const htmlElement = document.documentElement;
+            const bodyElement = document.body;
+            const icon = toggleBtn.querySelector('i');
+            const textElement = document.getElementById('darkModeText');
+
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(currentTheme);
+
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const newTheme = htmlElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+                applyTheme(newTheme);
+            });
+
+            function applyTheme(theme) {
+                // Método 1: Bootstrap 5.3+
+                htmlElement.setAttribute('data-bs-theme', theme);
+
+                // Método 2: Clases de plantillas clásicas (AdminLTE, etc.)
+                if (theme === 'dark') {
+                    bodyElement.classList.add('dark-mode');
+                    icon.className = 'bi bi-sun';
+                    textElement.textContent = 'Modo Claro';
+                } else {
+                    bodyElement.classList.remove('dark-mode');
+                    icon.className = 'bi bi-moon-stars';
+                    textElement.textContent = 'Modo Oscuro';
+                }
+
+                localStorage.setItem('theme', theme);
+            }
         });
     </script>
 
