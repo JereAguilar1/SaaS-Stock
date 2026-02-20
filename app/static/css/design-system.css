@@ -773,3 +773,21 @@ button {
    color: #000000 !important;
    /* Texto negro para contraste */
 }
+
+/* =======================================================
+   ESTADO DESHABILITADO/BLOQUEADO PARA INPUTS EN MODO OSCURO
+   ======================================================= */
+
+/* Detecta el selector cuando el JS lo bloquea */
+[data-bs-theme="dark"] select[style*="pointer-events: none"],
+[data-bs-theme="dark"] input[style*="pointer-events: none"],
+[data-bs-theme="dark"] .form-select-custom[style*="pointer-events: none"] {
+   background-color: #2b2f32 !important;
+   /* Gris oscuro neutro para indicar inactividad */
+   color: #adb5bd !important;
+   /* Texto gris claro (muted) para que sea legible pero sutil */
+   border-color: #373b3e !important;
+   /* Borde oscuro */
+   opacity: 1 !important;
+   /* Evitar que el navegador lo haga demasiado transparente */
+}
