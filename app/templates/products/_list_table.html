@@ -53,7 +53,8 @@
             </thead>
             <tbody>
                 {% for product in products %}
-                <tr {% if product.on_hand_qty==0 %}style="background-color: var(--color-bg-muted);" {% endif %}>
+                <tr
+                    style="{% if not product.active %}opacity: 0.6;{% endif %}{% if product.on_hand_qty==0 %}background-color: var(--color-bg-muted);{% endif %}">
                     <td>{{ product.id }}</td>
                     <td>
                         {% if product.image_url %}
@@ -66,6 +67,10 @@
                     </td>
                     <td>
                         <strong>{{ product.name }}</strong>
+                        {% if not product.active %}
+                        <span class="badge-custom badge-secondary"
+                            style="margin-left: var(--spacing-2);">Inactivo</span>
+                        {% endif %}
                         {% if product.on_hand_qty == 0 %}
                         <br><span class="badge-custom badge-secondary">Sin stock</span>
                         {% endif %}
@@ -104,6 +109,21 @@
                                 class="btn-custom btn-secondary-custom btn-sm" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            <form action="{{ url_for('catalog.toggle_active', product_id=product.id) }}" method="POST"
+                                style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% if product.active %}
+                                <button type="submit" class="btn-custom btn-warning-custom btn-sm"
+                                    title="Desactivar (Ocultar del catálogo)">
+                                    <i class="bi bi-eye-slash"></i>
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn-custom btn-success-custom btn-sm"
+                                    title="Reactivar producto">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                {% endif %}
+                            </form>
                             <button type="button" class="btn-custom btn-danger-custom btn-sm" title="Eliminar"
                                 data-bs-toggle="modal" data-bs-target="#deleteProductModal"
                                 data-product-id="{{ product.id }}" data-product-name="{{ product.name }}"

@@ -58,6 +58,7 @@
                                 style="display: inline;"
                                 onsubmit="return confirm('¿Está seguro de eliminar la categoría \" {{ category.name
                                 }}\"?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn-custom btn-danger-custom btn-sm" title="Eliminar">
                                     <i class="bi bi-trash"></i>
                                 </button>

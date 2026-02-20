@@ -145,6 +145,7 @@
                     style="filter: brightness(0) invert(1);"></button>
             </div>
             <form method="POST" id="deleteCustomerForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-body">
                     <p><strong>¿Está seguro de eliminar este cliente?</strong></p>
                     <div class="alert-custom alert-warning">

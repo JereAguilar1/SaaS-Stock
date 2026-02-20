@@ -21,6 +21,7 @@
                     <option value="">Todos</option>
                     <option value="INCOME" {% if entry_type=='INCOME' %}selected{% endif %}>Ingreso</option>
                     <option value="EXPENSE" {% if entry_type=='EXPENSE' %}selected{% endif %}>Egreso</option>
+                    <option value="INVOICE" {% if entry_type=='INVOICE' %}selected{% endif %}>Factura</option>
                 </select>
             </div>
 
@@ -29,9 +30,14 @@
                 <label for="method" class="form-label-custom">Método</label>
                 <select class="form-select-custom" id="method" name="method">
                     <option value="all" {% if selected_method=='all' %}selected{% endif %}>Todos</option>
-                    <option value="cash" {% if selected_method=='cash' %}selected{% endif %}>Efectivo</option>
-                    <option value="transfer" {% if selected_method=='transfer' %}selected{% endif %}>Transferencia
-                    </option>
+                    <option value="CASH" {% if selected_method=='CASH' or selected_method=='cash' %}selected{% endif %}>
+                        Efectivo</option>
+                    <option value="TRANSFER" {% if selected_method=='TRANSFER' or selected_method=='transfer'
+                        %}selected{% endif %}>Transferencia</option>
+                    <option value="CARD" {% if selected_method=='CARD' or selected_method=='card' %}selected{% endif %}>
+                        Tarjeta</option>
+                    <option value="CUENTA_CORRIENTE" {% if selected_method=='CUENTA_CORRIENTE' or
+                        selected_method=='cuenta_corriente' %}selected{% endif %}>Cuenta Corriente</option>
                 </select>
             </div>
 

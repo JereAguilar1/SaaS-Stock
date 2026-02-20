@@ -59,6 +59,7 @@
                             <form method="POST" action="{{ url_for('settings.delete_uom', uom_id=uom.id) }}"
                                 style="display: inline;" onsubmit="return confirm('¿Está seguro de eliminar la unidad \"
                                 {{ uom.name }}\"?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn-custom btn-danger-custom btn-sm" title="Eliminar">
                                     <i class="bi bi-trash"></i>
                                 </button>

@@ -110,6 +110,7 @@
                 <form action="{{ url_for('users.remove_user', id=user_tenant.id) }}" method="POST"
                     style="display: inline;"
                     onsubmit="return confirm('¿Seguro que deseas remover a {{ user.email }} del negocio?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-custom btn-danger-custom">
                         <i class="bi bi-person-x"></i> Remover Usuario
                     </button>

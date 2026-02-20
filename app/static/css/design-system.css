@@ -745,3 +745,31 @@ button {
    background-color: var(--bs-danger) !important;
    color: #212529 !important;
 }
+
+/* =======================================================
+   ESTILOS PARA RESULTADOS DE BÚSQUEDA (AUTOCOMPLETE) 
+   ======================================================= */
+
+/* Contenedor principal de la lista */
+[data-bs-theme="dark"] #product_search_results {
+   background-color: #212529 !important;
+   border-color: #373b3e !important;
+   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Cada ítem de la lista */
+[data-bs-theme="dark"] #product_search_results li {
+   background-color: #212529 !important;
+   color: #f8f9fa !important;
+   border-bottom-color: #373b3e !important;
+   transition: background-color 0.1s ease-in-out;
+}
+
+/* Efecto hover (Para simular el "Select" de la imagen) 
+   Fondo azul claro con texto oscuro, típico de los select nativos en Windows/Chrome */
+[data-bs-theme="dark"] #product_search_results li:hover {
+   background-color: #9ec5fe !important;
+   /* Azul claro */
+   color: #000000 !important;
+   /* Texto negro para contraste */
+}

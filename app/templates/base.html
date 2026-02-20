@@ -431,6 +431,23 @@
         });
     </script>
 
+    <!-- Global CSRF Token for HTMX & Fetch -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            // Configurar HTMX para que siempre envíe el token CSRF
+            document.body.addEventListener('htmx:configRequest', function (evt) {
+                if (evt.detail.verb !== 'get') {
+                    evt.detail.headers['X-CSRFToken'] = csrfToken;
+                }
+            });
+
+            // Helper para fetch() nativo
+            window.getCsrfToken = () => csrfToken;
+        });
+    </script>
+
     <!-- Container for Dynamic Modals (HTMX) -->
     <div id="modals-here"></div>
 </body>

@@ -636,7 +636,8 @@ def delete_product(product_id: int) -> Response:
         ).first()
         
         if not product:
-            raise NotFoundError('Producto no encontrado')
+            flash('Producto no encontrado.', 'warning')
+            return redirect(url_for('catalog.list_products'))
         
         product_name = product.name
         image_path = product.image_path
@@ -650,10 +651,12 @@ def delete_product(product_id: int) -> Response:
                 for line in lines:
                     move = line.stock_move
                     if move.reference_type not in (StockReferenceType.MANUAL,): 
-                        raise BusinessLogicError(
+                        flash(
                             f'No se puede eliminar el producto "{product_name}" porque tiene '
-                            'ventas o compras asociadas. Use la opción "Desactivar" en su lugar.'
+                            'ventas o compras asociadas. Use la opción "Desactivar" en su lugar.',
+                            'warning'
                         )
+                        return redirect(url_for('catalog.list_products'))
                 
                 # All lines are safe to delete (Manual adjustments)
                 for line in lines:
@@ -671,21 +674,21 @@ def delete_product(product_id: int) -> Response:
             
             invalidate_products_cache(g.tenant_id)
             flash(f'Producto "{product_name}" eliminado exitosamente', 'success')
-            return redirect(url_for('catalog.list_products'))
             
         except IntegrityError:
             session.rollback()
-            raise BusinessLogicError(
-                f'No se puede eliminar el producto "{product_name}" porque tiene historial comercial asociado.'
+            flash(
+                f'No se puede eliminar el producto "{product_name}" porque tiene '
+                'historial comercial asociado. Use la opción "Desactivar" en su lugar.',
+                'warning'
             )
         
-    except (BusinessLogicError, NotFoundError) as e:
-        session.rollback()
-        raise e
     except Exception as e:
         session.rollback()
         logger.error(f"Error delete_product {product_id}: {str(e)}", exc_info=True)
-        raise BusinessLogicError(f'Error al eliminar producto: {str(e)}')
+        flash(f'Error al eliminar producto: {str(e)}', 'danger')
+    
+    return redirect(url_for('catalog.list_products'))
 
 
 @catalog_bp.route('/check-sku', methods=['POST'])

@@ -232,31 +232,42 @@ def edit_uom(uom_id: int) -> Union[str, Response]:
 def delete_uom(uom_id: int) -> Response:
     """Delete UOM if not in use (tenant-scoped)."""
     session = get_session()
-    uom = session.query(UOM).filter(UOM.id == uom_id, UOM.tenant_id == g.tenant_id).first()
-    
-    if not uom:
-        raise NotFoundError('No encontrado')
-    
-    product_count = session.query(func.count(Product.id)).filter(
-        Product.tenant_id == g.tenant_id,
-        Product.uom_id == uom_id
-    ).scalar()
-    
-    if product_count > 0:
-        raise BusinessLogicError(f'No se puede eliminar la unidad "{uom.name}" porque está asociada a {product_count} producto(s).')
     
     try:
-        uom_name = uom.name
-        session.delete(uom)
-        session.commit()
+        uom = session.query(UOM).filter(UOM.id == uom_id, UOM.tenant_id == g.tenant_id).first()
         
-        invalidate_settings_cache(g.tenant_id, ['uom'])
-        flash(f'Unidad de medida "{uom_name}" eliminada exitosamente.', 'success')
-        return redirect(url_for('settings.list_uoms'))
+        if not uom:
+            flash('Unidad de medida no encontrada.', 'warning')
+            return redirect(url_for('settings.list_uoms'))
+        
+        product_count = session.query(func.count(Product.id)).filter(
+            Product.tenant_id == g.tenant_id,
+            Product.uom_id == uom_id
+        ).scalar()
+        
+        if product_count > 0:
+            flash(
+                f'No se puede eliminar la unidad "{uom.name}" porque está asociada a {product_count} producto(s).',
+                'warning'
+            )
+            return redirect(url_for('settings.list_uoms'))
+        
+        try:
+            uom_name = uom.name
+            session.delete(uom)
+            session.commit()
+            
+            invalidate_settings_cache(g.tenant_id, ['uom'])
+            flash(f'Unidad de medida "{uom_name}" eliminada exitosamente.', 'success')
+        except Exception as e:
+            session.rollback()
+            current_app.logger.error(f"Error deleting UOM {uom_id}: {e}")
+            flash(f'Error al eliminar unidad de medida: {str(e)}', 'danger')
     except Exception as e:
         session.rollback()
-        current_app.logger.error(f"Error deleting UOM {uom_id}: {e}")
-        raise BusinessLogicError(f'Error al eliminar unidad de medida: {str(e)}')
+        flash(f'Error al eliminar unidad de medida: {str(e)}', 'danger')
+    
+    return redirect(url_for('settings.list_uoms'))
 
 
 # ============================================================================
@@ -413,31 +424,42 @@ def edit_category(category_id: int) -> Union[str, Response]:
 def delete_category(category_id: int) -> Response:
     """Delete category if not in use (tenant-scoped)."""
     session = get_session()
-    category = session.query(Category).filter(Category.id == category_id, Category.tenant_id == g.tenant_id).first()
-    
-    if not category:
-        raise NotFoundError('No encontrado')
-    
-    product_count = session.query(func.count(Product.id)).filter(
-        Product.tenant_id == g.tenant_id,
-        Product.category_id == category_id
-    ).scalar()
-    
-    if product_count > 0:
-        raise BusinessLogicError(f'No se puede eliminar la categoría "{category.name}" porque está asociada a {product_count} producto(s).')
     
     try:
-        category_name = category.name
-        session.delete(category)
-        session.commit()
+        category = session.query(Category).filter(Category.id == category_id, Category.tenant_id == g.tenant_id).first()
         
-        invalidate_settings_cache(g.tenant_id, ['categories', 'products'])
-        flash(f'Categoría "{category_name}" eliminada exitosamente.', 'success')
-        return redirect(url_for('settings.list_categories'))
+        if not category:
+            flash('Categoría no encontrada.', 'warning')
+            return redirect(url_for('settings.list_categories'))
+        
+        product_count = session.query(func.count(Product.id)).filter(
+            Product.tenant_id == g.tenant_id,
+            Product.category_id == category_id
+        ).scalar()
+        
+        if product_count > 0:
+            flash(
+                f'No se puede eliminar la categoría "{category.name}" porque está asociada a {product_count} producto(s).',
+                'warning'
+            )
+            return redirect(url_for('settings.list_categories'))
+        
+        try:
+            category_name = category.name
+            session.delete(category)
+            session.commit()
+            
+            invalidate_settings_cache(g.tenant_id, ['categories', 'products'])
+            flash(f'Categoría "{category_name}" eliminada exitosamente.', 'success')
+        except Exception as e:
+            session.rollback()
+            current_app.logger.error(f"Error deleting category {category_id}: {e}")
+            flash(f'Error al eliminar categoría: {str(e)}', 'danger')
     except Exception as e:
         session.rollback()
-        current_app.logger.error(f"Error deleting category {category_id}: {e}")
-        raise BusinessLogicError(f'Error al eliminar categoría: {str(e)}')
+        flash(f'Error al eliminar categoría: {str(e)}', 'danger')
+    
+    return redirect(url_for('settings.list_categories'))
 
 
 # ============================================================================

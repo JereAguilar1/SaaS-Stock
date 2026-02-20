@@ -25,7 +25,7 @@ def list_ledger():
         method = request.args.get('method', 'all').lower().strip()
         
         # Validate method
-        if method not in ['all', 'cash', 'transfer']:
+        if method not in ['all', 'cash', 'transfer', 'card', 'cuenta_corriente']:
             flash('Método de pago inválido. Mostrando todos.', 'info')
             method = 'all'
         
@@ -43,6 +43,10 @@ def list_ledger():
             query = query.filter(FinanceLedger.payment_method == 'CASH')
         elif method == 'transfer':
             query = query.filter(FinanceLedger.payment_method == 'TRANSFER')
+        elif method == 'card':
+            query = query.filter(FinanceLedger.payment_method == 'CARD')
+        elif method == 'cuenta_corriente':
+            query = query.filter(FinanceLedger.payment_method == 'CUENTA_CORRIENTE')
         
         # Filter by date range
         if start_str:

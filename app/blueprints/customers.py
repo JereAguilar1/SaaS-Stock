@@ -270,23 +270,52 @@ def view_customer(customer_id: int) -> Union[str, Response]:
 def delete_customer(customer_id: int) -> Response:
     """Delete a customer (tenant-scoped)."""
     session = get_session()
-    customer = session.query(Customer).filter(Customer.id == customer_id, Customer.tenant_id == g.tenant_id).first()
     
-    if not customer:
-        raise NotFoundError('Cliente no encontrado')
-    
-    customer_name = customer.name
     try:
-        session.delete(customer)
-        session.commit()
-        flash(f'Cliente "{customer_name}" eliminado exitosamente', 'success')
-        return redirect(url_for('customers.list_customers'))
-    except IntegrityError:
-        session.rollback()
-        raise BusinessLogicError(f'No se puede eliminar el cliente "{customer_name}" porque tiene ventas o registros asociados.')
+        customer = session.query(Customer).filter(Customer.id == customer_id, Customer.tenant_id == g.tenant_id).first()
+        
+        if not customer:
+            flash('Cliente no encontrado.', 'warning')
+            return redirect(url_for('customers.list_customers'))
+        
+        customer_name = customer.name
+        
+        # 1. Regla de Negocio: No eliminar si hay deuda
+        from app.models import Sale, SaleStatus, PaymentStatus
+        pending_sales = session.query(Sale).filter(
+            Sale.customer_id == customer_id,
+            Sale.tenant_id == g.tenant_id,
+            Sale.status == SaleStatus.CONFIRMED,
+            Sale.payment_status.in_([PaymentStatus.PENDING, PaymentStatus.PARTIAL])
+        ).all()
+        
+        total_debt = sum(
+            float(sale.total or 0) - float(sale.amount_paid or 0)
+            for sale in pending_sales
+        )
+        
+        if total_debt > 0:
+            flash(f'No se puede eliminar a "{customer_name}" porque tiene un saldo pendiente en su Cuenta Corriente. Debe cancelar la deuda primero.', 'warning')
+            return redirect(url_for('customers.list_customers'))
+
+        try:
+            # 2. Intentar eliminar físicamente
+            session.delete(customer)
+            session.commit()
+            flash(f'Cliente "{customer_name}" eliminado exitosamente.', 'success')
+        except IntegrityError:
+            # 3. Falla porque tiene ventas/pagos históricos (Llave Foránea)
+            session.rollback()
+            flash(
+                f'No se puede eliminar a "{customer_name}" porque tiene un historial de ventas o pagos asociado. Por favor, utilice la opción "Desactivar".',
+                'warning'
+            )
     except Exception as e:
+        # 4. Atrapar cualquier otro error
         session.rollback()
-        raise BusinessLogicError(f'Error al eliminar cliente: {str(e)}')
+        flash(f'No se pudo eliminar el cliente: {str(e)}', 'warning')
+    
+    return redirect(url_for('customers.list_customers'))
 
 
 @customers_bp.route('/<int:customer_id>/account')
