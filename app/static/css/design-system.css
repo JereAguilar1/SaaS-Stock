@@ -351,7 +351,9 @@ button {
    --color-success-dark: #6ee7b7;
    --color-warning-light: #78350f;
    --color-warning-dark: #fcd34d;
-   --color-danger-light: #7f1d1d;
+   --color-warning: #d4a35d;
+   --color-danger: #D45D5D;
+   --color-danger-light: #5C2A2A;
    --color-danger-dark: #fca5a5;
    --color-info-light: #1e3a5f;
    --color-info-dark: #93c5fd;
@@ -718,4 +720,28 @@ button {
 [data-bs-theme="dark"] .cart-item-title,
 [data-bs-theme="dark"] .product-title {
    color: #adb5bd !important;
+}
+
+/* =======================================================
+   AJUSTE DE COLOR ROJO (DANGER) PARA MODO OSCURO
+   ======================================================= */
+
+[data-bs-theme="dark"] {
+   /* Rojo Tomate Suave - Cálido y legible */
+   --bs-danger: #D45D5D !important;
+   --bs-danger-rgb: 212, 93, 93 !important;
+
+   /* Texto danger más claro sobre fondo oscuro */
+   --bs-danger-text-emphasis: #ffb3b3 !important;
+}
+
+/* Aplicar el nuevo color suave a textos y badges danger */
+[data-bs-theme="dark"] .text-danger {
+   color: var(--bs-danger) !important;
+}
+
+[data-bs-theme="dark"] .bg-danger,
+[data-bs-theme="dark"] .badge.bg-danger {
+   background-color: var(--bs-danger) !important;
+   color: #212529 !important;
 }
