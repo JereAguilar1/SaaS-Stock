@@ -21,10 +21,11 @@
                     <div style="position: relative;">
                         <i class="bi bi-search"
                             style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted);"></i>
-                        <input type="text" class="form-input-custom" id="q" name="q" value="{{ search_query or '' }}"
-                            placeholder="Buscar por ID o monto total" style="padding-left: 36px;"
-                            hx-get="{{ url_for('sales.list_sales') }}" hx-trigger="input changed delay:350ms, search"
-                            hx-target="#sales-list-container" hx-swap="innerHTML" hx-push-url="true" autocomplete="off">
+                        <input type="text" class="form-input-custom" id="q" name="q"
+                            value="{{ request.args.get('q', '') }}" placeholder="Buscar por ID o nombre del cliente..."
+                            style="padding-left: 36px;" hx-get="{{ url_for('sales.list_sales') }}"
+                            hx-trigger="input changed delay:350ms, search" hx-target="#sales-list-container"
+                            hx-select="#sales-list-container" hx-swap="outerHTML" hx-push-url="true" autocomplete="off">
                     </div>
                 </div>
             </div>

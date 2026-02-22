@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 import decimal
 from datetime import datetime
 from app.database import get_session
-from app.models import Product, ProductStock, Sale, SaleLine, SaleStatus, SaleDraft, Category
+from app.models import Product, ProductStock, Sale, SaleLine, SaleStatus, SaleDraft, Category, Customer
 from app.services.sales_service import confirm_sale, confirm_sale_from_draft
 from app.services import sale_draft_service
 from app.services.top_products_service import get_top_selling_products
@@ -668,8 +668,8 @@ def list_sales() -> Union[str, Response]:
     db_session = get_session()
     
     try:
-        # Get search params
-        sale_id_search = request.args.get('id', '').strip()
+        # Capturar término de búsqueda
+        q = request.args.get('q', '').strip()
         
         # Build query (tenant-scoped)
         query = db_session.query(Sale).options(joinedload(Sale.customer)).filter(
@@ -677,20 +677,21 @@ def list_sales() -> Union[str, Response]:
             Sale.status == SaleStatus.CONFIRMED
         )
         
-        # Search by ID
-        if sale_id_search:
-            try:
-                sale_id = int(sale_id_search)
-                query = query.filter(Sale.id == sale_id)
-            except ValueError:
-                flash('ID de venta inválido', 'warning')
+        if q:
+            if q.isdigit():
+                # Si el usuario escribió números, buscamos por ID de la venta
+                query = query.filter(Sale.id == int(q))
+            else:
+                # Si escribió texto, buscamos por nombre del cliente
+                # Hacemos un JOIN con Customer para poder filtrar por su nombre
+                query = query.join(Customer).filter(Customer.name.ilike(f'%{q}%'))
         
         # Order by most recent first
         sales = query.order_by(Sale.datetime.desc()).all()
         
         return render_template('sales/list.html', 
                              sales=sales,
-                             sale_id_search=sale_id_search)
+                             search_query=q)
         
     except Exception as e:
         flash(f'Error al cargar ventas: {str(e)}', 'danger')
