@@ -706,6 +706,7 @@ def detail_sale(sale_id: int) -> Union[str, Response]:
     db_session = get_session()
     
     try:
+        from app.models import SaleStatus, PaymentStatus
         sale = db_session.query(Sale).filter(
             Sale.id == sale_id,
             Sale.tenant_id == g.tenant_id
@@ -713,8 +714,21 @@ def detail_sale(sale_id: int) -> Union[str, Response]:
         
         if not sale:
             abort(404)
+            
+        total_debt = 0
+        if sale.customer:
+            pending_sales = db_session.query(Sale).filter(
+                Sale.customer_id == sale.customer_id,
+                Sale.tenant_id == g.tenant_id,
+                Sale.status == SaleStatus.CONFIRMED,
+                Sale.payment_status.in_([PaymentStatus.PENDING, PaymentStatus.PARTIAL])
+            ).all()
+            total_debt = sum(
+                float(s.total or 0) - float(s.amount_paid or 0)
+                for s in pending_sales
+            )
         
-        return render_template('sales/detail.html', sale=sale)
+        return render_template('sales/detail.html', sale=sale, total_debt=total_debt)
         
     except Exception as e:
         flash(f'Error al cargar venta: {str(e)}', 'danger')
