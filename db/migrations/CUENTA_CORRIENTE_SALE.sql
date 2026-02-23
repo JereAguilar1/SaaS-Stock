@@ -25,6 +25,9 @@ SET amount_paid = total, payment_status = 'PAID'
 WHERE amount_paid = 0;
 
 -- 4. Index for efficient cuenta corriente queries
+COMMIT;
+
+BEGIN;
 CREATE INDEX IF NOT EXISTS idx_sale_customer_payment_status
 ON sale(customer_id, payment_status)
 WHERE payment_status IN ('PENDING', 'PARTIAL');
