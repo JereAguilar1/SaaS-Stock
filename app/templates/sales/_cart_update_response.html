@@ -2,30 +2,16 @@
 
 <span id="cart-total-display" hx-swap-oob="true">${{ totals.total|money_ar }}</span>
 
-<!-- Update hidden inputs for payment -->
-<!-- Update hidden inputs for payment -->
-<input type="hidden" name="payments[0][amount]" id="payment-amount-input" value="{{ totals.total }}" hx-swap-oob="true">
+<!-- Update hidden inputs for payment (split-payment compatible) -->
+<input type="hidden" name="payments[0][amount]" id="payment-amount-input-0" value="{{ totals.total }}"
+     hx-swap-oob="true">
 
-<!-- Smart Update for Amount Received -->
+<!-- Smart Update for Amount Received (payment 1) -->
 {% if not session.get('cash_overridden') %}
-<!-- If NO override: Sync visible input and hidden input to new total -->
-<input type="text" id="amount_received" hx-swap-oob="true" value="{{ (totals.total|round(0, 'ceil'))|int|num_ar }}"
-     class="form-control no-spinner text-end" name="amount_received_display" inputmode="numeric"
-     onfocus="if(this.value === '0' || this.value === '0.00') this.value = '';"
-     hx-post="{{ url_for('sales.draft_payment_update_cash') }}" hx-trigger="blur, change, keyup[key=='Enter']"
-     hx-swap="none" placeholder="Monto recibido">
+<!-- If NO override: Sync visible input to new total -->
+<input type="text" id="amount_received_1" hx-swap-oob="true" value="{{ (totals.total|round(0, 'ceil'))|int|num_ar }}"
+     class="form-control text-end payment-amount-input" inputmode="numeric" placeholder="Monto">
 
-<input type="hidden" name="payments[0][amount_received]" id="payment-received-input"
+<input type="hidden" name="payments[0][amount_received]" id="payment-received-input-0"
      value="{{ (totals.total|round(0, 'ceil'))|int }}" hx-swap-oob="true">
-{% else %}
-<!-- If override IS active: 
-         - Keep visible input as is (manual value)
-         - Keep hidden input as is (manual value)
-         - BUT we must verify if we need to update 'change' display (vuelto)
-    -->
-<div id="change-display" class="text-end mt-1 text-success fw-bold" style="display: block;" hx-swap-oob="true">
-     Vuelto: $<span id="change-amount">{{ ((session.get('cash_amount')|float - totals.total|float)|round(2))|money_ar if
-          (session.get('cash_amount')|float - totals.total|float) > 0 else "0"
-          }}</span>
-</div>
 {% endif %}

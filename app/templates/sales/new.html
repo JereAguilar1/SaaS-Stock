@@ -235,7 +235,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeSearch();
             initializeCustomerSearch();
-            syncCartTotal();
+            enforcePaymentLogic('init');
         });
 
         // Re-initialize if HTMX swaps content
@@ -255,39 +255,232 @@
             }
         });
 
-        // Sync Total to Amount Received
-        function syncCartTotal() {
-            const totalSpan = document.getElementById('cart-total-display');
-            const amountInput = document.getElementById('amount_received');
+        // =====================================================
+        // ADVANCED PAYMENT LOGIC (enforcePaymentLogic)
+        // =====================================================
+        let lastCartTotal = 0;
 
-            if (totalSpan && amountInput) {
-                // Obtenemos el texto exacto que dice el total (ej: "$2.000" o "$ 5.500")
-                let rawTotal = totalSpan.innerText || totalSpan.textContent;
+        // Utilidad: Convertir texto "$ 2.000,50" o "2000" a número limpio
+        function parseAmount(text) {
+            if (!text) return 0;
+            let clean = text.toString().replace('$', '').trim();
+            clean = clean.replace(/\./g, '').replace(',', '.'); // Manejo de separadores latinos
+            return parseFloat(clean) || 0;
+        }
 
-                // Le sacamos el símbolo $ y los espacios en blanco
-                let cleanTotal = rawTotal.replace('$', '').trim();
+        function getCartTotal() {
+            const span = document.getElementById('cart-total-display');
+            return span ? parseAmount(span.innerText) : 0;
+        }
 
-                // Lógica: Si el carrito se vació, limpiamos el input. Si no, copiamos el total.
-                if (cleanTotal === '0' || cleanTotal === '0,00' || cleanTotal === '0.00' || cleanTotal === '') {
-                    amountInput.value = '';
-                } else {
-                    amountInput.value = cleanTotal;
+        // Lógica principal y restricciones de caja
+        function enforcePaymentLogic(source) {
+            source = source || 'unknown';
+            const total = getCartTotal();
+            const method1 = document.getElementById('payment_method_1')?.value;
+            const input1 = document.getElementById('amount_received_1');
+
+            if (!input1) return;
+
+            // Si el carrito está vacío, limpiar todo
+            if (total === 0) {
+                input1.value = '';
+                const input2 = document.getElementById('amount_received_2');
+                if (isSplitPayment && input2) input2.value = '';
+                lastCartTotal = 0;
+                return;
+            }
+
+            // Si el carrito cambió (HTMX), resetear el Monto 1 al nuevo Total
+            if (source === 'cart_update' || total !== lastCartTotal) {
+                if (source !== 'typing_amount_1' && source !== 'typing_amount_2') {
+                    input1.value = formatIntegerAr(Math.ceil(total));
                 }
+                lastCartTotal = total;
+            }
+
+            let val1 = parseAmount(input1.value);
+
+            // REGLA 1: Si Método 1 NO es Efectivo, el Monto 1 no puede ser mayor al Total
+            if (method1 !== 'CASH' && val1 > total) {
+                val1 = total;
+                input1.value = formatIntegerAr(Math.ceil(val1));
+            }
+
+            // REGLA 2 y 3: Lógica del Pago Dividido
+            if (isSplitPayment) {
+                const method2Sel = document.getElementById('payment_method_2');
+                const method2 = method2Sel ? method2Sel.value : '';
+                const input2 = document.getElementById('amount_received_2');
+
+                // Calculamos cuánto falta pagar (nunca menos de 0 si dio cash de más)
+                let remaining = Math.max(0, total - val1);
+
+                if (input2) {
+                    // Si el Método 2 NO es Efectivo: Bloqueamos edición y forzamos el restante
+                    if (method2 !== 'CASH') {
+                        input2.value = remaining > 0 ? formatIntegerAr(Math.round(remaining)) : '0';
+                        input2.setAttribute('readonly', true);
+                        input2.style.backgroundColor = 'var(--bs-secondary-bg)';
+                        input2.style.pointerEvents = 'none';
+                    } else {
+                        // Si el Método 2 ES Efectivo: Desbloqueamos para vuelto
+                        input2.removeAttribute('readonly');
+                        input2.style.backgroundColor = '';
+                        input2.style.pointerEvents = 'auto';
+
+                        // Solo auto-completamos si no viene de tipeo en monto 2
+                        if (source !== 'typing_amount_2') {
+                            input2.value = remaining > 0 ? formatIntegerAr(Math.round(remaining)) : '0';
+                        }
+                    }
+                }
+            }
+
+            // Mostrar/ocultar warning de Cuenta Corriente
+            const method2Val = isSplitPayment ? (document.getElementById('payment_method_2')?.value || '') : '';
+            const hasCC = method1 === 'CUENTA_CORRIENTE' || method2Val === 'CUENTA_CORRIENTE';
+            const ccWarning = document.getElementById('cuenta-corriente-warning');
+            if (ccWarning) {
+                ccWarning.style.display = hasCC ? 'block' : 'none';
             }
         }
 
-        // Sincronizar CADA VEZ que HTMX actualiza cualquier parte de la pantalla
-        // Usamos afterSettle para asegurarnos de que el HTML nuevo ya esté renderizado
-        document.body.addEventListener('htmx:afterSettle', function (evt) {
-            syncCartTotal();
+        // Funciones para activar/desactivar el panel de Pago Dividido
+        function enableSplitPayment() {
+            isSplitPayment = true;
+            document.getElementById('payment-row-2').classList.remove('d-none');
+            document.getElementById('split-payment-btn-container').classList.add('d-none');
+            enforcePaymentLogic('ui_change');
+        }
+
+        function disableSplitPayment() {
+            isSplitPayment = false;
+            document.getElementById('payment-row-2').classList.add('d-none');
+            document.getElementById('split-payment-btn-container').classList.remove('d-none');
+
+            const pm2 = document.getElementById('payment_method_2');
+            const amt2 = document.getElementById('amount_received_2');
+            if (pm2) pm2.value = '';
+            if (amt2) {
+                amt2.value = '';
+                amt2.removeAttribute('readonly');
+                amt2.style.backgroundColor = '';
+                amt2.style.pointerEvents = 'auto';
+            }
+
+            // Monto 1 vuelve a absorber el total
+            const input1 = document.getElementById('amount_received_1');
+            if (input1) input1.value = formatIntegerAr(Math.ceil(getCartTotal()));
+            enforcePaymentLogic('ui_change');
+        }
+
+        // Inicializar escuchadores de eventos para pagos
+        document.addEventListener('DOMContentLoaded', function () {
+            enforcePaymentLogic('init');
+
+            // 1. Escuchar actualizaciones del Carrito (HTMX)
+            document.body.addEventListener('htmx:afterSettle', () => enforcePaymentLogic('cart_update'));
+
+            // 2. Escuchar cuando el usuario tipea en el Monto 1
+            const input1 = document.getElementById('amount_received_1');
+            if (input1) {
+                input1.addEventListener('input', () => enforcePaymentLogic('typing_amount_1'));
+            }
+
+            // 3. Escuchar cuando el usuario tipea en el Monto 2
+            const input2 = document.getElementById('amount_received_2');
+            if (input2) {
+                input2.addEventListener('input', () => enforcePaymentLogic('typing_amount_2'));
+            }
+
+            // 4. Escuchar cambios en los métodos de pago (Dropdowns)
+            document.getElementById('payment_method_1')?.addEventListener('change', () => enforcePaymentLogic('method_change'));
+            document.getElementById('payment_method_2')?.addEventListener('change', () => enforcePaymentLogic('method_change'));
         });
 
-        // (Opcional) Sincronizar si cambia el método de pago
-        document.addEventListener('DOMContentLoaded', function () {
-            const paymentMethodSelect = document.getElementById('payment_method');
-            if (paymentMethodSelect) {
-                paymentMethodSelect.addEventListener('change', syncCartTotal);
+        // =====================================================
+        // DELEGATED POS LOGIC (survives HTMX DOM replacements)
+        // =====================================================
+
+        // Función auxiliar para convertir texto a número puro
+        function parsePosAmount(text) {
+            if (!text) return 0;
+            let clean = text.toString().replace('$', '').trim();
+            clean = clean.replace(/\./g, '').replace(',', '.');
+            return parseFloat(clean) || 0;
+        }
+
+        // Función maestra que recalcula toda la caja
+        function calculatePosLogic() {
+            const totalSpan = document.getElementById('cart-total-display');
+            if (!totalSpan) return;
+
+            const total = parsePosAmount(totalSpan.innerText || totalSpan.textContent);
+
+            // Elementos del Pago 1
+            const method1 = document.getElementById('payment_method_1')?.value || '';
+            const input1 = document.getElementById('amount_received_1');
+            let val1 = input1 ? parsePosAmount(input1.value) : 0;
+
+            // Elementos del Pago 2
+            const method2 = document.getElementById('payment_method_2')?.value || '';
+            const input2 = document.getElementById('amount_received_2');
+            const row2 = document.getElementById('payment-row-2');
+            const isSplitActive = row2 && !row2.classList.contains('d-none');
+            let val2 = (isSplitActive && input2) ? parsePosAmount(input2.value) : 0;
+
+            // --- REGLA 1: PAGO 1 ---
+            // Si NO es efectivo, bloqueamos que ponga de más
+            if (method1 !== 'CASH' && val1 > total) {
+                val1 = total;
+                if (input1) input1.value = val1;
             }
+
+            // --- REGLA 2: PAGO 2 (Si existe) ---
+            if (isSplitActive && input2) {
+                let remainingForSecond = Math.max(0, total - val1);
+
+                // Si el Pago 2 NO es efectivo, no puede superar lo que falta pagar
+                if (method2 !== 'CASH' && val2 > remainingForSecond) {
+                    val2 = remainingForSecond;
+                    input2.value = val2;
+                }
+            }
+
+            // --- REGLA 3: CÁLCULO DE VUELTO ---
+            const changeContainer = document.getElementById('change-display-container');
+            const changeDisplay = document.getElementById('change-amount-display');
+
+            let totalReceived = val1 + val2;
+            let vuelto = totalReceived - total;
+
+            // Solo mostramos el vuelto si sobra plata y al menos UN método es Efectivo
+            if (vuelto > 0 && (method1 === 'CASH' || (isSplitActive && method2 === 'CASH'))) {
+                if (changeContainer) changeContainer.classList.remove('d-none');
+                if (changeDisplay) changeDisplay.innerText = '$ ' + vuelto.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+            } else {
+                if (changeContainer) changeContainer.classList.add('d-none');
+            }
+        }
+
+        // Escuchamos cualquier tipeo en los inputs de monto
+        document.body.addEventListener('input', function (evt) {
+            if (evt.target.id === 'amount_received_1' || evt.target.id === 'amount_received_2') {
+                calculatePosLogic();
+            }
+        });
+
+        // Escuchamos si el usuario cambia el método de pago
+        document.body.addEventListener('change', function (evt) {
+            if (evt.target.id === 'payment_method_1' || evt.target.id === 'payment_method_2') {
+                calculatePosLogic();
+            }
+        });
+
+        // Escuchamos cuando HTMX actualiza el carrito
+        document.body.addEventListener('htmx:afterSettle', function () {
+            calculatePosLogic();
         });
     </script>
     {% endblock %}

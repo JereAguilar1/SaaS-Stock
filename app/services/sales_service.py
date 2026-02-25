@@ -145,20 +145,38 @@ def confirm_sale_from_draft(
         if sale_total <= 0:
             raise BusinessLogicError('El total de la venta debe ser mayor a 0')
         
-        # Detect if this is a Cuenta Corriente (credit) sale
-        is_cuenta_corriente = (
-            len(payments) == 1 and
-            payments[0].get('method', '').upper() == 'CUENTA_CORRIENTE'
-        )
+        # Detect payment composition
+        cc_payments = [p for p in payments if p.get('method', '').upper() == 'CUENTA_CORRIENTE']
+        non_cc_payments = [p for p in payments if p.get('method', '').upper() != 'CUENTA_CORRIENTE']
         
-        if is_cuenta_corriente:
-            # Cuenta Corriente requires a customer
-            if not customer_id:
-                raise BusinessLogicError('Para usar Cuenta Corriente debe seleccionar un Cliente registrado')
+        is_full_cuenta_corriente = len(cc_payments) == len(payments)  # All payments are CC
+        has_cuenta_corriente = len(cc_payments) > 0  # At least one CC payment
+        
+        # CC always requires a customer
+        if has_cuenta_corriente and not customer_id:
+            raise BusinessLogicError('Para usar Cuenta Corriente debe seleccionar un Cliente registrado')
+        
+        # Validate totals for non-CC payments
+        if not is_full_cuenta_corriente:
+            non_cc_total = sum(Decimal(str(p.get('amount', 0))) for p in non_cc_payments)
+            cc_total = sum(Decimal(str(p.get('amount', 0))) for p in cc_payments)
+            payments_grand_total = non_cc_total + cc_total
+            
+            if payments_grand_total != sale_total:
+                raise BusinessLogicError(f'La suma de pagos (${payments_grand_total}) no coincide con el total (${sale_total})')
+        
+        # Determine payment status and amount_paid
+        if is_full_cuenta_corriente:
+            payment_status = PaymentStatus.PENDING
+            amount_paid = Decimal('0')
+        elif has_cuenta_corriente:
+            # Split with CC: partially paid
+            non_cc_total = sum(Decimal(str(p.get('amount', 0))) for p in non_cc_payments)
+            payment_status = PaymentStatus.PARTIAL
+            amount_paid = non_cc_total
         else:
-            payments_total = sum(Decimal(str(p.get('amount', 0))) for p in payments)
-            if payments_total != sale_total:
-                raise BusinessLogicError(f'La suma de pagos (${payments_total}) no coincide con el total (${sale_total})')
+            payment_status = PaymentStatus.PAID
+            amount_paid = sale_total
             
         # 4. Lock and validate stock
         product_ids = [line['product_id'] for line in totals['lines']]
@@ -173,11 +191,11 @@ def confirm_sale_from_draft(
             tenant_id=tenant_id,
             datetime=datetime.now(),
             total=sale_total,
-            status='CONFIRMED', # Explicit string
+            status='CONFIRMED',
             idempotency_key=idempotency_key,
             customer_id=customer_id,
-            payment_status=PaymentStatus.PENDING if is_cuenta_corriente else PaymentStatus.PAID,
-            amount_paid=Decimal('0') if is_cuenta_corriente else sale_total
+            payment_status=payment_status,
+            amount_paid=amount_paid
         )
         session.add(sale)
         session.flush()
@@ -193,7 +211,6 @@ def confirm_sale_from_draft(
                 unit_price=final_unit_price,
                 line_total=line['line_total']
             ))
-            # Cache for stock movement
             product = session.query(Product).get(line['product_id'])
             sale_lines_data.append({
                 'product_id': line['product_id'],
@@ -201,35 +218,38 @@ def confirm_sale_from_draft(
                 'product': product
             })
             
-        # Create SalePayments (skip for Cuenta Corriente)
-        if not is_cuenta_corriente:
-            for p in payments:
-                method = p['method'].upper()
-                if method not in ['CASH', 'TRANSFER', 'CARD']:
-                    raise BusinessLogicError(f'Método de pago inválido: {method}')
-                session.add(SalePayment(
-                    sale_id=sale.id,
-                    payment_method=method,
-                    amount=Decimal(str(p['amount'])),
-                    amount_received=Decimal(str(p.get('amount_received', 0))) if method == 'CASH' else None,
-                    change_amount=Decimal(str(p.get('change_amount', 0))) if method == 'CASH' else None
-                ))
+        # Create SalePayments for non-CC payments
+        for p in non_cc_payments:
+            method = p['method'].upper()
+            if method not in ['CASH', 'TRANSFER', 'CARD']:
+                raise BusinessLogicError(f'Método de pago inválido: {method}')
+            session.add(SalePayment(
+                sale_id=sale.id,
+                payment_method=method,
+                amount=Decimal(str(p['amount'])),
+                amount_received=Decimal(str(p.get('amount_received', 0))) if method == 'CASH' else None,
+                change_amount=Decimal(str(p.get('change_amount', 0))) if method == 'CASH' else None
+            ))
             
         # 7. Create Stock Movement & Finance Entries
         _create_stock_movement(session, tenant_id, sale.id, sale_lines_data)
-        if not is_cuenta_corriente:
-            _create_ledger_entries(session, tenant_id, sale.id, payments, sale_total)
-        else:
-            # Register CC sale in ledger as devengado income
+        
+        # Ledger entries for non-CC payments (INCOME)
+        if non_cc_payments:
+            _create_ledger_entries(session, tenant_id, sale.id, non_cc_payments, sale_total)
+        
+        # Ledger entry for CC portion (INVOICE - devengado)
+        if has_cuenta_corriente:
+            cc_amount = sum(Decimal(str(p.get('amount', 0))) for p in cc_payments) if not is_full_cuenta_corriente else sale_total
             session.add(FinanceLedger(
                 tenant_id=tenant_id,
                 datetime=datetime.now(),
                 type=LedgerType.INVOICE,
-                amount=sale_total,
+                amount=cc_amount,
                 category='Ventas',
                 reference_type=LedgerReferenceType.SALE,
                 reference_id=sale.id,
-                notes='Creacion de factura',
+                notes='Creacion de factura' if is_full_cuenta_corriente else f'Porcion cuenta corriente de venta #{sale.id}',
                 payment_method='CUENTA_CORRIENTE'
             ))
         
