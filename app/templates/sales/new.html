@@ -235,6 +235,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeSearch();
             initializeCustomerSearch();
+            syncCartTotal();
         });
 
         // Re-initialize if HTMX swaps content
@@ -251,6 +252,41 @@
                 if (customerIdInput && submitCustomerId) {
                     submitCustomerId.value = customerIdInput.value;
                 }
+            }
+        });
+
+        // Sync Total to Amount Received
+        function syncCartTotal() {
+            const totalSpan = document.getElementById('cart-total-display');
+            const amountInput = document.getElementById('amount_received');
+
+            if (totalSpan && amountInput) {
+                // Obtenemos el texto exacto que dice el total (ej: "$2.000" o "$ 5.500")
+                let rawTotal = totalSpan.innerText || totalSpan.textContent;
+
+                // Le sacamos el símbolo $ y los espacios en blanco
+                let cleanTotal = rawTotal.replace('$', '').trim();
+
+                // Lógica: Si el carrito se vació, limpiamos el input. Si no, copiamos el total.
+                if (cleanTotal === '0' || cleanTotal === '0,00' || cleanTotal === '0.00' || cleanTotal === '') {
+                    amountInput.value = '';
+                } else {
+                    amountInput.value = cleanTotal;
+                }
+            }
+        }
+
+        // Sincronizar CADA VEZ que HTMX actualiza cualquier parte de la pantalla
+        // Usamos afterSettle para asegurarnos de que el HTML nuevo ya esté renderizado
+        document.body.addEventListener('htmx:afterSettle', function (evt) {
+            syncCartTotal();
+        });
+
+        // (Opcional) Sincronizar si cambia el método de pago
+        document.addEventListener('DOMContentLoaded', function () {
+            const paymentMethodSelect = document.getElementById('payment_method');
+            if (paymentMethodSelect) {
+                paymentMethodSelect.addEventListener('change', syncCartTotal);
             }
         });
     </script>

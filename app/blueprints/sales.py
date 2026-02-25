@@ -1115,6 +1115,7 @@ def draft_update() -> Union[str, Response]:
     try:
         product_id = int(request.form.get('product_id'))
         qty_str = request.form.get('qty', '').strip()
+        price_str = request.form.get('price', '').strip()
         discount_type = request.form.get('discount_type')
         discount_value_str = request.form.get('discount_value', '0').strip()
         
@@ -1154,13 +1155,22 @@ def draft_update() -> Union[str, Response]:
                 # Example: 1.2 -> 1, 1.8 -> 2
                 qty = qty.quantize(Decimal('1'), rounding=decimal.ROUND_HALF_UP)
         
+        # Parse unit_price safely
+        unit_price = None
+        if price_str:
+            try:
+                unit_price = Decimal(price_str)
+            except decimal.InvalidOperation:
+                raise ValueError("Precio inválido")
+        
         # Update line
         sale_draft_service.update_draft_line(
             db_session, draft.id, product_id,
             qty=qty,
             discount_type=discount_type if discount_type else None,
             discount_value=discount_value,
-            tenant_id=g.tenant_id
+            tenant_id=g.tenant_id,
+            unit_price=unit_price
         )
         
         db_session.commit()

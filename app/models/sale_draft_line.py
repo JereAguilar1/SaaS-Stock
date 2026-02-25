@@ -18,6 +18,7 @@ class SaleDraftLine(Base):
     product_id = Column(BigInteger, ForeignKey('product.id'), nullable=False, index=True)
     
     qty = Column(Numeric(10, 2), nullable=False)
+    unit_price = Column(Numeric(10, 2), nullable=True)
     
     # Item-level discount (applied to this line only)
     discount_type = Column(String(10))  # 'PERCENT' or 'AMOUNT' or NULL

@@ -74,7 +74,12 @@ def add_product_to_draft(
     else:
         if qty > product.on_hand_qty:
             raise InsufficientStockError(product.name, qty, product.on_hand_qty)
-        line = SaleDraftLine(draft_id=draft_id, product_id=product_id, qty=qty)
+        line = SaleDraftLine(
+            draft_id=draft_id,
+            product_id=product_id,
+            qty=qty,
+            unit_price=product.sale_price
+        )
         session.add(line)
         
     draft.updated_at = datetime.now()
@@ -89,7 +94,8 @@ def update_draft_line(
     qty: Optional[Decimal] = None,
     discount_type: Optional[str] = None,
     discount_value: Optional[Decimal] = Decimal('0'),
-    tenant_id: int = None
+    tenant_id: int = None,
+    unit_price: Optional[Decimal] = None
 ) -> SaleDraftLine:
     """Update draft line quantity or discount."""
     draft = session.query(SaleDraft).filter(SaleDraft.id == draft_id, SaleDraft.tenant_id == tenant_id).first()
@@ -106,6 +112,12 @@ def update_draft_line(
         if qty > line.product.on_hand_qty:
             raise InsufficientStockError(line.product.name, qty, line.product.on_hand_qty)
         line.qty = qty
+    
+    # Update unit price if provided
+    if unit_price is not None:
+        if unit_price <= 0:
+            raise BusinessLogicError('El precio debe ser mayor a 0.')
+        line.unit_price = unit_price
     
     # Update discount fields
     line.discount_type = discount_type
@@ -148,7 +160,7 @@ def calculate_draft_totals(draft: SaleDraft) -> Dict[str, Any]:
     subtotal = Decimal('0')
     
     for line in draft.lines:
-        unit_price = line.product.sale_price
+        unit_price = line.unit_price if line.unit_price is not None else line.product.sale_price
         line_subtotal = (line.qty * unit_price).quantize(Decimal('0.01'))
         
         lines_details.append({

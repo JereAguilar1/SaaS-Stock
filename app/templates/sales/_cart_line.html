@@ -42,6 +42,19 @@
             </form>
         </div>
 
+        <!-- Unit Price Input -->
+        <div class="price-control">
+            <div class="input-group input-group-sm" style="width: 110px;">
+                <span class="input-group-text" style="padding: 0.15rem 0.4rem; font-size: 0.8rem;">$</span>
+                <input type="number" step="0.01" min="0.01" class="form-control form-control-sm text-end price-input"
+                    style="font-weight: 600; padding: 0.15rem 0.3rem; font-size: 0.85rem;" name="price"
+                    value="{{ line.unit_price or line.product.sale_price }}" onfocus="this.select();"
+                    hx-post="{{ url_for('sales.draft_update') }}" hx-trigger="change"
+                    hx-target="#cart-line-{{ line.product_id }}" hx-swap="outerHTML"
+                    hx-vals='{"product_id": "{{ line.product_id }}", "qty": "{{ line.qty }}"}'>
+            </div>
+        </div>
+
         <div class="cart-item-price">
             ${{ line.line_total|default(0)|money_ar_2 }}
         </div>
