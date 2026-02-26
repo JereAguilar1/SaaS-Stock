@@ -91,10 +91,11 @@ def adjust_sale(sale_id: int, new_lines_data: List[Dict[str, Any]], session: Ses
             
             for pid, delta in deltas.items():
                 if delta > 0: # Sold more -> needs more stock
-                    stock = stocks_dict.get(pid)
-                    if not stock or stock.on_hand_qty < delta:
-                        name = products_dict[pid].name
-                        raise InsufficientStockError(f'Stock insuficiente para "{name}" (necesita {delta} más).')
+                    product = products_dict[pid]
+                    if not product.is_unlimited_stock:
+                        stock = stocks_dict.get(pid)
+                        if not stock or stock.on_hand_qty < delta:
+                            raise InsufficientStockError(f'Stock insuficiente para "{product.name}" (necesita {delta} más).')
 
         # 6. Rebuild Sale Lines
         session.query(SaleLine).filter(SaleLine.sale_id == sale_id).delete()
@@ -120,6 +121,8 @@ def adjust_sale(sale_id: int, new_lines_data: List[Dict[str, Any]], session: Ses
             session.add(move)
             session.flush()
             for pid, delta in deltas.items():
+                if products_dict[pid].is_unlimited_stock:
+                    continue  # Don't adjust stock for unlimited products
                 session.add(StockMoveLine(
                     stock_move_id=move.id, product_id=pid, qty=-delta, # Sold more means stock moves OUT (-)
                     uom_id=products_dict[pid].uom_id

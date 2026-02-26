@@ -402,6 +402,7 @@ def create_product() -> Union[str, Response]:
         cost = float(_sanitize_amount(request.form.get('cost', '0')))
         min_stock_qty = int(float(request.form.get('min_stock_qty', '0') or 0))
         active = request.form.get('active') == 'on'
+        is_unlimited_stock = request.form.get('is_unlimited_stock') == 'true'
         
         # 3. Handle image
         image_url = None
@@ -419,6 +420,7 @@ def create_product() -> Union[str, Response]:
             sale_price=sale_price,
             cost=cost,
             active=active,
+            is_unlimited_stock=is_unlimited_stock,
             image_path=image_url,
             image_original_path=image_url,
             min_stock_qty=min_stock_qty
@@ -517,6 +519,7 @@ def update_product(product_id: int) -> Union[str, Response]:
         product.cost = float(_sanitize_amount(request.form.get('cost', '0')))
         product.min_stock_qty = int(float(request.form.get('min_stock_qty', '0') or 0))
         product.active = request.form.get('active') == 'on'
+        product.is_unlimited_stock = request.form.get('is_unlimited_stock') == 'true'
 
         # 3. Handle Image
         if 'image' in request.files:
@@ -615,6 +618,40 @@ def toggle_active(product_id: int) -> Response:
         session.rollback()
         logger.error(f"Error toggle_active for product {product_id}: {str(e)}", exc_info=True)
         raise BusinessLogicError(f'Error al cambiar estado: {str(e)}')
+
+
+@catalog_bp.route('/<int:product_id>/toggle-unlimited', methods=['POST'])
+@require_login
+@require_tenant
+def toggle_unlimited(product_id: int) -> Response:
+    """Toggle product unlimited stock status (HTMX endpoint, tenant-scoped)."""
+    session = get_session()
+    
+    try:
+        product = session.query(Product).filter(
+            Product.id == product_id,
+            Product.tenant_id == g.tenant_id
+        ).first()
+        
+        if not product:
+            raise NotFoundError('Producto no encontrado')
+        
+        product.is_unlimited_stock = not product.is_unlimited_stock
+        session.commit()
+        invalidate_products_cache(g.tenant_id)
+        
+        status = 'activado' if product.is_unlimited_stock else 'desactivado'
+        flash(f'Stock ilimitado {status} para "{product.name}"', 'success')
+        
+        return redirect(url_for('catalog.list_products'))
+        
+    except (BusinessLogicError, NotFoundError) as e:
+        session.rollback()
+        raise e
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error toggle_unlimited for product {product_id}: {str(e)}", exc_info=True)
+        raise BusinessLogicError(f'Error al cambiar stock ilimitado: {str(e)}')
 
 
 @catalog_bp.route('/<int:product_id>/delete', methods=['POST'])

@@ -204,9 +204,22 @@
                                 style="font-family: monospace;">
                         </div>
 
+                        <!-- Unlimited Stock Switch -->
+                        <div class="form-group"
+                            style="display: flex; align-items: center; padding-top: var(--spacing-6);">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_unlimited_stock"
+                                    name="is_unlimited_stock" value="true" {% if product and product.is_unlimited_stock
+                                    %}checked{% endif %} onchange="toggleUnlimitedStock(this.checked)">
+                                <label class="form-check-label" for="is_unlimited_stock" style="cursor: pointer;">
+                                    <i class="bi bi-infinity"></i> Stock Ilimitado
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- 4. Initial Stock (Only New) -->
                         {% if action == 'new' %}
-                        <div class="form-group">
+                        <div class="form-group" id="initial_stock_group">
                             <label for="initial_stock" class="form-label-custom">
                                 Stock Actual (Inicial)
                             </label>
@@ -220,7 +233,7 @@
 
                         <!-- 5. Stock Actual (Editable - Only Edit) -->
                         {% if action == 'edit' %}
-                        <div class="form-group">
+                        <div class="form-group" id="on_hand_qty_group">
                             <label for="on_hand_qty" class="form-label-custom">
                                 Stock Actual
                             </label>
@@ -1001,6 +1014,42 @@
             updateNoFeaturesMsg();
         }
     });
+    });
+
+    // Unlimited Stock Toggle Logic
+    function toggleUnlimitedStock(isChecked) {
+        const minStockInput = document.getElementById('min_stock_qty');
+        const initialStockInput = document.getElementById('initial_stock');
+        const onHandQtyInput = document.getElementById('on_hand_qty');
+        const initialStockGroup = document.getElementById('initial_stock_group');
+        const onHandQtyGroup = document.getElementById('on_hand_qty_group');
+
+        if (minStockInput) {
+            minStockInput.readOnly = isChecked;
+            minStockInput.style.opacity = isChecked ? '0.5' : '1';
+        }
+        if (initialStockInput) {
+            initialStockInput.readOnly = isChecked;
+            initialStockInput.style.opacity = isChecked ? '0.5' : '1';
+        }
+        if (onHandQtyInput) {
+            onHandQtyInput.readOnly = isChecked;
+            onHandQtyInput.style.opacity = isChecked ? '0.5' : '1';
+        }
+        if (initialStockGroup) {
+            initialStockGroup.style.opacity = isChecked ? '0.5' : '1';
+        }
+        if (onHandQtyGroup) {
+            onHandQtyGroup.style.opacity = isChecked ? '0.5' : '1';
+        }
+    }
+
+    // Run on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkbox = document.getElementById('is_unlimited_stock');
+        if (checkbox) {
+            toggleUnlimitedStock(checkbox.checked);
+        }
     });
 </script>
 {% endblock %}

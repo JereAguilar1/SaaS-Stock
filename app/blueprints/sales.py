@@ -45,7 +45,7 @@ def _validate_product_for_cart(product: Optional[Product], qty: Decimal) -> Opti
         return 'Producto no encontrado o no pertenece a su negocio'
     if not product.active:
         return f'El producto "{product.name}" no está activo'
-    if product.on_hand_qty <= 0:
+    if not product.is_unlimited_stock and product.on_hand_qty <= 0:
         return f'El producto "{product.name}" no tiene stock disponible'
     if qty <= 0:
         return 'La cantidad debe ser mayor a 0'
@@ -384,7 +384,7 @@ def cart_add() -> Union[str, Response]:
         current_qty = Decimal(str(cart['items'].get(product_id_str, {}).get('qty', 0)))
         new_qty = current_qty + qty
         
-        if new_qty > product.on_hand_qty:
+        if not product.is_unlimited_stock and new_qty > product.on_hand_qty:
             raise BusinessLogicError(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}')
             
         cart['items'][product_id_str] = {'qty': float(new_qty)}
@@ -448,7 +448,7 @@ def cart_update() -> Union[str, Response]:
             return redirect(url_for('sales.new_sale'))
         
         # Check stock
-        if qty > product.on_hand_qty:
+        if not product.is_unlimited_stock and qty > product.on_hand_qty:
             flash(f'Stock insuficiente para "{product.name}". Disponible: {product.on_hand_qty}', 'warning')
             return _render_cart_content(db_session, g.tenant_id)
         

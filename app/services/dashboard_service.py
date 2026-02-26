@@ -87,6 +87,7 @@ def get_dashboard_data(session, tenant_id: int, start_dt: datetime, end_dt: date
     ).filter(
         Product.tenant_id == tenant_id,
         Product.active == True,
+        Product.is_unlimited_stock == False,
         Product.min_stock_qty > 0,
         ProductStock.on_hand_qty <= Product.min_stock_qty
     ).order_by(

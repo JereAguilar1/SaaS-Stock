@@ -316,8 +316,8 @@ def convert_quote_to_sale(quote_id: int, session: Session, tenant_id: int) -> in
         # 3. Process lines
         for line in quote.lines:
             stock = stocks_dict.get(line.product_id)
-            if not stock or stock.on_hand_qty < line.qty:
-                product = session.query(Product).get(line.product_id)
+            product = session.query(Product).get(line.product_id)
+            if not product.is_unlimited_stock and (not stock or stock.on_hand_qty < line.qty):
                 raise InsufficientStockError(f'Stock insuficiente para {product.name if product else "producto"}')
 
             session.add(SaleLine(sale_id=sale.id, product_id=line.product_id, qty=line.qty, unit_price=line.unit_price, line_total=line.line_total))
@@ -329,6 +329,8 @@ def convert_quote_to_sale(quote_id: int, session: Session, tenant_id: int) -> in
 
         for line in quote.lines:
             p = session.query(Product).get(line.product_id)
+            if p.is_unlimited_stock:
+                continue  # Don't deduct stock for unlimited products
             session.add(StockMoveLine(stock_move_id=move.id, product_id=line.product_id, qty=line.qty, uom_id=p.uom_id))
 
         # 5. Finance

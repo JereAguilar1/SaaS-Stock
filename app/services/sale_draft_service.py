@@ -58,7 +58,7 @@ def add_product_to_draft(
     if not product.active:
         raise BusinessLogicError(f'El producto "{product.name}" no está activo.')
     
-    if product.on_hand_qty <= 0:
+    if not product.is_unlimited_stock and product.on_hand_qty <= 0:
         raise InsufficientStockError(product.name, qty, product.on_hand_qty)
     
     line = session.query(SaleDraftLine).filter(
@@ -68,11 +68,11 @@ def add_product_to_draft(
     
     if line:
         new_qty = line.qty + qty
-        if new_qty > product.on_hand_qty:
+        if not product.is_unlimited_stock and new_qty > product.on_hand_qty:
             raise InsufficientStockError(product.name, new_qty, product.on_hand_qty)
         line.qty = new_qty
     else:
-        if qty > product.on_hand_qty:
+        if not product.is_unlimited_stock and qty > product.on_hand_qty:
             raise InsufficientStockError(product.name, qty, product.on_hand_qty)
         line = SaleDraftLine(
             draft_id=draft_id,
@@ -109,7 +109,7 @@ def update_draft_line(
     if qty is not None:
         if qty <= 0:
             raise BusinessLogicError('La cantidad debe ser mayor a 0.')
-        if qty > line.product.on_hand_qty:
+        if not line.product.is_unlimited_stock and qty > line.product.on_hand_qty:
             raise InsufficientStockError(line.product.name, qty, line.product.on_hand_qty)
         line.qty = qty
     

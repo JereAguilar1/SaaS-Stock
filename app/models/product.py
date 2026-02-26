@@ -18,6 +18,7 @@ class Product(Base):
     category_id = Column(BigInteger, ForeignKey('category.id'), nullable=True)
     uom_id = Column(BigInteger, ForeignKey('uom.id'), nullable=False)
     active = Column(Boolean, nullable=False, default=True)
+    is_unlimited_stock = Column(Boolean, nullable=False, default=False, server_default='false')
     sale_price = Column(Numeric(10, 2), nullable=False)
     cost = Column(Numeric(10, 2), nullable=False, default=0, server_default='0.00')  # Precio de compra
     image_path = Column(String(255), nullable=True)

@@ -61,7 +61,7 @@ def confirm_sale(cart: dict, session, payment_method: str = 'CASH', tenant_id: i
             product = products_dict[pid]
             current_stock = stock_dict.get(pid, Decimal('0'))
             
-            if current_stock < qty:
+            if not product.is_unlimited_stock and current_stock < qty:
                 raise InsufficientStockError(f'Stock insuficiente para "{product.name}". Disponible: {current_stock}, Solicitado: {qty}')
                 
             line_total = (qty * product.sale_price).quantize(Decimal('0.01'))
@@ -183,7 +183,8 @@ def confirm_sale_from_draft(
         stock_dict = _lock_stocks(session, product_ids, tenant_id)
         
         for line in totals['lines']:
-            if stock_dict.get(line['product_id'], Decimal('0')) < line['qty']:
+            product = session.query(Product).get(line['product_id'])
+            if not product.is_unlimited_stock and stock_dict.get(line['product_id'], Decimal('0')) < line['qty']:
                 raise InsufficientStockError(f'Stock insuficiente para "{line["product_name"]}"')
                 
         # 5. Create Sale
@@ -307,6 +308,8 @@ def _create_stock_movement(session, tenant_id: int, sale_id: int, lines: List[Di
     session.flush()
     
     for line in lines:
+        if line['product'].is_unlimited_stock:
+            continue  # Don't deduct stock for unlimited products
         session.add(StockMoveLine(
             stock_move_id=move.id,
             product_id=line['product_id'],

@@ -53,8 +53,8 @@
             </thead>
             <tbody>
                 {% for product in products %}
-                <tr
-                    style="{% if not product.active %}opacity: 0.6;{% endif %}{% if product.on_hand_qty==0 %}background-color: var(--color-bg-muted);{% endif %}">
+                <tr id="product-row-{{ product.id }}"
+                    style="{% if not product.active %}opacity: 0.6;{% endif %}{% if not product.is_unlimited_stock and product.on_hand_qty==0 %}background-color: var(--color-bg-muted);{% endif %}">
                     <td>{{ product.id }}</td>
                     <td>
                         {% if product.image_url %}
@@ -71,7 +71,7 @@
                         <span class="badge-custom badge-secondary"
                             style="margin-left: var(--spacing-2);">Inactivo</span>
                         {% endif %}
-                        {% if product.on_hand_qty == 0 %}
+                        {% if not product.is_unlimited_stock and product.on_hand_qty == 0 %}
                         <br><span class="badge-custom badge-secondary">Sin stock</span>
                         {% endif %}
                     </td>
@@ -79,13 +79,26 @@
                         ${{ product.sale_price|money_ar }}
                     </td>
                     <td style="text-align: center;">
-                        {% if product.on_hand_qty == 0 %}
+                        {% if product.is_unlimited_stock %}
+                        <span class="badge-custom" style="background-color: #7c3aed; color: white; font-size: 1.1em;">
+                            <i class="bi bi-infinity"></i>
+                        </span>
+                        {% elif product.on_hand_qty == 0 %}
                         <span class="badge-custom badge-danger">0</span>
                         {% elif product.min_stock_qty > 0 and product.on_hand_qty <= product.min_stock_qty %} <span
                             class="badge-custom badge-warning">{{ product.on_hand_qty|num_ar }}</span>
                             {% else %}
                             <span class="badge-custom badge-success">{{ product.on_hand_qty|num_ar }}</span>
                             {% endif %}
+                            <form action="{{ url_for('catalog.toggle_unlimited', product_id=product.id) }}"
+                                method="POST" style="display: inline; margin-left: 4px;" title="Stock Ilimitado">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="form-check form-switch d-inline-block" style="margin: 0; min-height: auto;">
+                                    <input class="form-check-input" type="checkbox" style="cursor: pointer;" {% if
+                                        product.is_unlimited_stock %}checked{% endif %}
+                                        onchange="this.closest('form').submit()">
+                                </div>
+                            </form>
                     </td>
                     <td style="text-align: center;">
                         {% if product.min_stock_qty > 0 %}

@@ -50,7 +50,9 @@
             <div class="product-meta">
                 <div class="product-price">${{ product.sale_price|money_ar }}</div>
                 <div class="product-stock text-muted">
-                    {% if product.on_hand_qty > 0 %}
+                    {% if product.is_unlimited_stock %}
+                    <span style="color: #7c3aed;"><i class="bi bi-infinity"></i></span>
+                    {% elif product.on_hand_qty > 0 %}
                     {{ product.on_hand_qty|int }} disp.
                     {% else %}
                     <span class="text-danger">Sin stock</span>
