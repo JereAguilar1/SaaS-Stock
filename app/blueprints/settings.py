@@ -611,12 +611,17 @@ def subscribe(plan_id: int) -> Response:
         
         back_url = url_for('settings.billing_success', _external=True)
         
+        # Get tenant name for the reference
+        from app.models.tenant import Tenant
+        tenant = session_db.query(Tenant).filter_by(id=g.tenant_id).first()
+        tenant_name = tenant.name if tenant else f"Tenant {g.tenant_id}"
+        
         preapproval_data = {
             "preapproval_plan_id": plan.mp_preapproval_plan_id,
             "payer_email": email,
             "external_reference": str(g.tenant_id),
             "back_url": back_url,
-            "reason": f"Suscripción {plan.name} - {g.current_tenant.name}",
+            "reason": f"Suscripción {plan.name} - {tenant_name}",
             "auto_recurring": {
                 "frequency": 1,
                 "frequency_type": "months",

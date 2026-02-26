@@ -161,7 +161,8 @@ def check_subscription_status():
     # List of endpoints that are always accessible even with expired subscription
     exempt_endpoints = [
         'auth.login', 'auth.logout', 'auth.select_tenant', 'auth.register', 
-        'main.index', 'settings.billing', 'settings.subscription', 
+        'main.index', 'settings.billing', 'settings.subscription', 'settings.list_plans',
+        'settings.subscribe', 'settings.billing_success',
         'webhooks.mercadopago', 'admin.login', 'static'
     ]
     
@@ -185,11 +186,14 @@ def check_subscription_status():
     status_info = check_trial_expiration(g.tenant_id, session_db)
     
     if not status_info['exists']:
-        # Should initiate subscription flow? For now, allow (legacy support)
+        # Enforce plan selection for tenants without any subscription
+        if request.endpoint != 'settings.list_plans':
+             flash('Debes seleccionar un plan para continuar.', 'warning')
+             return redirect(url_for('settings.list_plans'))
         return
         
     if status_info.get('status') in ('past_due', 'canceled'):
         # Block access and redirect to billing
-        if request.endpoint != 'settings.billing':
-            flash('Tu suscripción ha vencido. Por favor actualiza tu pago para continuar.', 'danger')
-            return redirect(url_for('settings.billing'))
+        if request.endpoint != 'settings.list_plans' and request.endpoint != 'settings.billing':
+            flash('Tu suscripción ha vencido. Por favor selecciona un plan para continuar.', 'danger')
+            return redirect(url_for('settings.list_plans'))
