@@ -44,28 +44,15 @@
                     </td>
                     <td>
                         {% if sale.status.value == 'CANCELLED' or sale.status == 'CANCELLED' %}
-                        <span class="badge-custom badge-danger">Cancelada</span>
-                        {% elif sale.status.value == 'CONFIRMED' or sale.status == 'CONFIRMED' %}
-                        {% if sale.payment_method == 'CUENTA_CORRIENTE' %}
-                        {% if sale.payment_status == 'paid' %}
-                        <span class="badge-custom badge-success" title="Cuenta Corriente - Pagado Total"><i
-                                class="bi bi-check-circle-fill"></i> Pagada (CC)</span>
-                        {% elif sale.payment_status == 'partial' %}
-                        <span class="badge-custom badge-info"
-                            style="background-color: var(--color-info, #0dcaf0); color: black;"
-                            title="Cuenta Corriente - Pago Parcial"><i class="bi bi-clock-history"></i> Pago
-                            Parcial</span>
-                        {% else %}
-                        <span class="badge-custom badge-warning"
-                            style="background-color: var(--color-warning, #ffc107); color: black;"
-                            title="Cuenta Corriente - Pendiente de Pago"><i class="bi bi-exclamation-triangle-fill"></i>
-                            Pendiente</span>
-                        {% endif %}
-                        {% else %}
+                        <span class="badge-custom badge-secondary"><i class="bi bi-x-circle"></i> Cancelada</span>
+                        {% elif sale.amount_paid >= sale.total %}
                         <span class="badge-custom badge-success"><i class="bi bi-check-lg"></i> Confirmada</span>
-                        {% endif %}
+                        {% elif sale.amount_paid > 0 %}
+                        <span class="badge-custom badge-warning"
+                            style="background-color: var(--color-warning, #ffc107); color: black;"><i
+                                class="bi bi-clock-history"></i> Pago Parcial</span>
                         {% else %}
-                        <span class="badge-custom badge-secondary">{{ sale.status }}</span>
+                        <span class="badge-custom badge-danger"><i class="bi bi-clock"></i> Pendiente</span>
                         {% endif %}
                     </td>
                     <td>

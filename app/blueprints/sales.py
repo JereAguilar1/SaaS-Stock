@@ -728,7 +728,18 @@ def detail_sale(sale_id: int) -> Union[str, Response]:
                 for s in pending_sales
             )
         
-        return render_template('sales/detail.html', sale=sale, total_debt=total_debt)
+        # Determine if sale originally involved cuenta corriente
+        # (payments registered at sale time didn't cover the full total)
+        sale_had_cc = False
+        if sale.payments and len(sale.payments) > 0:
+            registered = sum(float(p.amount or 0) for p in sale.payments)
+            if registered < float(sale.total or 0) - 0.01:
+                sale_had_cc = True
+        elif not sale.payments or len(sale.payments) == 0:
+            # No payments at all = full CC
+            sale_had_cc = True
+        
+        return render_template('sales/detail.html', sale=sale, total_debt=total_debt, sale_had_cc=sale_had_cc)
         
     except Exception as e:
         flash(f'Error al cargar venta: {str(e)}', 'danger')
