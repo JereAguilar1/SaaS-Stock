@@ -294,7 +294,7 @@
             // Si el carrito cambió (HTMX), resetear el Monto 1 al nuevo Total
             if (source === 'cart_update' || total !== lastCartTotal) {
                 if (source !== 'typing_amount_1' && source !== 'typing_amount_2') {
-                    input1.value = formatIntegerAr(Math.ceil(total));
+                    input1.value = formatSmartAr(total);
                 }
                 lastCartTotal = total;
             }
@@ -304,7 +304,7 @@
             // REGLA 1: Si Método 1 NO es Efectivo, el Monto 1 no puede ser mayor al Total
             if (method1 !== 'CASH' && val1 > total) {
                 val1 = total;
-                input1.value = formatIntegerAr(Math.ceil(val1));
+                input1.value = formatSmartAr(val1);
             }
 
             // REGLA 2 y 3: Lógica del Pago Dividido
@@ -319,7 +319,7 @@
                 if (input2) {
                     // Si el Método 2 NO es Efectivo: Bloqueamos edición y forzamos el restante
                     if (method2 !== 'CASH') {
-                        input2.value = remaining > 0 ? formatIntegerAr(Math.round(remaining)) : '0';
+                        input2.value = remaining > 0 ? formatSmartAr(remaining) : '0';
                         input2.setAttribute('readonly', true);
                         input2.style.backgroundColor = 'var(--bs-secondary-bg)';
                         input2.style.pointerEvents = 'none';
@@ -331,7 +331,7 @@
 
                         // Solo auto-completamos si no viene de tipeo en monto 2
                         if (source !== 'typing_amount_2') {
-                            input2.value = remaining > 0 ? formatIntegerAr(Math.round(remaining)) : '0';
+                            input2.value = remaining > 0 ? formatSmartAr(remaining) : '0';
                         }
                     }
                 }
@@ -371,7 +371,7 @@
 
             // Monto 1 vuelve a absorber el total
             const input1 = document.getElementById('amount_received_1');
-            if (input1) input1.value = formatIntegerAr(Math.ceil(getCartTotal()));
+            if (input1) input1.value = formatSmartAr(getCartTotal());
             enforcePaymentLogic('ui_change');
         }
 

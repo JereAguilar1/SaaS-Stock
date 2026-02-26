@@ -81,6 +81,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Event Delegation: Strip non-numeric characters (no letters allowed)
+    document.addEventListener('input', function (e) {
+        if (e.target && (e.target.id === 'amount_received_1' || e.target.id === 'amount_received_2')) {
+            const cursorPos = e.target.selectionStart;
+            const before = e.target.value;
+            const cleaned = before.replace(/[^\d.,]/g, '');
+            if (before !== cleaned) {
+                e.target.value = cleaned;
+                const diff = before.length - cleaned.length;
+                e.target.setSelectionRange(cursorPos - diff, cursorPos - diff);
+            }
+        }
+    }, true);
+
     // Event Delegation: Format amounts on blur
     document.addEventListener('blur', function (e) {
         if (e.target && (e.target.id === 'amount_received_1' || e.target.id === 'amount_received_2')) {
@@ -91,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const numericValue = parseArToNumber(rawValue);
             if (!isNaN(numericValue) && numericValue > 0) {
-                input.value = formatIntegerAr(Math.round(numericValue));
+                input.value = formatSmartAr(numericValue);
             }
         }
     }, true);
