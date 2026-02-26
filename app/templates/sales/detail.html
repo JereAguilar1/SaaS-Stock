@@ -118,6 +118,20 @@
                     </div>
                 </div>
 
+                {% if sale.customer %}
+                <div
+                    style="text-align: center; margin-bottom: var(--spacing-4); padding: var(--spacing-3); background-color: var(--color-bg-muted); border-radius: var(--radius-md); border: 1px solid var(--color-border-light);">
+                    <div
+                        style="font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--spacing-1);">
+                        <i class="bi bi-person-fill"></i> Cliente
+                    </div>
+                    <div
+                        style="font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); color: var(--color-text-primary);">
+                        {{ sale.customer.name }}
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Products Summary -->
                 <div
                     style="margin-top: var(--spacing-4); padding-top: var(--spacing-4); border-top: 1px solid var(--color-border-light);">
@@ -352,7 +366,10 @@
                 <dt style="color: var(--color-text-secondary);">Fecha:</dt>
                 <dd>{{ sale.datetime|datetime_ar }}</dd>
 
-                <!-- User and other metadata could go here -->
+                {% if sale.customer %}
+                <dt style="color: var(--color-text-secondary);">Cliente:</dt>
+                <dd style="font-weight: var(--font-weight-semibold);">{{ sale.customer.name }}</dd>
+                {% endif %}
             </dl>
         </div>
         <div class="card-footer-custom" style="justify-content: center;">
