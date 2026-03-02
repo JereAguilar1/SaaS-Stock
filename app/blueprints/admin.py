@@ -56,11 +56,13 @@ def login() -> Union[str, Response]:
         password = request.form.get('password', '')
         
         if not email or not password:
-            raise BusinessLogicError('Email y contraseña son requeridos.')
+            flash('Email y contraseña son requeridos.', 'danger')
+            return redirect(url_for('admin.login'))
         
         admin_user = session_db.query(AdminUser).filter_by(email=email).first()
         if not admin_user or not admin_user.check_password(password):
-            raise UnauthorizedError('Email o contraseña incorrectos.')
+            flash('Email o contraseña incorrectos.', 'danger')
+            return redirect(url_for('admin.login'))
         
         session.clear()
         session['admin_user_id'] = admin_user.id
