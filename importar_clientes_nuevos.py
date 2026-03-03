@@ -7,7 +7,7 @@ import os
 from decimal import Decimal
 
 from app import create_app
-from app.database import db_session, init_db
+from app.database import get_session, init_db
 from app.models.customer import Customer
 from app.models.sale import Sale, SaleStatus
 
@@ -45,6 +45,9 @@ def run_import():
     app = create_app()
 
     with app.app_context():
+        # Obtener la sesión después de init_db (ya llamado por create_app)
+        session = get_session()
+
         # Verificar que el archivo CSV existe
         if not os.path.isfile(ARCHIVO_CSV):
             print(f"❌ Error: No se encontró el archivo '{ARCHIVO_CSV}'")
@@ -81,8 +84,8 @@ def run_import():
                         name=nombre,
                         tax_id=codigo if codigo else None,  # "Código" -> tax_id
                     )
-                    db_session.add(nuevo_cliente)
-                    db_session.flush()  # Para obtener el ID generado
+                    session.add(nuevo_cliente)
+                    session.flush()  # Para obtener el ID generado
 
                     clientes_creados += 1
 
@@ -96,7 +99,7 @@ def run_import():
                             status=SaleStatus.CONFIRMED,
                             payment_status='pending',
                         )
-                        db_session.add(venta_fantasma)
+                        session.add(venta_fantasma)
                         ventas_creadas += 1
                         print(f"  ✅ {nombre} (código: {codigo}) — saldo: ${saldo_real}")
                     else:
@@ -105,12 +108,12 @@ def run_import():
                 except Exception as e:
                     errores += 1
                     print(f"  ❌ Fila {i} ({nombre}): Error — {e}")
-                    db_session.rollback()
+                    session.rollback()
                     continue
 
             # Guardar todo
             try:
-                db_session.commit()
+                session.commit()
                 print("-" * 50)
                 print(f"🎉 ¡Importación completada!")
                 print(f"   Clientes creados: {clientes_creados}")
@@ -118,7 +121,7 @@ def run_import():
                 print(f"   Errores: {errores}")
                 print(f"   Tenant: {TENANT_ID}")
             except Exception as e:
-                db_session.rollback()
+                session.rollback()
                 print(f"❌ Error al guardar en la base de datos: {e}")
 
 
