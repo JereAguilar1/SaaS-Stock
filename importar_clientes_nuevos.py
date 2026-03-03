@@ -9,7 +9,10 @@ from decimal import Decimal
 from app import create_app
 from app.database import get_session, init_db
 from app.models.customer import Customer
+from app.models.product import Product
 from app.models.sale import Sale, SaleStatus
+from app.models.sale_line import SaleLine
+from app.models.uom import UOM
 
 # ==========================================
 # CONFIGURACIÓN (Modificar antes de ejecutar)
@@ -47,6 +50,33 @@ def run_import():
     with app.app_context():
         # Obtener la sesión después de init_db (ya llamado por create_app)
         session = get_session()
+
+        # Buscar o crear producto "Saldo Inicial" para las ventas fantasma
+        producto_saldo = session.query(Product).filter_by(
+            tenant_id=TENANT_ID, name='Saldo Inicial'
+        ).first()
+
+        if not producto_saldo:
+            # Necesitamos un UOM válido para el tenant
+            uom = session.query(UOM).filter_by(tenant_id=TENANT_ID).first()
+            if not uom:
+                print("❌ Error: No se encontró ninguna unidad de medida (UOM) para el tenant.")
+                print("   Crea al menos una UOM antes de ejecutar este script.")
+                return
+
+            producto_saldo = Product(
+                tenant_id=TENANT_ID,
+                name='Saldo Inicial',
+                sale_price=Decimal('0.00'),
+                cost=Decimal('0.00'),
+                uom_id=uom.id,
+                active=False,  # No visible en catálogo normal
+            )
+            session.add(producto_saldo)
+            session.flush()
+            print(f"📦 Producto 'Saldo Inicial' creado (ID: {producto_saldo.id})")
+        else:
+            print(f"📦 Producto 'Saldo Inicial' encontrado (ID: {producto_saldo.id})")
 
         # Verificar que el archivo CSV existe
         if not os.path.isfile(ARCHIVO_CSV):
@@ -100,6 +130,18 @@ def run_import():
                             payment_status='pending',
                         )
                         session.add(venta_fantasma)
+                        session.flush()  # Para obtener el ID de la venta
+
+                        # Crear línea de detalle para satisfacer el trigger de la BD
+                        linea = SaleLine(
+                            sale_id=venta_fantasma.id,
+                            product_id=producto_saldo.id,
+                            qty=Decimal('1'),
+                            unit_price=saldo_real,
+                            line_total=saldo_real,
+                        )
+                        session.add(linea)
+
                         ventas_creadas += 1
                         print(f"  ✅ {nombre} (código: {codigo}) — saldo: ${saldo_real}")
                     else:
