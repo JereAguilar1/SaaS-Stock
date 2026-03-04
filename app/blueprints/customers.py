@@ -67,7 +67,18 @@ def search_customers() -> Dict[str, Any]:
     query_str = request.args.get('q', '').strip()
     
     if not query_str:
-        return {'results': []}
+        # Return all customers (limited) for "show all on focus" behavior
+        try:
+            all_customers = session.query(Customer).filter(
+                Customer.tenant_id == g.tenant_id
+            ).order_by(Customer.name).limit(50).all()
+            return {'results': [
+                {'id': c.id, 'name': c.name, 'tax_id': c.tax_id, 'phone': c.phone}
+                for c in all_customers
+            ]}
+        except Exception as e:
+            current_app.logger.error(f"Error listing customers: {e}")
+            return {'results': []}
         
     try:
         query = session.query(Customer).filter(
@@ -77,7 +88,7 @@ def search_customers() -> Dict[str, Any]:
                 func.lower(Customer.tax_id).like(f'%{query_str.lower()}%'),
                 func.lower(Customer.phone).like(f'%{query_str.lower()}%')
             )
-        ).limit(10)
+        ).order_by(Customer.name).limit(50)
         
         results = [
             {
@@ -121,6 +132,7 @@ def quick_create() -> Tuple[Union[str, Response], int]:
             customers=customers,
             default_customer_id=default_customer_id,
             selected_customer_id=customer.id,
+            selected_customer_name=customer.name,
             success_message=f'Cliente "{customer.name}" creado exitosamente'
         ), 200
         

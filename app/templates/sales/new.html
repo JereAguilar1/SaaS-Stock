@@ -163,11 +163,6 @@
                 const query = this.value.trim();
                 clearTimeout(debounceTimer);
 
-                if (query.length < 2) {
-                    customerResults.style.display = 'none';
-                    return;
-                }
-
                 debounceTimer = setTimeout(() => {
                     fetch(`{{ url_for('customers.search_customers') }}?q=${encodeURIComponent(query)}`)
                         .then(response => response.json())
@@ -191,13 +186,39 @@
                 }, 300);
             });
 
+            // Show all customers on focus/click when input is not locked
+            function fetchAndShowAllCustomers() {
+                // Skip if input is disabled (customer selected) or dropdown already open
+                if (customerSearchInput.disabled) return;
+                if (customerResults.style.display === 'block') return;
+
+                fetch(`{{ url_for('customers.search_customers') }}?q=${encodeURIComponent(customerSearchInput.value.trim())}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        customerResults.innerHTML = '';
+                        if (data.results.length > 0) {
+                            data.results.forEach(customer => {
+                                const item = document.createElement('button');
+                                item.type = 'button';
+                                item.className = 'list-group-item list-group-item-action';
+                                item.innerHTML = `<strong>${customer.name}</strong> <small class="text-muted">(${customer.tax_id || 'N/A'})</small>`;
+                                item.onclick = () => window.selectCustomer(customer.id, customer.name);
+                                customerResults.appendChild(item);
+                            });
+                            customerResults.style.display = 'block';
+                        }
+                    });
+            }
+
+            customerSearchInput.addEventListener('focus', fetchAndShowAllCustomers);
+            customerSearchInput.addEventListener('click', fetchAndShowAllCustomers);
+
             // Lógica del Botón Limpiar
             if (clearCustomerBtn) {
                 clearCustomerBtn.addEventListener('click', function () {
                     customerSearchInput.value = '';
                     customerIdInput.value = '';
                     customerSearchInput.disabled = false; // Desbloquear
-                    clearCustomerBtn.style.display = 'none'; // Ocultar X
                     customerSearchInput.focus();
                 });
             }
@@ -214,7 +235,6 @@
                 searchInput.value = name;
                 hiddenInput.value = id;
                 searchInput.disabled = true; // Bloquear escritura
-                if (clearBtn) clearBtn.style.display = 'block'; // Mostrar X
                 if (resultsDiv) resultsDiv.style.display = 'none';
             }
         };
@@ -236,6 +256,13 @@
             initializeSearch();
             initializeCustomerSearch();
             enforcePaymentLogic('init');
+
+            // Limpiar IDs fantasma de sesiones viejas
+            const cSearch = document.getElementById('customer_search');
+            const cId = document.getElementById('customer_id');
+            if (cSearch && cSearch.value.trim() === '' && cId) {
+                cId.value = '';
+            }
         });
 
         // Re-initialize if HTMX swaps content
@@ -244,16 +271,97 @@
             initializeCustomerSearch();
         });
 
-        // Sync customer_id to confirm form on submit (Global listener)
-        document.addEventListener('submit', function (e) {
-            if (e.target && e.target.id === 'confirm-form') {
-                var customerIdInput = document.getElementById('customer_id');
-                var submitCustomerId = document.getElementById('submit_customer_id');
-                if (customerIdInput && submitCustomerId) {
-                    submitCustomerId.value = customerIdInput.value;
-                }
+        // VALIDACIÓN ESTRICTA Y ENVÍO MANUAL (Bypass HTML5)
+        window.ejecutarValidacionVenta = function () {
+            var customerIdInput = document.getElementById('customer_id');
+            var submitCustomerId = document.getElementById('submit_customer_id');
+
+            // ERROR 1: Falta Cliente
+            if (!customerIdInput || !customerIdInput.value || customerIdInput.value.trim() === '') {
+                Swal.fire({ icon: 'warning', title: 'Falta el Cliente', text: 'Debes seleccionar un cliente de la lista.' });
+                return;
             }
-        });
+
+            // ERROR 2: Venta Vacía
+            const cartTotal = typeof getCartTotal === 'function' ? getCartTotal() : 0;
+            const cartItems = document.querySelectorAll('.cart-item');
+            if (cartTotal <= 0 || cartItems.length === 0) {
+                Swal.fire({ icon: 'error', title: 'Venta Vacía', text: 'No has agregado ningún producto al carrito.' });
+                return;
+            }
+
+            // ERROR 3: Cantidad en cero
+            let qtyError = false;
+            document.querySelectorAll('.qty-input').forEach(input => {
+                if (parseFloat(input.value) <= 0 || input.value === '') qtyError = true;
+            });
+            if (qtyError) {
+                Swal.fire({ icon: 'warning', title: 'Cantidad Incorrecta', text: 'Hay productos con cantidad cero (0). Corrígelo.' });
+                return;
+            }
+
+            // 4. Validar Pagos y Sincronizar
+            const method1 = document.getElementById('payment_method_1')?.value;
+            const method2 = document.getElementById('payment_method_2')?.value;
+            let val1 = typeof parseAmount === 'function' ? parseAmount(document.getElementById('amount_received_1')?.value) : 0;
+            let val2 = 0;
+
+            const isSplitActive = document.getElementById('payment-row-2') && !document.getElementById('payment-row-2').classList.contains('d-none');
+            if (isSplitActive) {
+                val2 = typeof parseAmount === 'function' ? parseAmount(document.getElementById('amount_received_2')?.value) : 0;
+            }
+
+            // NUEVO ERROR: Método de pago no seleccionado
+            if (!method1 || method1.trim() === '') {
+                Swal.fire({ icon: 'warning', title: 'Falta Método de Pago', text: 'Por favor, selecciona con qué medio de pago abonará el cliente (Efectivo, Tarjeta, etc).' });
+                return;
+            }
+            if (isSplitActive && (!method2 || method2.trim() === '')) {
+                Swal.fire({ icon: 'warning', title: 'Falta Método de Pago 2', text: 'Has agregado un segundo pago pero no seleccionaste el medio. Seleccionalo o elimina el pago dividido.' });
+                return;
+            }
+
+            // ERROR: Dinero Insuficiente
+            const cartTotal2 = typeof getCartTotal === 'function' ? getCartTotal() : 0;
+            let totalReceived = val1 + val2;
+            const hasCC = method1 === 'CUENTA_CORRIENTE' || (isSplitActive && method2 === 'CUENTA_CORRIENTE');
+
+            if (!hasCC && totalReceived < cartTotal2) {
+                Swal.fire({ icon: 'error', title: 'Falta Dinero', text: `El total es de $${cartTotal2.toLocaleString('es-AR')}, pero en pagos sumaste $${totalReceived.toLocaleString('es-AR')}.` });
+                return;
+            }
+
+            // 5. TODO OK: Preparar datos para el backend
+            // Sincronizar ID de cliente
+            var customerIdInput = document.getElementById('customer_id');
+            var submitCustomerId = document.getElementById('submit_customer_id');
+            if (submitCustomerId && customerIdInput) {
+                submitCustomerId.value = customerIdInput.value;
+            }
+
+            // Sincronizar Pagos con los inputs ocultos
+            const hiddenMethod0 = document.getElementById('payment-method-input-0');
+            const hiddenAmount0 = document.getElementById('payment-amount-input-0');
+            const hiddenReceived0 = document.getElementById('payment-received-input-0');
+
+            if (hiddenMethod0) hiddenMethod0.value = method1;
+            if (hiddenAmount0) hiddenAmount0.value = val1;
+            if (hiddenReceived0) hiddenReceived0.value = val1;
+
+            const hiddenMethod1 = document.getElementById('payment-method-input-1');
+            const hiddenAmount1 = document.getElementById('payment-amount-input-1');
+
+            if (isSplitActive) {
+                if (hiddenMethod1) { hiddenMethod1.value = method2; hiddenMethod1.removeAttribute('disabled'); }
+                if (hiddenAmount1) { hiddenAmount1.value = val2; hiddenAmount1.removeAttribute('disabled'); }
+            } else {
+                if (hiddenMethod1) hiddenMethod1.setAttribute('disabled', 'disabled');
+                if (hiddenAmount1) hiddenAmount1.setAttribute('disabled', 'disabled');
+            }
+
+            // Ejecutar el envío evadiendo validaciones nativas
+            document.getElementById('confirm-form').submit();
+        };
 
         // =====================================================
         // ADVANCED PAYMENT LOGIC (enforcePaymentLogic)
@@ -314,12 +422,12 @@
                 const input2 = document.getElementById('amount_received_2');
 
                 // Calculamos cuánto falta pagar (nunca menos de 0 si dio cash de más)
-                let remaining = Math.max(0, total - val1);
+                let remaining = Math.max(0, parseFloat((total - val1).toFixed(2)));
 
                 if (input2) {
                     // Si el Método 2 NO es Efectivo: Bloqueamos edición y forzamos el restante
                     if (method2 !== 'CASH') {
-                        input2.value = remaining > 0 ? formatSmartAr(remaining) : '0';
+                        input2.value = remaining > 0 ? remaining.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00';
                         input2.setAttribute('readonly', true);
                         input2.style.backgroundColor = 'var(--bs-secondary-bg)';
                         input2.style.pointerEvents = 'none';
@@ -331,7 +439,7 @@
 
                         // Solo auto-completamos si no viene de tipeo en monto 2
                         if (source !== 'typing_amount_2') {
-                            input2.value = remaining > 0 ? formatSmartAr(remaining) : '0';
+                            input2.value = remaining > 0 ? remaining.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00';
                         }
                     }
                 }
@@ -434,39 +542,35 @@
             // Si NO es efectivo, bloqueamos que ponga de más
             if (method1 !== 'CASH' && val1 > total) {
                 val1 = total;
-                if (input1) input1.value = val1;
+                if (input1) input1.value = val1.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
             // --- REGLA 2: PAGO 2 (Si existe) ---
             if (isSplitActive && input2) {
-                let remainingForSecond = Math.max(0, total - val1);
+                let remainingForSecond = Math.max(0, parseFloat((total - val1).toFixed(2)));
 
                 // Si el Pago 2 NO es efectivo, no puede superar lo que falta pagar
                 if (method2 !== 'CASH' && val2 > remainingForSecond) {
                     val2 = remainingForSecond;
-                    input2.value = val2;
+                    input2.value = val2.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
-            }
-
-            // --- REGLA 3: CÁLCULO DE VUELTO ---
-            const changeContainer = document.getElementById('change-display-container');
-            const changeDisplay = document.getElementById('change-amount-display');
-
-            let totalReceived = val1 + val2;
-            let vuelto = totalReceived - total;
-
-            // Solo mostramos el vuelto si sobra plata y al menos UN método es Efectivo
-            if (vuelto > 0 && (method1 === 'CASH' || (isSplitActive && method2 === 'CASH'))) {
-                if (changeContainer) changeContainer.classList.remove('d-none');
-                if (changeDisplay) changeDisplay.innerText = '$ ' + vuelto.toLocaleString('es-AR', { minimumFractionDigits: 2 });
-            } else {
-                if (changeContainer) changeContainer.classList.add('d-none');
             }
         }
 
         // Escuchamos cualquier tipeo en los inputs de monto
         document.body.addEventListener('input', function (evt) {
-            if (evt.target.id === 'amount_received_1' || evt.target.id === 'amount_received_2') {
+            if (evt.target.id === 'amount_received_1') {
+                const input2 = document.getElementById('amount_received_2');
+                if (input2 && !input2.closest('.d-none')) {
+                    let monto1 = parseAmount(evt.target.value);
+                    let total = getCartTotal();
+                    let resto = Math.max(0, parseFloat((total - monto1).toFixed(2)));
+                    input2.value = resto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                enforcePaymentLogic('typing_amount_1');
+                calculatePosLogic();
+            } else if (evt.target.id === 'amount_received_2') {
+                enforcePaymentLogic('typing_amount_2');
                 calculatePosLogic();
             }
         });
@@ -474,12 +578,14 @@
         // Escuchamos si el usuario cambia el método de pago
         document.body.addEventListener('change', function (evt) {
             if (evt.target.id === 'payment_method_1' || evt.target.id === 'payment_method_2') {
+                enforcePaymentLogic('method_change');
                 calculatePosLogic();
             }
         });
 
         // Escuchamos cuando HTMX actualiza el carrito
         document.body.addEventListener('htmx:afterSettle', function () {
+            enforcePaymentLogic('cart_update');
             calculatePosLogic();
         });
     </script>
