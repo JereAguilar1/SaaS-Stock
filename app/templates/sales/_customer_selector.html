@@ -19,8 +19,7 @@
 
         <!-- Hidden input that holds the selected customer ID (submitted with form) -->
         <input type="hidden" name="customer_id" id="customer_id"
-            value="{% if selected_customer_id %}{{ selected_customer_id }}{% elif default_customer_id %}{{ default_customer_id }}{% endif %}"
-            required>
+            value="{% if selected_customer_id %}{{ selected_customer_id }}{% elif default_customer_id %}{{ default_customer_id }}{% endif %}">
 
         <!-- Visible search input -->
         <input type="text" class="form-control border-start-0 border-end-0" id="customer_search"

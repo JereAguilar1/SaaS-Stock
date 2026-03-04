@@ -59,12 +59,6 @@
             </div>
         </div>
 
-        <!-- Vuelto Display (visible when cash overpay) -->
-        <div id="change-display-container" class="mt-1 mb-2 d-none text-end" style="font-size: 0.9rem;">
-            <span class="text-muted"><i class="bi bi-arrow-return-right"></i> Vuelto a entregar:</span>
-            <span id="change-amount-display" class="fw-bold ms-2" style="color: var(--bs-body-color);">$ 0.00</span>
-        </div>
-
         <!-- Add Split Button -->
         <div class="text-end mb-2" id="split-payment-btn-container">
             <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="enableSplitPayment()">
@@ -106,10 +100,10 @@
         </div>
 
         <!-- Confirm Form with hidden payment inputs -->
-        <form id="confirm-form" method="POST" action="{{ url_for('sales.confirm_draft') }}">
+        <form id="confirm-form" method="POST" action="{{ url_for('sales.confirm_draft') }}" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="idempotency_key" id="idempotency-key" value="">
-            <input type="hidden" name="customer_id" id="submit_customer_id" value="">
+            <input type="hidden" name="customer_id" id="submit_customer_id" value="" autocomplete="off">
 
             <!-- Payment 1 hidden inputs (synced by JS on submit) -->
             <input type="hidden" name="payments[0][method]" id="payment-method-input-0" value="CASH">
@@ -122,7 +116,7 @@
             <input type="hidden" name="payments[1][method]" id="payment-method-input-1" value="" disabled>
             <input type="hidden" name="payments[1][amount]" id="payment-amount-input-1" value="" disabled>
 
-            <button type="submit" class="btn-checkout">
+            <button type="button" id="btn-process-sale" class="btn-checkout" onclick="ejecutarValidacionVenta()">
                 Confirmar Venta
             </button>
         </form>
