@@ -542,7 +542,7 @@
             // Si NO es efectivo, bloqueamos que ponga de más
             if (method1 !== 'CASH' && val1 > total) {
                 val1 = total;
-                if (input1) input1.value = val1;
+                if (input1) input1.value = val1.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
             // --- REGLA 2: PAGO 2 (Si existe) ---
@@ -552,14 +552,25 @@
                 // Si el Pago 2 NO es efectivo, no puede superar lo que falta pagar
                 if (method2 !== 'CASH' && val2 > remainingForSecond) {
                     val2 = remainingForSecond;
-                    input2.value = val2;
+                    input2.value = val2.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
             }
         }
 
         // Escuchamos cualquier tipeo en los inputs de monto
         document.body.addEventListener('input', function (evt) {
-            if (evt.target.id === 'amount_received_1' || evt.target.id === 'amount_received_2') {
+            if (evt.target.id === 'amount_received_1') {
+                const input2 = document.getElementById('amount_received_2');
+                if (input2 && !input2.closest('.d-none')) {
+                    let monto1 = parseAmount(evt.target.value);
+                    let total = getCartTotal();
+                    let resto = Math.max(0, parseFloat((total - monto1).toFixed(2)));
+                    input2.value = resto.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                enforcePaymentLogic('typing_amount_1');
+                calculatePosLogic();
+            } else if (evt.target.id === 'amount_received_2') {
+                enforcePaymentLogic('typing_amount_2');
                 calculatePosLogic();
             }
         });
@@ -567,12 +578,14 @@
         // Escuchamos si el usuario cambia el método de pago
         document.body.addEventListener('change', function (evt) {
             if (evt.target.id === 'payment_method_1' || evt.target.id === 'payment_method_2') {
+                enforcePaymentLogic('method_change');
                 calculatePosLogic();
             }
         });
 
         // Escuchamos cuando HTMX actualiza el carrito
         document.body.addEventListener('htmx:afterSettle', function () {
+            enforcePaymentLogic('cart_update');
             calculatePosLogic();
         });
     </script>
