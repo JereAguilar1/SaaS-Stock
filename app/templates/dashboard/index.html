@@ -30,7 +30,7 @@
     <div class="stat-card">
         <div class="stat-label">Caja Real (Cobrado)</div>
         <div class="stat-value" style="color: var(--color-success);">
-            $ {{ daily_total|money_ar }}
+            ${{ daily_total|money_ar }}
         </div>
         <div class="stat-change">
             <i class="bi bi-wallet2"></i> Ingresos + C.C
@@ -41,7 +41,7 @@
     <div class="stat-card">
         <div class="stat-label">Egresos Hoy</div>
         <div class="stat-value" style="color: var(--color-danger);">
-            $ {{ expense_today|money_ar }}
+            ${{ expense_today|money_ar }}
         </div>
         <div class="stat-change negative">
             <i class="bi bi-cart-dash"></i> Salidas
@@ -54,7 +54,7 @@
         <div class="stat-label">Balance del Día</div>
         <div class="stat-value"
             style="color: {% if balance_today >= 0 %}var(--color-success){% else %}var(--color-danger){% endif %};">
-            {% if balance_today > 0 %}+{% endif %}$ {{ balance_today|money_ar }}
+            {% if balance_today > 0 %}+{% endif %}${{ balance_today|money_ar }}
         </div>
         <div class="stat-change {% if balance_today >= 0 %}positive{% else %}negative{% endif %}">
             {% if balance_today >= 0 %}
