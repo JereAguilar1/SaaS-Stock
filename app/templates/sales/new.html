@@ -163,11 +163,6 @@
                 const query = this.value.trim();
                 clearTimeout(debounceTimer);
 
-                if (query.length < 2) {
-                    customerResults.style.display = 'none';
-                    return;
-                }
-
                 debounceTimer = setTimeout(() => {
                     fetch(`{{ url_for('customers.search_customers') }}?q=${encodeURIComponent(query)}`)
                         .then(response => response.json())
@@ -191,13 +186,39 @@
                 }, 300);
             });
 
+            // Show all customers on focus/click when input is not locked
+            function fetchAndShowAllCustomers() {
+                // Skip if input is disabled (customer selected) or dropdown already open
+                if (customerSearchInput.disabled) return;
+                if (customerResults.style.display === 'block') return;
+
+                fetch(`{{ url_for('customers.search_customers') }}?q=${encodeURIComponent(customerSearchInput.value.trim())}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        customerResults.innerHTML = '';
+                        if (data.results.length > 0) {
+                            data.results.forEach(customer => {
+                                const item = document.createElement('button');
+                                item.type = 'button';
+                                item.className = 'list-group-item list-group-item-action';
+                                item.innerHTML = `<strong>${customer.name}</strong> <small class="text-muted">(${customer.tax_id || 'N/A'})</small>`;
+                                item.onclick = () => window.selectCustomer(customer.id, customer.name);
+                                customerResults.appendChild(item);
+                            });
+                            customerResults.style.display = 'block';
+                        }
+                    });
+            }
+
+            customerSearchInput.addEventListener('focus', fetchAndShowAllCustomers);
+            customerSearchInput.addEventListener('click', fetchAndShowAllCustomers);
+
             // Lógica del Botón Limpiar
             if (clearCustomerBtn) {
                 clearCustomerBtn.addEventListener('click', function () {
                     customerSearchInput.value = '';
                     customerIdInput.value = '';
                     customerSearchInput.disabled = false; // Desbloquear
-                    clearCustomerBtn.style.display = 'none'; // Ocultar X
                     customerSearchInput.focus();
                 });
             }
@@ -214,7 +235,6 @@
                 searchInput.value = name;
                 hiddenInput.value = id;
                 searchInput.disabled = true; // Bloquear escritura
-                if (clearBtn) clearBtn.style.display = 'block'; // Mostrar X
                 if (resultsDiv) resultsDiv.style.display = 'none';
             }
         };

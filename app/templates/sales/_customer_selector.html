@@ -11,25 +11,44 @@
         <i class="bi bi-person-fill"></i> Cliente
     </label>
 
-    <div class="input-group">
-        <span class="input-group-text bg-white border-end-0 text-primary">
-            <!-- <i class="bi bi-person-fill"></i> -->
+    <div class="input-group" style="position: relative;">
+        <!-- Search icon addon -->
+        <span class="input-group-text border-end-0" style="background: transparent;">
+            <i class="bi bi-search text-muted" style="font-size: 0.85rem;"></i>
         </span>
 
-        <select class="form-select-custom border-start-0 ps-0" name="customer_id" id="customer_id" required
-            style="width: 1%; flex: 1 1 auto;">
-            {% for customer in customers %}
-            <option value="{{ customer.id }}" {% if selected_customer_id and customer.id==selected_customer_id
-                %}selected {% elif not selected_customer_id and customer.id==default_customer_id %}selected {% endif %}>
-                {{ customer.name }}
-                {% if customer.is_default %}(Por defecto){% endif %}
-            </option>
-            {% endfor %}
-        </select>
+        <!-- Hidden input that holds the selected customer ID (submitted with form) -->
+        <input type="hidden" name="customer_id" id="customer_id"
+            value="{% if selected_customer_id %}{{ selected_customer_id }}{% elif default_customer_id %}{{ default_customer_id }}{% endif %}"
+            required>
 
-        <button type="button" class="btn btn-primary border-start-0" data-bs-toggle="modal"
-            data-bs-target="#quick-create-customer-modal" title="Crear nuevo cliente">
+        <!-- Visible search input -->
+        <input type="text" class="form-control border-start-0 border-end-0" id="customer_search"
+            placeholder="Buscar cliente..." autocomplete="off" style="box-shadow: none;" {% if selected_customer_name
+            %}value="{{ selected_customer_name }}" disabled{% elif selected_customer_id %} {% for c in customers %}{% if
+            c.id==selected_customer_id %}value="{{ c.name }}" disabled{% endif %}{% endfor %} {% elif
+            default_customer_id %} {% for c in customers %}{% if c.id==default_customer_id %}value="{{ c.name }}"
+            disabled{% endif %}{% endfor %} {% endif %}>
+
+        <!-- Clear button — always visible, theme-aware borders -->
+        <button type="button" class="btn border border-start-0 border-end-0 px-2" id="btn_clear_customer"
+            title="Limpiar selección" style="background: transparent; border-color: var(--bs-border-color); color: #adb5bd; z-index: 5;
+                   border-radius: 0; display: flex; align-items: center;">
+            <i class="bi bi-x-lg" style="font-size: 0.8rem;"></i>
+        </button>
+
+        <!-- Quick create customer button -->
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+            data-bs-target="#quick-create-customer-modal" title="Crear nuevo cliente"
+            style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
             <i class="bi bi-plus-lg"></i>
         </button>
+
+        <!-- Autocomplete results dropdown -->
+        <div id="customer_results" class="list-group" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1050;
+                   max-height: 250px; overflow-y: auto; background: white; border: 1px solid #dee2e6;
+                   box-shadow: 0 6px 12px rgba(0,0,0,0.12);
+                   margin-top: 2px; border-radius: 6px;">
+        </div>
     </div>
 </div>
