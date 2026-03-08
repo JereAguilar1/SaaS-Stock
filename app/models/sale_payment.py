@@ -1,6 +1,7 @@
 """Sale Payment model for mixed payment methods."""
-from sqlalchemy import Column, BigInteger, String, Numeric, ForeignKey
+from sqlalchemy import Column, BigInteger, String, Numeric, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.database import Base
 
 
@@ -23,6 +24,10 @@ class SalePayment(Base):
     # Only for CASH payments
     amount_received = Column(Numeric(10, 2))  # Amount given by customer
     change_amount = Column(Numeric(10, 2))    # Change returned
+    
+    tenant_id = Column(BigInteger, ForeignKey('tenant.id'), nullable=False, index=True)
+    paid_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    notes = Column(Text, nullable=True)
     
     # Relationships
     sale = relationship('Sale', back_populates='payments')

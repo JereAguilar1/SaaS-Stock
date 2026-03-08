@@ -276,11 +276,14 @@ CREATE TABLE IF NOT EXISTS sale (
   total       NUMERIC(12,2) NOT NULL CHECK (total >= 0),
   status      sale_status NOT NULL DEFAULT 'CONFIRMED',
   idempotency_key VARCHAR(64) UNIQUE,
+  customer_id BIGINT,
+  payment_status VARCHAR(10) NOT NULL DEFAULT 'PAID' CHECK (payment_status IN ('PAID', 'PENDING', 'PARTIAL')),
+  amount_paid NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_sale_idempotency ON sale(idempotency_key) WHERE idempotency_key IS NOT NULL;
-
+CREATE INDEX IF NOT EXISTS idx_sale_customer_payment_status ON sale(customer_id, payment_status) WHERE payment_status IN ('PENDING', 'PARTIAL');
 
 CREATE INDEX IF NOT EXISTS idx_sale_tenant_id ON sale(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sale_tenant_datetime ON sale(tenant_id, datetime DESC);
@@ -305,15 +308,20 @@ CREATE INDEX IF NOT EXISTS idx_sale_line_product ON sale_line(product_id);
 CREATE TABLE IF NOT EXISTS sale_payment (
     id BIGSERIAL PRIMARY KEY,
     sale_id BIGINT NOT NULL REFERENCES sale(id) ON DELETE CASCADE,
-    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('CASH', 'TRANSFER', 'CARD')),
+    tenant_id BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('CASH', 'TRANSFER', 'CARD', 'CUENTA_CORRIENTE')),
     amount NUMERIC(10, 2) NOT NULL CHECK (amount > 0),
     
     -- Only for CASH payments
     amount_received NUMERIC(10, 2) CHECK (amount_received IS NULL OR amount_received >= amount),
-    change_amount NUMERIC(10, 2) CHECK (change_amount IS NULL OR change_amount >= 0)
+    change_amount NUMERIC(10, 2) CHECK (change_amount IS NULL OR change_amount >= 0),
+    
+    paid_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    notes TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_sale_payment_sale ON sale_payment(sale_id);
+CREATE INDEX IF NOT EXISTS idx_sale_payment_tenant ON sale_payment(tenant_id);
 
 -- Persistent cart for POS
 CREATE TABLE IF NOT EXISTS sale_draft (
@@ -824,6 +832,10 @@ CREATE TRIGGER customer_set_updated_at
     EXECUTE FUNCTION trg_set_updated_at();
 
 COMMIT;
+
+-- Ensure foreign keys point to CUSTOMER table since it was created after SALES
+ALTER TABLE IF EXISTS sale ADD CONSTRAINT fk_sale_customer
+FOREIGN KEY (customer_id) REFERENCES customer(id) ON UPDATE RESTRICT ON DELETE SET NULL;
 
 -- =============================================================================
 -- DATA MIGRATIONS / SEEDS (NOT INCLUDED IN BASE SCHEMA)

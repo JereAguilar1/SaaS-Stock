@@ -1,0 +1,26 @@
+﻿                                         Table "public.sale_payment"
+     Column      |           Type           | Collation | Nullable |                 Default                  
+-----------------+--------------------------+-----------+----------+------------------------------------------
+ id              | bigint                   |           | not null | nextval('sale_payment_id_seq'::regclass)
+ sale_id         | bigint                   |           | not null | 
+ payment_method  | character varying(20)    |           | not null | 
+ amount          | numeric(10,2)            |           | not null | 
+ amount_received | numeric(10,2)            |           |          | 
+ change_amount   | numeric(10,2)            |           |          | 
+ tenant_id       | bigint                   |           | not null | 
+ paid_at         | timestamp with time zone |           | not null | now()
+ notes           | text                     |           |          | 
+Indexes:
+    "sale_payment_pkey" PRIMARY KEY, btree (id)
+    "idx_sale_payment_sale" btree (sale_id)
+    "idx_sale_payment_tenant" btree (tenant_id)
+    "idx_sale_payment_tenant_id" btree (tenant_id)
+Check constraints:
+    "sale_payment_amount_check" CHECK (amount > 0::numeric)
+    "sale_payment_change_amount_check" CHECK (change_amount IS NULL OR change_amount >= 0::numeric)
+    "sale_payment_check" CHECK (amount_received IS NULL OR amount_received >= amount)
+    "sale_payment_payment_method_check" CHECK (payment_method::text = ANY (ARRAY['CASH'::character varying, 'TRANSFER'::character varying, 'CARD'::character varying]::text[]))
+Foreign-key constraints:
+    "sale_payment_sale_id_fkey" FOREIGN KEY (sale_id) REFERENCES sale(id) ON DELETE CASCADE
+    "sale_payment_tenant_id_fkey" FOREIGN KEY (tenant_id) REFERENCES tenant(id)
+

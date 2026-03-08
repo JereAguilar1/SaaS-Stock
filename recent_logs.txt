@@ -1,0 +1,300 @@
+172.18.0.1 - - [08/Mar/2026:20:09:59 +0000] "POST /customers/quick-create HTTP/1.1" 200 2483 "http://localhost:5000/sales/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+2026-03-08 20:10:02,084 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:10:02,085 INFO sqlalchemy.engine.Engine SELECT app_user.id AS app_user_id, app_user.email AS app_user_email, app_user.password_hash AS app_user_password_hash, app_user.full_name AS app_user_full_name, app_user.active AS app_user_active, app_user.google_sub AS app_user_google_sub, app_user.auth_provider AS app_user_auth_provider, app_user.email_verified AS app_user_email_verified, app_user.reset_password_token AS app_user_reset_password_token, app_user.reset_password_expires AS app_user_reset_password_expires, app_user.created_at AS app_user_created_at, app_user.updated_at AS app_user_updated_at 
+FROM app_user 
+WHERE app_user.id = %(id_1)s AND app_user.active = true 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,085 INFO sqlalchemy.engine.Engine [cached since 230.8s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,088 INFO sqlalchemy.engine.Engine SELECT user_tenant.id AS user_tenant_id, user_tenant.user_id AS user_tenant_user_id, user_tenant.tenant_id AS user_tenant_tenant_id, user_tenant.role AS user_tenant_role, user_tenant.active AS user_tenant_active, user_tenant.created_at AS user_tenant_created_at 
+FROM user_tenant 
+WHERE user_tenant.user_id = %(user_id_1)s AND user_tenant.tenant_id = %(tenant_id_1)s AND user_tenant.active = true 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,089 INFO sqlalchemy.engine.Engine [cached since 230.8s ago] {'user_id_1': 1, 'tenant_id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,092 INFO sqlalchemy.engine.Engine SELECT tenant.id AS tenant_id, tenant.slug AS tenant_slug, tenant.name AS tenant_name, tenant.logo_url AS tenant_logo_url, tenant.active AS tenant_active, tenant.is_suspended AS tenant_is_suspended, tenant.created_at AS tenant_created_at, tenant.updated_at AS tenant_updated_at 
+FROM tenant 
+WHERE tenant.id = %(id_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,092 INFO sqlalchemy.engine.Engine [cached since 230.7s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,095 INFO sqlalchemy.engine.Engine SELECT sale_draft.id AS sale_draft_id, sale_draft.tenant_id AS sale_draft_tenant_id, sale_draft.user_id AS sale_draft_user_id, sale_draft.created_at AS sale_draft_created_at, sale_draft.updated_at AS sale_draft_updated_at, sale_draft.discount_type AS sale_draft_discount_type, sale_draft.discount_value AS sale_draft_discount_value 
+FROM sale_draft 
+WHERE sale_draft.tenant_id = %(tenant_id_1)s AND sale_draft.user_id = %(user_id_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,095 INFO sqlalchemy.engine.Engine [cached since 71.06s ago] {'tenant_id_1': 1, 'user_id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,097 INFO sqlalchemy.engine.Engine SELECT sale_draft_line.id AS sale_draft_line_id, sale_draft_line.draft_id AS sale_draft_line_draft_id, sale_draft_line.product_id AS sale_draft_line_product_id, sale_draft_line.qty AS sale_draft_line_qty, sale_draft_line.unit_price AS sale_draft_line_unit_price, sale_draft_line.discount_type AS sale_draft_line_discount_type, sale_draft_line.discount_value AS sale_draft_line_discount_value 
+FROM sale_draft_line 
+WHERE %(param_1)s = sale_draft_line.draft_id
+2026-03-08 20:10:02,098 INFO sqlalchemy.engine.Engine [cached since 71.05s ago] {'param_1': 3}
+[2026-03-08 20:10:02,100] INFO in sales_service: Procesando confirm_sale_from_draft. Idempotency Key: 4a3b28b7-8e3b-4f78-8635-9f7c26e9aa4e
+2026-03-08 20:10:02,103 INFO sqlalchemy.engine.Engine SELECT sale.id AS sale_id, sale.tenant_id AS sale_tenant_id, sale.datetime AS sale_datetime, sale.total AS sale_total, sale.status AS sale_status, sale.created_at AS sale_created_at, sale.idempotency_key AS sale_idempotency_key, sale.customer_id AS sale_customer_id, sale.payment_status AS sale_payment_status, sale.amount_paid AS sale_amount_paid 
+FROM sale 
+WHERE sale.idempotency_key = %(idempotency_key_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,103 INFO sqlalchemy.engine.Engine [generated in 0.00034s] {'idempotency_key_1': '4a3b28b7-8e3b-4f78-8635-9f7c26e9aa4e', 'param_1': 1}
+2026-03-08 20:10:02,108 INFO sqlalchemy.engine.Engine SELECT sale_draft.id AS sale_draft_id, sale_draft.tenant_id AS sale_draft_tenant_id, sale_draft.user_id AS sale_draft_user_id, sale_draft.created_at AS sale_draft_created_at, sale_draft.updated_at AS sale_draft_updated_at, sale_draft.discount_type AS sale_draft_discount_type, sale_draft.discount_value AS sale_draft_discount_value 
+FROM sale_draft 
+WHERE sale_draft.id = %(id_1)s AND sale_draft.tenant_id = %(tenant_id_1)s AND sale_draft.user_id = %(user_id_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,109 INFO sqlalchemy.engine.Engine [generated in 0.00043s] {'id_1': 3, 'tenant_id_1': 1, 'user_id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,112 INFO sqlalchemy.engine.Engine SELECT product.id AS product_id, product.tenant_id AS product_tenant_id, product.sku AS product_sku, product.barcode AS product_barcode, product.name AS product_name, product.category_id AS product_category_id, product.uom_id AS product_uom_id, product.active AS product_active, product.is_unlimited_stock AS product_is_unlimited_stock, product.sale_price AS product_sale_price, product.cost AS product_cost, product.image_path AS product_image_path, product.image_original_path AS product_image_original_path, product.min_stock_qty AS product_min_stock_qty, product.created_at AS product_created_at, product.updated_at AS product_updated_at 
+FROM product 
+WHERE product.id = %(pk_1)s
+2026-03-08 20:10:02,112 INFO sqlalchemy.engine.Engine [generated in 0.00034s] {'pk_1': 178}
+2026-03-08 20:10:02,117 INFO sqlalchemy.engine.Engine SELECT uom.id AS uom_id, uom.tenant_id AS uom_tenant_id, uom.name AS uom_name, uom.symbol AS uom_symbol, uom.created_at AS uom_created_at 
+FROM uom 
+WHERE uom.id = %(pk_1)s
+2026-03-08 20:10:02,118 INFO sqlalchemy.engine.Engine [cached since 181.5s ago] {'pk_1': 2}
+[2026-03-08 20:10:02,119] INFO in sales_service: Pagos: 59980 | Total: 59980.00
+2026-03-08 20:10:02,203 INFO sqlalchemy.engine.Engine SELECT product_stock.product_id AS product_stock_product_id, product_stock.on_hand_qty AS product_stock_on_hand_qty, product_stock.updated_at AS product_stock_updated_at 
+FROM product_stock 
+WHERE product_stock.product_id = %(pk_1)s
+2026-03-08 20:10:02,203 INFO sqlalchemy.engine.Engine [cached since 198.9s ago] {'pk_1': 178}
+2026-03-08 20:10:02,206 INFO sqlalchemy.engine.Engine 
+        SELECT ps.product_id, ps.on_hand_qty 
+        FROM product_stock ps
+        INNER JOIN product p ON p.id = ps.product_id
+        WHERE ps.product_id IN (%(pid0)s)
+          AND p.tenant_id = %(tenant_id)s
+        FOR UPDATE OF ps
+    
+2026-03-08 20:10:02,206 INFO sqlalchemy.engine.Engine [generated in 0.00050s] {'pid0': 178, 'tenant_id': 1}
+2026-03-08 20:10:02,211 INFO sqlalchemy.engine.Engine INSERT INTO sale (tenant_id, datetime, total, status, idempotency_key, customer_id, payment_status, amount_paid) VALUES (%(tenant_id)s, %(datetime)s, %(total)s, %(status)s, %(idempotency_key)s, %(customer_id)s, %(payment_status)s, %(amount_paid)s) RETURNING sale.id, sale.created_at
+2026-03-08 20:10:02,211 INFO sqlalchemy.engine.Engine [generated in 0.00038s] {'tenant_id': 1, 'datetime': datetime.datetime(2026, 3, 8, 20, 10, 2, 208933), 'total': Decimal('59980.00'), 'status': 'CONFIRMED', 'idempotency_key': '4a3b28b7-8e3b-4f78-8635-9f7c26e9aa4e', 'customer_id': 573, 'payment_status': <PaymentStatus.PAID: 'paid'>, 'amount_paid': Decimal('59980.00')}
+2026-03-08 20:10:02,229 INFO sqlalchemy.engine.Engine INSERT INTO sale_line (sale_id, product_id, qty, unit_price, line_total) VALUES (%(sale_id)s, %(product_id)s, %(qty)s, %(unit_price)s, %(line_total)s) RETURNING sale_line.id
+2026-03-08 20:10:02,229 INFO sqlalchemy.engine.Engine [generated in 0.00040s] {'sale_id': 54, 'product_id': 178, 'qty': Decimal('2.00'), 'unit_price': Decimal('29990.00'), 'line_total': Decimal('59980.00')}
+2026-03-08 20:10:02,235 INFO sqlalchemy.engine.Engine INSERT INTO sale_payment (sale_id, payment_method, amount, amount_received, change_amount) VALUES (%(sale_id)s, %(payment_method)s, %(amount)s, %(amount_received)s, %(change_amount)s) RETURNING sale_payment.id
+2026-03-08 20:10:02,235 INFO sqlalchemy.engine.Engine [generated in 0.00051s] {'sale_id': 54, 'payment_method': 'CASH', 'amount': Decimal('59980'), 'amount_received': Decimal('59980'), 'change_amount': Decimal('0')}
+2026-03-08 20:10:02,242 INFO sqlalchemy.engine.Engine ROLLBACK
+[2026-03-08 20:10:02,765] ERROR in sales: Error in confirm_draft:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.NotNullViolation: null value in column "tenant_id" of relation "sale_payment" violates not-null constraint
+DETAIL:  Failing row contains (16, 54, CASH, 59980.00, 59980.00, 0.00, null, 2026-03-08 20:10:02.086251+00, null).
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/app/services/sales_service.py", line 253, in confirm_sale_from_draft
+    notes='Creacion de factura' if is_full_cuenta_corriente else f'Porcion cuenta corriente de venta #{sale.id}',
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/services/sales_service.py", line 325, in _create_stock_movement
+    amount = Decimal(str(p.get('amount', total)))
+    ^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/scoping.py", line 937, in flush
+    return self._proxied.flush(objects=objects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4352, in flush
+    self._flush(objects)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4487, in _flush
+    with util.safe_reraise():
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4448, in _flush
+    flush_context.execute()
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+           ^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) null value in column "tenant_id" of relation "sale_payment" violates not-null constraint
+DETAIL:  Failing row contains (16, 54, CASH, 59980.00, 59980.00, 0.00, null, 2026-03-08 20:10:02.086251+00, null).
+
+[SQL: INSERT INTO sale_payment (sale_id, payment_method, amount, amount_received, change_amount) VALUES (%(sale_id)s, %(payment_method)s, %(amount)s, %(amount_received)s, %(change_amount)s) RETURNING sale_payment.id]
+[parameters: {'sale_id': 54, 'payment_method': 'CASH', 'amount': Decimal('59980'), 'amount_received': Decimal('59980'), 'change_amount': Decimal('0')}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/app/blueprints/sales.py", line 1488, in confirm_draft
+    tenant_id=g.tenant_id,
+          ^^^^^^^^^^^^^^^^
+  File "/app/app/services/sales_service.py", line 286, in confirm_sale_from_draft
+    WHERE ps.product_id IN ({placeholders})
+Exception: Error al confirmar venta: (psycopg2.errors.NotNullViolation) null value in column "tenant_id" of relation "sale_payment" violates not-null constraint
+DETAIL:  Failing row contains (16, 54, CASH, 59980.00, 59980.00, 0.00, null, 2026-03-08 20:10:02.086251+00, null).
+
+[SQL: INSERT INTO sale_payment (sale_id, payment_method, amount, amount_received, change_amount) VALUES (%(sale_id)s, %(payment_method)s, %(amount)s, %(amount_received)s, %(change_amount)s) RETURNING sale_payment.id]
+[parameters: {'sale_id': 54, 'payment_method': 'CASH', 'amount': Decimal('59980'), 'amount_received': Decimal('59980'), 'change_amount': Decimal('0')}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+[2026-03-08 20:10:02,767] ERROR in __init__: SaaSError [400]: Error procesando la venta: Error al confirmar venta: (psycopg2.errors.NotNullViolation) null value in column "tenant_id" of relation "sale_payment" violates not-null constraint
+DETAIL:  Failing row contains (16, 54, CASH, 59980.00, 59980.00, 0.00, null, 2026-03-08 20:10:02.086251+00, null).
+
+[SQL: INSERT INTO sale_payment (sale_id, payment_method, amount, amount_received, change_amount) VALUES (%(sale_id)s, %(payment_method)s, %(amount)s, %(amount_received)s, %(change_amount)s) RETURNING sale_payment.id]
+[parameters: {'sale_id': 54, 'payment_method': 'CASH', 'amount': Decimal('59980'), 'amount_received': Decimal('59980'), 'change_amount': Decimal('0')}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+172.18.0.1 - - [08/Mar/2026:20:10:02 +0000] "POST /sales/confirm_draft HTTP/1.1" 400 249 "http://localhost:5000/sales/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+2026-03-08 20:10:02,934 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:10:02,935 INFO sqlalchemy.engine.Engine SELECT app_user.id AS app_user_id, app_user.email AS app_user_email, app_user.password_hash AS app_user_password_hash, app_user.full_name AS app_user_full_name, app_user.active AS app_user_active, app_user.google_sub AS app_user_google_sub, app_user.auth_provider AS app_user_auth_provider, app_user.email_verified AS app_user_email_verified, app_user.reset_password_token AS app_user_reset_password_token, app_user.reset_password_expires AS app_user_reset_password_expires, app_user.created_at AS app_user_created_at, app_user.updated_at AS app_user_updated_at 
+FROM app_user 
+WHERE app_user.id = %(id_1)s AND app_user.active = true 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,936 INFO sqlalchemy.engine.Engine [cached since 238.4s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,944 INFO sqlalchemy.engine.Engine SELECT user_tenant.id AS user_tenant_id, user_tenant.user_id AS user_tenant_user_id, user_tenant.tenant_id AS user_tenant_tenant_id, user_tenant.role AS user_tenant_role, user_tenant.active AS user_tenant_active, user_tenant.created_at AS user_tenant_created_at 
+FROM user_tenant 
+WHERE user_tenant.user_id = %(user_id_1)s AND user_tenant.tenant_id = %(tenant_id_1)s AND user_tenant.active = true 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,944 INFO sqlalchemy.engine.Engine [cached since 238.3s ago] {'user_id_1': 1, 'tenant_id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,949 INFO sqlalchemy.engine.Engine SELECT tenant.id AS tenant_id, tenant.slug AS tenant_slug, tenant.name AS tenant_name, tenant.logo_url AS tenant_logo_url, tenant.active AS tenant_active, tenant.is_suspended AS tenant_is_suspended, tenant.created_at AS tenant_created_at, tenant.updated_at AS tenant_updated_at 
+FROM tenant 
+WHERE tenant.id = %(id_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,950 INFO sqlalchemy.engine.Engine [cached since 238.3s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:03,137 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT purchase_invoice.id AS purchase_invoice_id, purchase_invoice.tenant_id AS purchase_invoice_tenant_id, purchase_invoice.supplier_id AS purchase_invoice_supplier_id, purchase_invoice.invoice_number AS purchase_invoice_invoice_number, purchase_invoice.invoice_date AS purchase_invoice_invoice_date, purchase_invoice.due_date AS purchase_invoice_due_date, purchase_invoice.total_amount AS purchase_invoice_total_amount, purchase_invoice.paid_amount AS purchase_invoice_paid_amount, purchase_invoice.status AS purchase_invoice_status, purchase_invoice.paid_at AS purchase_invoice_paid_at, purchase_invoice.created_at AS purchase_invoice_created_at 
+FROM purchase_invoice 
+WHERE purchase_invoice.status = %(status_1)s AND purchase_invoice.tenant_id = %(tenant_id_1)s AND purchase_invoice.due_date = %(due_date_1)s) AS anon_1
+2026-03-08 20:10:03,138 INFO sqlalchemy.engine.Engine [cached since 237.7s ago] {'status_1': 'PENDING', 'tenant_id_1': 1, 'due_date_1': datetime.date(2026, 3, 9)}
+2026-03-08 20:10:03,146 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT purchase_invoice.id AS purchase_invoice_id, purchase_invoice.tenant_id AS purchase_invoice_tenant_id, purchase_invoice.supplier_id AS purchase_invoice_supplier_id, purchase_invoice.invoice_number AS purchase_invoice_invoice_number, purchase_invoice.invoice_date AS purchase_invoice_invoice_date, purchase_invoice.due_date AS purchase_invoice_due_date, purchase_invoice.total_amount AS purchase_invoice_total_amount, purchase_invoice.paid_amount AS purchase_invoice_paid_amount, purchase_invoice.status AS purchase_invoice_status, purchase_invoice.paid_at AS purchase_invoice_paid_at, purchase_invoice.created_at AS purchase_invoice_created_at 
+FROM purchase_invoice 
+WHERE purchase_invoice.status = %(status_1)s AND purchase_invoice.tenant_id = %(tenant_id_1)s AND purchase_invoice.due_date < %(due_date_1)s AND purchase_invoice.due_date IS NOT NULL) AS anon_1
+2026-03-08 20:10:03,147 INFO sqlalchemy.engine.Engine [cached since 237.7s ago] {'status_1': 'PENDING', 'tenant_id_1': 1, 'due_date_1': datetime.date(2026, 3, 8)}
+2026-03-08 20:10:03,153 INFO sqlalchemy.engine.Engine SELECT tenant.id AS tenant_id, tenant.slug AS tenant_slug, tenant.name AS tenant_name, tenant.logo_url AS tenant_logo_url, tenant.active AS tenant_active, tenant.is_suspended AS tenant_is_suspended, tenant.created_at AS tenant_created_at, tenant.updated_at AS tenant_updated_at 
+FROM tenant 
+WHERE tenant.id = %(id_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:03,154 INFO sqlalchemy.engine.Engine [cached since 238.5s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:03,191 INFO sqlalchemy.engine.Engine ROLLBACK
+172.18.0.1 - - [08/Mar/2026:20:10:03 +0000] "GET /favicon.ico HTTP/1.1" 404 17841 "http://localhost:5000/sales/confirm_draft" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+172.18.0.5 - - [08/Mar/2026:20:10:11 +0000] "GET /metrics HTTP/1.1" 200 39973 "-" "Prometheus/3.9.1"
+2026-03-08 20:10:22,593 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:10:22,594 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:10:22,594 INFO sqlalchemy.engine.Engine [cached since 3210s ago] {}
+2026-03-08 20:10:22,596 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:10:22 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:10:26 +0000] "GET /metrics HTTP/1.1" 200 39973 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:10:41 +0000] "GET /metrics HTTP/1.1" 200 39973 "-" "Prometheus/3.9.1"
+2026-03-08 20:10:53,417 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:10:53,417 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:10:53,418 INFO sqlalchemy.engine.Engine [cached since 3241s ago] {}
+2026-03-08 20:10:53,420 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:10:53 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:10:56 +0000] "GET /metrics HTTP/1.1" 200 39988 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:11:11 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+2026-03-08 20:11:24,222 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:11:24,222 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:11:24,223 INFO sqlalchemy.engine.Engine [cached since 3271s ago] {}
+2026-03-08 20:11:24,226 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:11:24 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:11:26 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:11:41 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+2026-03-08 20:11:55,080 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:11:55,080 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:11:55,080 INFO sqlalchemy.engine.Engine [cached since 3250s ago] {}
+2026-03-08 20:11:55,082 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:11:55 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:11:56 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:12:11 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+2026-03-08 20:12:25,835 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:12:25,836 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:12:25,836 INFO sqlalchemy.engine.Engine [cached since 3281s ago] {}
+2026-03-08 20:12:25,838 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:12:25 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:12:26 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:12:41 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:12:56 +0000] "GET /metrics HTTP/1.1" 200 35214 "-" "Prometheus/3.9.1"
+2026-03-08 20:12:56,526 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:12:56,526 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:12:56,526 INFO sqlalchemy.engine.Engine [cached since 3364s ago] {}
+2026-03-08 20:12:56,528 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:12:56 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:13:11 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:13:26 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+2026-03-08 20:13:27,555 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:13:27,555 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:13:27,556 INFO sqlalchemy.engine.Engine [cached since 3395s ago] {}
+2026-03-08 20:13:27,557 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:13:27 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:13:41 +0000] "GET /metrics HTTP/1.1" 200 39975 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:13:56 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+2026-03-08 20:13:58,456 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:13:58,456 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:13:58,456 INFO sqlalchemy.engine.Engine [cached since 3426s ago] {}
+2026-03-08 20:13:58,458 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:13:58 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:14:11 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:14:26 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+2026-03-08 20:14:29,257 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:14:29,257 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:14:29,258 INFO sqlalchemy.engine.Engine [cached since 3404s ago] {}
+2026-03-08 20:14:29,260 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:14:29 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:14:41 +0000] "GET /metrics HTTP/1.1" 200 35213 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:14:56 +0000] "GET /metrics HTTP/1.1" 200 35213 "-" "Prometheus/3.9.1"
+2026-03-08 20:15:00,057 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:15:00,057 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:15:00,058 INFO sqlalchemy.engine.Engine [cached since 3435s ago] {}
+2026-03-08 20:15:00,060 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:15:00 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:15:11 +0000] "GET /metrics HTTP/1.1" 200 39975 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:15:26 +0000] "GET /metrics HTTP/1.1" 200 39975 "-" "Prometheus/3.9.1"
+2026-03-08 20:15:31,062 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:15:31,062 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:15:31,062 INFO sqlalchemy.engine.Engine [cached since 3518s ago] {}
+2026-03-08 20:15:31,064 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:15:31 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:15:41 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:15:56 +0000] "GET /metrics HTTP/1.1" 200 35199 "-" "Prometheus/3.9.1"
+2026-03-08 20:16:01,948 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:16:01,948 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:16:01,949 INFO sqlalchemy.engine.Engine [cached since 3497s ago] {}
+2026-03-08 20:16:01,950 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:16:01 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:16:11 +0000] "GET /metrics HTTP/1.1" 200 35214 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:16:26 +0000] "GET /metrics HTTP/1.1" 200 39987 "-" "Prometheus/3.9.1"
+2026-03-08 20:16:32,859 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:16:32,860 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:16:32,860 INFO sqlalchemy.engine.Engine [cached since 3580s ago] {}
+2026-03-08 20:16:32,862 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:16:32 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:16:41 +0000] "GET /metrics HTTP/1.1" 200 39985 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:16:56 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+2026-03-08 20:17:03,751 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:17:03,751 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:17:03,751 INFO sqlalchemy.engine.Engine [cached since 3559s ago] {}
+2026-03-08 20:17:03,753 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:17:03 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:17:11 +0000] "GET /metrics HTTP/1.1" 200 39973 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:17:26 +0000] "GET /metrics HTTP/1.1" 200 39985 "-" "Prometheus/3.9.1"
+2026-03-08 20:17:34,611 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:17:34,611 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:17:34,612 INFO sqlalchemy.engine.Engine [cached since 3642s ago] {}
+2026-03-08 20:17:34,613 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:17:34 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:17:41 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:17:56 +0000] "GET /metrics HTTP/1.1" 200 35216 "-" "Prometheus/3.9.1"
+2026-03-08 20:18:05,366 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:18:05,367 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:18:05,367 INFO sqlalchemy.engine.Engine [cached since 3620s ago] {}
+2026-03-08 20:18:05,369 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:18:05 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:18:11 +0000] "GET /metrics HTTP/1.1" 200 35216 "-" "Prometheus/3.9.1"

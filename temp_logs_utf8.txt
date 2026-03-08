@@ -1,0 +1,126 @@
+﻿172.18.0.1 - - [08/Mar/2026:20:10:02 +0000] "POST /sales/confirm_draft HTTP/1.1" 400 249 "http://localhost:5000/sales/new" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+2026-03-08 20:10:02,934 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:10:02,935 INFO sqlalchemy.engine.Engine SELECT app_user.id AS app_user_id, app_user.email AS app_user_email, app_user.password_hash AS app_user_password_hash, app_user.full_name AS app_user_full_name, app_user.active AS app_user_active, app_user.google_sub AS app_user_google_sub, app_user.auth_provider AS app_user_auth_provider, app_user.email_verified AS app_user_email_verified, app_user.reset_password_token AS app_user_reset_password_token, app_user.reset_password_expires AS app_user_reset_password_expires, app_user.created_at AS app_user_created_at, app_user.updated_at AS app_user_updated_at 
+FROM app_user 
+WHERE app_user.id = %(id_1)s AND app_user.active = true 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,936 INFO sqlalchemy.engine.Engine [cached since 238.4s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,944 INFO sqlalchemy.engine.Engine SELECT user_tenant.id AS user_tenant_id, user_tenant.user_id AS user_tenant_user_id, user_tenant.tenant_id AS user_tenant_tenant_id, user_tenant.role AS user_tenant_role, user_tenant.active AS user_tenant_active, user_tenant.created_at AS user_tenant_created_at 
+FROM user_tenant 
+WHERE user_tenant.user_id = %(user_id_1)s AND user_tenant.tenant_id = %(tenant_id_1)s AND user_tenant.active = true 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,944 INFO sqlalchemy.engine.Engine [cached since 238.3s ago] {'user_id_1': 1, 'tenant_id_1': 1, 'param_1': 1}
+2026-03-08 20:10:02,949 INFO sqlalchemy.engine.Engine SELECT tenant.id AS tenant_id, tenant.slug AS tenant_slug, tenant.name AS tenant_name, tenant.logo_url AS tenant_logo_url, tenant.active AS tenant_active, tenant.is_suspended AS tenant_is_suspended, tenant.created_at AS tenant_created_at, tenant.updated_at AS tenant_updated_at 
+FROM tenant 
+WHERE tenant.id = %(id_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:02,950 INFO sqlalchemy.engine.Engine [cached since 238.3s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:03,137 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT purchase_invoice.id AS purchase_invoice_id, purchase_invoice.tenant_id AS purchase_invoice_tenant_id, purchase_invoice.supplier_id AS purchase_invoice_supplier_id, purchase_invoice.invoice_number AS purchase_invoice_invoice_number, purchase_invoice.invoice_date AS purchase_invoice_invoice_date, purchase_invoice.due_date AS purchase_invoice_due_date, purchase_invoice.total_amount AS purchase_invoice_total_amount, purchase_invoice.paid_amount AS purchase_invoice_paid_amount, purchase_invoice.status AS purchase_invoice_status, purchase_invoice.paid_at AS purchase_invoice_paid_at, purchase_invoice.created_at AS purchase_invoice_created_at 
+FROM purchase_invoice 
+WHERE purchase_invoice.status = %(status_1)s AND purchase_invoice.tenant_id = %(tenant_id_1)s AND purchase_invoice.due_date = %(due_date_1)s) AS anon_1
+2026-03-08 20:10:03,138 INFO sqlalchemy.engine.Engine [cached since 237.7s ago] {'status_1': 'PENDING', 'tenant_id_1': 1, 'due_date_1': datetime.date(2026, 3, 9)}
+2026-03-08 20:10:03,146 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT purchase_invoice.id AS purchase_invoice_id, purchase_invoice.tenant_id AS purchase_invoice_tenant_id, purchase_invoice.supplier_id AS purchase_invoice_supplier_id, purchase_invoice.invoice_number AS purchase_invoice_invoice_number, purchase_invoice.invoice_date AS purchase_invoice_invoice_date, purchase_invoice.due_date AS purchase_invoice_due_date, purchase_invoice.total_amount AS purchase_invoice_total_amount, purchase_invoice.paid_amount AS purchase_invoice_paid_amount, purchase_invoice.status AS purchase_invoice_status, purchase_invoice.paid_at AS purchase_invoice_paid_at, purchase_invoice.created_at AS purchase_invoice_created_at 
+FROM purchase_invoice 
+WHERE purchase_invoice.status = %(status_1)s AND purchase_invoice.tenant_id = %(tenant_id_1)s AND purchase_invoice.due_date < %(due_date_1)s AND purchase_invoice.due_date IS NOT NULL) AS anon_1
+2026-03-08 20:10:03,147 INFO sqlalchemy.engine.Engine [cached since 237.7s ago] {'status_1': 'PENDING', 'tenant_id_1': 1, 'due_date_1': datetime.date(2026, 3, 8)}
+2026-03-08 20:10:03,153 INFO sqlalchemy.engine.Engine SELECT tenant.id AS tenant_id, tenant.slug AS tenant_slug, tenant.name AS tenant_name, tenant.logo_url AS tenant_logo_url, tenant.active AS tenant_active, tenant.is_suspended AS tenant_is_suspended, tenant.created_at AS tenant_created_at, tenant.updated_at AS tenant_updated_at 
+FROM tenant 
+WHERE tenant.id = %(id_1)s 
+ LIMIT %(param_1)s
+2026-03-08 20:10:03,154 INFO sqlalchemy.engine.Engine [cached since 238.5s ago] {'id_1': 1, 'param_1': 1}
+2026-03-08 20:10:03,191 INFO sqlalchemy.engine.Engine ROLLBACK
+172.18.0.1 - - [08/Mar/2026:20:10:03 +0000] "GET /favicon.ico HTTP/1.1" 404 17841 "http://localhost:5000/sales/confirm_draft" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+172.18.0.5 - - [08/Mar/2026:20:10:11 +0000] "GET /metrics HTTP/1.1" 200 39973 "-" "Prometheus/3.9.1"
+2026-03-08 20:10:22,593 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:10:22,594 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:10:22,594 INFO sqlalchemy.engine.Engine [cached since 3210s ago] {}
+2026-03-08 20:10:22,596 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:10:22 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:10:26 +0000] "GET /metrics HTTP/1.1" 200 39973 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:10:41 +0000] "GET /metrics HTTP/1.1" 200 39973 "-" "Prometheus/3.9.1"
+2026-03-08 20:10:53,417 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:10:53,417 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:10:53,418 INFO sqlalchemy.engine.Engine [cached since 3241s ago] {}
+2026-03-08 20:10:53,420 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:10:53 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:10:56 +0000] "GET /metrics HTTP/1.1" 200 39988 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:11:11 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+2026-03-08 20:11:24,222 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:11:24,222 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:11:24,223 INFO sqlalchemy.engine.Engine [cached since 3271s ago] {}
+2026-03-08 20:11:24,226 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:11:24 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:11:26 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:11:41 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+2026-03-08 20:11:55,080 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:11:55,080 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:11:55,080 INFO sqlalchemy.engine.Engine [cached since 3250s ago] {}
+2026-03-08 20:11:55,082 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:11:55 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:11:56 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:12:11 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+2026-03-08 20:12:25,835 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:12:25,836 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:12:25,836 INFO sqlalchemy.engine.Engine [cached since 3281s ago] {}
+2026-03-08 20:12:25,838 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:12:25 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:12:26 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:12:41 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:12:56 +0000] "GET /metrics HTTP/1.1" 200 35214 "-" "Prometheus/3.9.1"
+2026-03-08 20:12:56,526 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:12:56,526 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:12:56,526 INFO sqlalchemy.engine.Engine [cached since 3364s ago] {}
+2026-03-08 20:12:56,528 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:12:56 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:13:11 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:13:26 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+2026-03-08 20:13:27,555 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:13:27,555 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:13:27,556 INFO sqlalchemy.engine.Engine [cached since 3395s ago] {}
+2026-03-08 20:13:27,557 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:13:27 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:13:41 +0000] "GET /metrics HTTP/1.1" 200 39975 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:13:56 +0000] "GET /metrics HTTP/1.1" 200 35200 "-" "Prometheus/3.9.1"
+2026-03-08 20:13:58,456 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:13:58,456 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:13:58,456 INFO sqlalchemy.engine.Engine [cached since 3426s ago] {}
+2026-03-08 20:13:58,458 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:13:58 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:14:11 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:14:26 +0000] "GET /metrics HTTP/1.1" 200 35201 "-" "Prometheus/3.9.1"
+2026-03-08 20:14:29,257 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:14:29,257 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:14:29,258 INFO sqlalchemy.engine.Engine [cached since 3404s ago] {}
+2026-03-08 20:14:29,260 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:14:29 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:14:41 +0000] "GET /metrics HTTP/1.1" 200 35213 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:14:56 +0000] "GET /metrics HTTP/1.1" 200 35213 "-" "Prometheus/3.9.1"
+2026-03-08 20:15:00,057 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:15:00,057 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:15:00,058 INFO sqlalchemy.engine.Engine [cached since 3435s ago] {}
+2026-03-08 20:15:00,060 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:15:00 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:15:11 +0000] "GET /metrics HTTP/1.1" 200 39975 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:15:26 +0000] "GET /metrics HTTP/1.1" 200 39975 "-" "Prometheus/3.9.1"
+2026-03-08 20:15:31,062 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:15:31,062 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:15:31,062 INFO sqlalchemy.engine.Engine [cached since 3518s ago] {}
+2026-03-08 20:15:31,064 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:15:31 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:15:41 +0000] "GET /metrics HTTP/1.1" 200 39974 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:15:56 +0000] "GET /metrics HTTP/1.1" 200 35199 "-" "Prometheus/3.9.1"
+2026-03-08 20:16:01,948 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:16:01,948 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:16:01,949 INFO sqlalchemy.engine.Engine [cached since 3497s ago] {}
+2026-03-08 20:16:01,950 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:16:01 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:16:11 +0000] "GET /metrics HTTP/1.1" 200 35214 "-" "Prometheus/3.9.1"
+172.18.0.5 - - [08/Mar/2026:20:16:26 +0000] "GET /metrics HTTP/1.1" 200 39987 "-" "Prometheus/3.9.1"
+2026-03-08 20:16:32,859 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 20:16:32,860 INFO sqlalchemy.engine.Engine SELECT 1 as health_check
+2026-03-08 20:16:32,860 INFO sqlalchemy.engine.Engine [cached since 3580s ago] {}
+2026-03-08 20:16:32,862 INFO sqlalchemy.engine.Engine ROLLBACK
+127.0.0.1 - - [08/Mar/2026:20:16:32 +0000] "GET /health HTTP/1.1" 200 100 "-" "Python-urllib/3.11"
+172.18.0.5 - - [08/Mar/2026:20:16:41 +0000] "GET /metrics HTTP/1.1" 200 39985 "-" "Prometheus/3.9.1"

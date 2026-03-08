@@ -1,0 +1,681 @@
+﻿
+  [2026-03-08 14:25:17,889] INFO in sales_service: 
+Procesando confirm_sale_from_draft. Idempotency 
+Key: 944b6ee7-c9d7-4167-959b-ad15d724018c
+> [2026-03-08 14:25:17,909] ERROR in __init__: 
+Traceback: Traceback (most recent call last):
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 867, in full_dispatch_request
+      rv = self.dispatch_request()
+           ^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 841, in dispatch_request
+      self.raise_routing_exception(req)
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 450, in raise_routing_exception
+      raise request.routing_exception  # type: 
+ignore
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/ctx.py", line 353, in match_request
+      result = 
+self.url_adapter.match(return_rule=True)  # type: 
+ignore
+               
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/w
+erkzeug/routing/map.py", line 619, in match
+      raise MethodNotAllowed(valid_methods=list(e.h
+ave_match_for)) from None
+  werkzeug.exceptions.MethodNotAllowed: 405 Method 
+Not Allowed: The method is not allowed for the 
+requested URL.
+  System.Management.Automation.RemoteException
+  [2026-03-08 14:25:17,973] ERROR in sales: Error 
+in confirm_draft:
+> Traceback (most recent call last):
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  psycopg2.errors.NotNullViolation: null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (13, 51, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:25:17.879482+00, null).
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+  The above exception was the direct cause of the 
+following exception:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/services/sales_service.py", 
+line 253, in confirm_sale_from_draft
+      _create_stock_movement(session, tenant_id, 
+sale.id, sale_lines_data)
+    File "/app/app/services/sales_service.py", 
+line 325, in _create_stock_movement
+      session.flush()
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/scoping.py", line 937, in flush
+      return self._proxied.flush(objects=objects)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4352, in flush
+      self._flush(objects)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4487, in _flush
+      with util.safe_reraise():
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/util/langhelpers.py", line 146, in 
+__exit__
+>     raise exc_value.with_traceback(exc_tb)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4448, in _flush
+      flush_context.execute()
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 466, in execute
+      rec.execute(self)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 642, in execute
+      util.preloaded.orm_persistence.save_obj(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 93, in save_obj
+      _emit_insert_statements(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 1233, in 
+_emit_insert_statements
+      result = connection.execute(
+               ^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1418, in execute
+      return meth(
+             ^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/sql/elements.py", line 515, in 
+_execute_on_connection
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 2355, in 
+_handle_dbapi_exception
+>     raise 
+sqlalchemy_exception.with_traceback(exc_info[2]) 
+from e
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  sqlalchemy.exc.IntegrityError: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (13, 51, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:25:17.879482+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 51, 'payment_method': 
+'CASH', 'amount': Decimal('32660'), 
+'amount_received': Decimal('32660'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+          FROM product_stock ps
+  During handling of the above exception, another 
+exception occurred:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/blueprints/sales.py", line 
+1488, in confirm_draft
+      sale_id = confirm_sale_from_draft(
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/app/app/services/sales_service.py", 
+line 286, in confirm_sale_from_draft
+      raise Exception(f'Error al confirmar venta: 
+{str(e)}')
+  Exception: Error al confirmar venta: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (13, 51, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:25:17.879482+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 51, 'payment_method': 
+'CASH', 'amount': Decimal('32660'), 
+'amount_received': Decimal('32660'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+          INNER JOIN product p ON p.id = 
+ps.product_id
+          WHERE ps.product_id IN (%(pid0)s)
+            AND p.tenant_id = %(tenant_id)s
+  WHERE user_tenant.user_id = %(user_id_1)s AND 
+user_tenant.tenant_id = %(tenant_id_1)s AND 
+user_tenant.active = true 
+> [2026-03-08 14:25:23,553] ERROR in __init__: 
+Traceback: Traceback (most recent call last):
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 867, in full_dispatch_request
+      rv = self.dispatch_request()
+           ^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 841, in dispatch_request
+      self.raise_routing_exception(req)
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 450, in raise_routing_exception
+      raise request.routing_exception  # type: 
+ignore
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/ctx.py", line 353, in match_request
+      result = 
+self.url_adapter.match(return_rule=True)  # type: 
+ignore
+               
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/w
+erkzeug/routing/map.py", line 619, in match
+      raise MethodNotAllowed(valid_methods=list(e.h
+ave_match_for)) from None
+  werkzeug.exceptions.MethodNotAllowed: 405 Method 
+Not Allowed: The method is not allowed for the 
+requested URL.
+  System.Management.Automation.RemoteException
+  [2026-03-08 14:25:23,579] ERROR in sales: Error 
+in confirm_draft:
+> Traceback (most recent call last):
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  psycopg2.errors.NotNullViolation: null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (14, 52, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:25:23.545571+00, null).
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+  The above exception was the direct cause of the 
+following exception:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/services/sales_service.py", 
+line 253, in confirm_sale_from_draft
+      _create_stock_movement(session, tenant_id, 
+sale.id, sale_lines_data)
+    File "/app/app/services/sales_service.py", 
+line 325, in _create_stock_movement
+      session.flush()
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/scoping.py", line 937, in flush
+      return self._proxied.flush(objects=objects)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4352, in flush
+      self._flush(objects)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4487, in _flush
+      with util.safe_reraise():
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/util/langhelpers.py", line 146, in 
+__exit__
+>     raise exc_value.with_traceback(exc_tb)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4448, in _flush
+      flush_context.execute()
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 466, in execute
+      rec.execute(self)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 642, in execute
+      util.preloaded.orm_persistence.save_obj(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 93, in save_obj
+      _emit_insert_statements(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 1233, in 
+_emit_insert_statements
+      result = connection.execute(
+               ^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1418, in execute
+      return meth(
+             ^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/sql/elements.py", line 515, in 
+_execute_on_connection
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 2355, in 
+_handle_dbapi_exception
+>     raise 
+sqlalchemy_exception.with_traceback(exc_info[2]) 
+from e
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  sqlalchemy.exc.IntegrityError: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (14, 52, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:25:23.545571+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 52, 'payment_method': 
+'CASH', 'amount': Decimal('32660'), 
+'amount_received': Decimal('32660'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+  During handling of the above exception, another 
+exception occurred:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/blueprints/sales.py", line 
+1488, in confirm_draft
+      sale_id = confirm_sale_from_draft(
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/app/app/services/sales_service.py", 
+line 286, in confirm_sale_from_draft
+      raise Exception(f'Error al confirmar venta: 
+{str(e)}')
+  Exception: Error al confirmar venta: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (14, 52, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:25:23.545571+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 52, 'payment_method': 
+'CASH', 'amount': Decimal('32660'), 
+'amount_received': Decimal('32660'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+  172.18.0.1 - - [08/Mar/2026:14:25:23 +0000] 
+"POST /sales/confirm_draft HTTP/1.1" 500 803 
+"http://localhost:5000/sales/new" "Mozilla/5.0 
+(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
+(KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  2026-03-08 14:25:28,496 INFO 
+sqlalchemy.engine.Engine BEGIN (implicit)
+  2026-03-08 14:25:28,496 INFO 
+sqlalchemy.engine.Engine SELECT 1 as health_check
+  [2026-03-08 14:26:08,906] ERROR in __init__: 
+Unhandled Exception: 405 Method Not Allowed: The 
+method is not allowed for the requested URL.
+> [2026-03-08 14:26:08,907] ERROR in __init__: 
+Traceback: Traceback (most recent call last):
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 867, in full_dispatch_request
+      rv = self.dispatch_request()
+           ^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 841, in dispatch_request
+      self.raise_routing_exception(req)
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/app.py", line 450, in raise_routing_exception
+      raise request.routing_exception  # type: 
+ignore
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/f
+lask/ctx.py", line 353, in match_request
+      result = 
+self.url_adapter.match(return_rule=True)  # type: 
+ignore
+               
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/w
+erkzeug/routing/map.py", line 619, in match
+      raise MethodNotAllowed(valid_methods=list(e.h
+ave_match_for)) from None
+  werkzeug.exceptions.MethodNotAllowed: 405 Method 
+Not Allowed: The method is not allowed for the 
+requested URL.
+  System.Management.Automation.RemoteException
+  [2026-03-08 14:26:08,936] ERROR in sales: Error 
+in confirm_draft:
+> Traceback (most recent call last):
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  psycopg2.errors.NotNullViolation: null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (15, 53, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:26:08.901425+00, null).
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+  The above exception was the direct cause of the 
+following exception:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/services/sales_service.py", 
+line 253, in confirm_sale_from_draft
+      _create_stock_movement(session, tenant_id, 
+sale.id, sale_lines_data)
+    File "/app/app/services/sales_service.py", 
+line 325, in _create_stock_movement
+      session.flush()
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/scoping.py", line 937, in flush
+      return self._proxied.flush(objects=objects)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4352, in flush
+      self._flush(objects)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4487, in _flush
+      with util.safe_reraise():
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/util/langhelpers.py", line 146, in 
+__exit__
+>     raise exc_value.with_traceback(exc_tb)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4448, in _flush
+      flush_context.execute()
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 466, in execute
+      rec.execute(self)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 642, in execute
+      util.preloaded.orm_persistence.save_obj(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 93, in save_obj
+      _emit_insert_statements(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 1233, in 
+_emit_insert_statements
+      result = connection.execute(
+               ^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1418, in execute
+      return meth(
+             ^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/sql/elements.py", line 515, in 
+_execute_on_connection
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 2355, in 
+_handle_dbapi_exception
+>     raise 
+sqlalchemy_exception.with_traceback(exc_info[2]) 
+from e
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  sqlalchemy.exc.IntegrityError: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (15, 53, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:26:08.901425+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 53, 'payment_method': 
+'CASH', 'amount': Decimal('32660'), 
+'amount_received': Decimal('32660'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+  During handling of the above exception, another 
+exception occurred:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/blueprints/sales.py", line 
+1488, in confirm_draft
+      sale_id = confirm_sale_from_draft(
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/app/app/services/sales_service.py", 
+line 286, in confirm_sale_from_draft
+      raise Exception(f'Error al confirmar venta: 
+{str(e)}')
+  Exception: Error al confirmar venta: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (15, 53, CASH, 
+32660.00, 32660.00, 0.00, null, 2026-03-08 
+14:26:08.901425+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 53, 'payment_method': 
+'CASH', 'amount': Decimal('32660'), 
+'amount_received': Decimal('32660'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+  172.18.0.5 - - [08/Mar/2026:14:26:20 +0000] "GET 
+/metrics HTTP/1.1" 200 15590 "-" "Prometheus/3.9.1"
+  2026-03-08 14:26:29,174 INFO 
+sqlalchemy.engine.Engine BEGIN (implicit)
+  2026-03-08 14:26:29,174 INFO 
+sqlalchemy.engine.Engine SELECT 1 as health_check
+  [2026-03-08 20:10:02,765] ERROR in sales: Error 
+in confirm_draft:
+> Traceback (most recent call last):
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  psycopg2.errors.NotNullViolation: null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (16, 54, CASH, 
+59980.00, 59980.00, 0.00, null, 2026-03-08 
+20:10:02.086251+00, null).
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+  The above exception was the direct cause of the 
+following exception:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/services/sales_service.py", 
+line 253, in confirm_sale_from_draft
+      notes='Creacion de factura' if 
+is_full_cuenta_corriente else f'Porcion cuenta 
+corriente de venta #{sale.id}',
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+    File "/app/app/services/sales_service.py", 
+line 325, in _create_stock_movement
+      amount = Decimal(str(p.get('amount', total)))
+      ^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/scoping.py", line 937, in flush
+      return self._proxied.flush(objects=objects)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4352, in flush
+      self._flush(objects)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4487, in _flush
+      with util.safe_reraise():
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/util/langhelpers.py", line 146, in 
+__exit__
+>     raise exc_value.with_traceback(exc_tb)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/session.py", line 4448, in _flush
+      flush_context.execute()
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 466, in execute
+      rec.execute(self)
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/unitofwork.py", line 642, in execute
+      util.preloaded.orm_persistence.save_obj(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 93, in save_obj
+      _emit_insert_statements(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/orm/persistence.py", line 1233, in 
+_emit_insert_statements
+      result = connection.execute(
+               ^^^^^^^^^^^^^^^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1418, in execute
+      return meth(
+             ^^^^^
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/sql/elements.py", line 515, in 
+_execute_on_connection
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 2355, in 
+_handle_dbapi_exception
+>     raise 
+sqlalchemy_exception.with_traceback(exc_info[2]) 
+from e
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/base.py", line 1967, in 
+_exec_single_context
+      self.dialect.do_execute(
+    File "/usr/local/lib/python3.11/site-packages/s
+qlalchemy/engine/default.py", line 941, in 
+do_execute
+      cursor.execute(statement, parameters)
+  172.18.0.1 - - [08/Mar/2026:20:10:02 +0000] 
+"POST /sales/confirm_draft HTTP/1.1" 400 249 
+"http://localhost:5000/sales/new" "Mozilla/5.0 
+(Windows NT 10.0; Win64; x64) AppleWebKit/537.36 
+(KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+  sqlalchemy.exc.IntegrityError: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (16, 54, CASH, 
+59980.00, 59980.00, 0.00, null, 2026-03-08 
+20:10:02.086251+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 54, 'payment_method': 
+'CASH', 'amount': Decimal('59980'), 
+'amount_received': Decimal('59980'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+  During handling of the above exception, another 
+exception occurred:
+  System.Management.Automation.RemoteException
+> Traceback (most recent call last):
+    File "/app/app/blueprints/sales.py", line 
+1488, in confirm_draft
+      tenant_id=g.tenant_id,
+            ^^^^^^^^^^^^^^^^
+    File "/app/app/services/sales_service.py", 
+line 286, in confirm_sale_from_draft
+      WHERE ps.product_id IN ({placeholders})
+  Exception: Error al confirmar venta: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (16, 54, CASH, 
+59980.00, 59980.00, 0.00, null, 2026-03-08 
+20:10:02.086251+00, null).
+  System.Management.Automation.RemoteException
+  [SQL: INSERT INTO sale_payment (sale_id, 
+payment_method, amount, amount_received, 
+change_amount) VALUES (%(sale_id)s, 
+%(payment_method)s, %(amount)s, 
+%(amount_received)s, %(change_amount)s) RETURNING 
+sale_payment.id]
+  [parameters: {'sale_id': 54, 'payment_method': 
+'CASH', 'amount': Decimal('59980'), 
+'amount_received': Decimal('59980'), 
+'change_amount': Decimal('0')}]
+  (Background on this error at: 
+https://sqlalche.me/e/20/gkpj)
+  System.Management.Automation.RemoteException
+  [2026-03-08 20:10:02,767] ERROR in __init__: 
+SaaSError [400]: Error procesando la venta: Error 
+al confirmar venta: 
+(psycopg2.errors.NotNullViolation) null value in 
+column "tenant_id" of relation "sale_payment" 
+violates not-null constraint
+  DETAIL:  Failing row contains (16, 54, CASH, 
+59980.00, 59980.00, 0.00, null, 2026-03-08 
+20:10:02.086251+00, null).
+  System.Management.Automation.RemoteException
+
+

@@ -229,7 +229,8 @@ def confirm_sale_from_draft(
                 payment_method=method,
                 amount=Decimal(str(p['amount'])),
                 amount_received=Decimal(str(p.get('amount_received', 0))) if method == 'CASH' else None,
-                change_amount=Decimal(str(p.get('change_amount', 0))) if method == 'CASH' else None
+                change_amount=Decimal(str(p.get('change_amount', 0))) if method == 'CASH' else None,
+                tenant_id=tenant_id
             ))
             
         # 7. Create Stock Movement & Finance Entries
